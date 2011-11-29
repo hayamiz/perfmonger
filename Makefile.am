@@ -1,0 +1,11 @@
+ACLOCAL_AMFLAGS = $$ACLOCAL_ARGS -I m4
+
+SUBDIRS = src
+if WITH_CUTTER
+if WITH_GLIB
+if WITH_MOCKART
+SUBDIRS += test
+endif
+endif
+endif
+
