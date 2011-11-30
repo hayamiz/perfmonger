@@ -14,7 +14,7 @@
 #include <sys/time.h>
 
 #include "../config.h"
-#include "iostat/libiostat.h"
+#include "sysstat/libiostat.h"
 
 
 typedef struct {

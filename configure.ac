@@ -11,12 +11,12 @@ AC_PROG_LIBTOOL
 
 AC_CONFIG_FILES([Makefile
 	src/Makefile
-	src/iostat/Makefile
+	src/sysstat/Makefile
 	test/Makefile])
-AC_CONFIG_FILES([src/iostat/sysconfig.h:src/iostat/sysconfig.in])
+AC_CONFIG_FILES([src/sysstat/sysconfig.h:src/sysstat/sysconfig.in])
 
 dnl **************************************************************
-dnl Iostat settings
+dnl Sysstat settings
 dnl **************************************************************
 
 AC_MSG_CHECKING(sysstat configuration directory)
