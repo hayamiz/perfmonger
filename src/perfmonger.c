@@ -91,6 +91,7 @@ io_collector_loop(void)
     int curr;
     struct timeval tv;
     long wait_until;
+    long wait_interval;
 
     curr = 1;
     setbuf(stdout, NULL);
@@ -109,7 +110,12 @@ io_collector_loop(void)
 
         curr ^= 1;
         gettimeofday(&tv, NULL);
-        usleep(wait_until - (tv.tv_sec * 1000000L + tv.tv_usec));
+        wait_interval = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
+        if (wait_interval < 0){
+            g_print("panic!: %ld\n", wait_interval);
+        } else {
+            usleep(wait_interval);
+        }
     }
 }
 
@@ -129,6 +135,11 @@ output_diskstats_stat(int curr)
     double r_await, r_iops, w_iops, reqsz;
 
     interval = get_interval(uptime[!curr], uptime[curr]);
+    gettimeofday(&tv, NULL);
+
+    g_print("{\"time\": %.4lf, ",
+            tv.tv_sec + ((double) tv.tv_usec) / 1000000.0);
+
     if (cpu_nr > 1) {
         /* On SMP machines, reduce itv to one processor (see note above) */
         interval = get_interval(uptime0[!curr], uptime0[curr]);
@@ -181,14 +192,17 @@ output_diskstats_stat(int curr)
             w_iops += S_VALUE(ioj->rd_ios, ioi->rd_ios, interval);
             reqsz += xds.arqsz;
             nr_dev ++;
+
+            g_print("\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf}, ",
+                    st_dev_list[dev_idx].dev_name,
+                    S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
+                    S_VALUE(ioj->rd_ios, ioi->rd_ios, interval)
+                );
         }
         r_await /= nr_dev;
         reqsz /= nr_dev;
 
-        gettimeofday(&tv, NULL);
-
-        g_print("{\"time\": %.4lf, \"r/s\": %.4lf, \"w/s\": %.4lf}\n",
-                tv.tv_sec + ((double) tv.tv_usec) / 1000000.0,
+        g_print("\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf}}\n",
                 r_iops,
                 w_iops
             );
