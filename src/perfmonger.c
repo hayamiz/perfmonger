@@ -132,7 +132,9 @@ output_diskstats_stat(int curr)
     struct ext_disk_stats xds;
     struct timeval tv;
 
-    double r_await, r_iops, w_iops, reqsz;
+    double r_iops, w_iops;
+    double r_await, w_await;
+    double reqsz;
 
     interval = get_interval(uptime[!curr], uptime[curr]);
     gettimeofday(&tv, NULL);
@@ -145,6 +147,7 @@ output_diskstats_stat(int curr)
         interval = get_interval(uptime0[!curr], uptime0[curr]);
 
         r_await = 0;
+        w_await = 0;
         r_iops = 0;
         w_iops = 0;
         reqsz = 0;
@@ -188,23 +191,35 @@ output_diskstats_stat(int curr)
             r_await += (ioi->rd_ios - ioj->rd_ios) ?
                 (ioi->rd_ticks - ioj->rd_ticks) /
                 ((double) (ioi->rd_ios - ioj->rd_ios)) : 0.0;
+            w_await += (ioi->wr_ios - ioj->wr_ios) ?
+                (ioi->wr_ticks - ioj->wr_ticks) /
+                ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0;
             r_iops += S_VALUE(ioj->rd_ios, ioi->rd_ios, interval);
-            w_iops += S_VALUE(ioj->rd_ios, ioi->rd_ios, interval);
+            w_iops += S_VALUE(ioj->wr_ios, ioi->wr_ios, interval);
             reqsz += xds.arqsz;
             nr_dev ++;
 
-            g_print("\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf}, ",
+            g_print("\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, \"r_await\": %.4lf, \"w_await\": %.4lf}, ",
                     st_dev_list[dev_idx].dev_name,
                     S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
-                    S_VALUE(ioj->rd_ios, ioi->rd_ios, interval)
+                    S_VALUE(ioj->wr_ios, ioi->wr_ios, interval),
+                    (ioi->rd_ios - ioj->rd_ios) ?
+                    (ioi->rd_ticks - ioj->rd_ticks) /
+                    ((double) (ioi->rd_ios - ioj->rd_ios)) : 0.0,
+                    (ioi->wr_ios - ioj->wr_ios) ?
+                    (ioi->wr_ticks - ioj->wr_ticks) /
+                    ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0
                 );
         }
         r_await /= nr_dev;
+        w_await /= nr_dev;
         reqsz /= nr_dev;
 
-        g_print("\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf}}\n",
+        g_print("\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf, \"r_await\": %.4lf, \"w_await\": %.4lf}}\n",
                 r_iops,
-                w_iops
+                w_iops,
+                r_await,
+                w_await
             );
 
         // g_print("millitime\t%ld\n"
