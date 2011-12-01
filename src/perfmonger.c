@@ -200,7 +200,7 @@ output_diskstats_stat(int curr)
             nr_dev ++;
 
             g_print("\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, \"r_await\": %.4lf, \"w_await\": %.4lf}, ",
-                    st_dev_list[dev_idx].dev_name,
+                    shi->name,
                     S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
                     S_VALUE(ioj->wr_ios, ioi->wr_ios, interval),
                     (ioi->rd_ios - ioj->rd_ios) ?
