@@ -3,6 +3,8 @@
 
 PerfMonger is an yet anothor performance monitoring tool.
 
+** PerfMonger is still in early stage, so there may be a drastic
+   change in the future. Do not use it for critical jobs **
 
  Prerequisites
 ---------------
