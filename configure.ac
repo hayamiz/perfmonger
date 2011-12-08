@@ -62,8 +62,6 @@ m4_ifdef([AC_CHECK_GCUTTER],
 AM_CONDITIONAL([WITH_CUTTER], [test "$ac_cv_cutter_available" != "no"])
 
 
-AC_OUTPUT
-
 dnl **************************************************************
 dnl Check for Mockart
 dnl **************************************************************
@@ -77,6 +75,10 @@ if test "$have_libmockart" = "yes" && test "$have_mockart_h" = "yes"; then
 else
   have_mockart=no
 fi
+
+
+AC_OUTPUT
+
 
 echo
 echo "Configure Result:"

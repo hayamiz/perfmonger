@@ -9,3 +9,7 @@ endif
 endif
 endif
 
+dist: README
+
+README: README.md
+	cp $< $@
