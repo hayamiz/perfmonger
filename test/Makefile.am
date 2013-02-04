@@ -3,7 +3,7 @@ AM_CFLAGS = -g -Wall
 TESTS = run-test.sh
 TESTS_ENVIRONMENT = NO_MAKE=yes CUTTER="$(CUTTER)"
 
-LDFLAGS += -module -rpath $(libdir) -avoid-version -no-undefined $(GLIB_LIBS) -lmockart
+LDFLAGS += -module -rpath $(libdir) -avoid-version -no-undefined $(GLIB_LIBS)
 
 LIBS += $(CUTTER_LIBS) $(GCUTTER_LIBS)
 

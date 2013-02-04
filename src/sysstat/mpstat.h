@@ -25,7 +25,9 @@
 #define M_D_IRQ_CPU	0x0004
 #define M_D_SOFTIRQS	0x0008
 
+#ifndef DISPLAY_CPU
 #define DISPLAY_CPU(m)		(((m) & M_D_CPU) == M_D_CPU)
+#endif
 #define DISPLAY_IRQ_SUM(m)	(((m) & M_D_IRQ_SUM) == M_D_IRQ_SUM)
 #define DISPLAY_IRQ_CPU(m)	(((m) & M_D_IRQ_CPU) == M_D_IRQ_CPU)
 #define DISPLAY_SOFTIRQS(m)	(((m) & M_D_SOFTIRQS) == M_D_SOFTIRQS)

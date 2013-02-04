@@ -51,8 +51,8 @@
 #endif
 
 struct stats_cpu *st_cpu[2];
-unsigned long long uptime[2]  = {0, 0};
-unsigned long long uptime0[2] = {0, 0};
+extern unsigned long long uptime[3]; /* defined in mpstat.c */
+extern unsigned long long uptime0[3]; /* defined in mpstat.c */
 struct io_stats *st_iodev[2];
 struct io_hdr_stats *st_hdr_iodev;
 struct io_dlist *st_dev_list;

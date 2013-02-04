@@ -2,7 +2,6 @@
 #include "perfmonger.h"
 
 int nr_thargs = 0;
-volatile bool running = true;
 
 static void
 sigint_handler(int signum)
@@ -13,16 +12,19 @@ sigint_handler(int signum)
 int
 main(int argc, char **argv)
 {
-    if (parse_args(argc, argv) != 0){
+    option_t opt;
+    if (parse_args(argc, argv, &opt) != 0){
         fprintf(stderr, "Argument error. Exit.\n");
         exit(EXIT_FAILURE);
     }
 
+    running = true;
+
     signal(SIGINT, sigint_handler);
 
-    init_iostat_subsystem();
-    io_collector_loop();
-    destroy_iostat_subsystem();
+    init_subsystem(&opt);
+    collector_loop(&opt);
+    destroy_subsystem(&opt);
 
     return 0;
 }

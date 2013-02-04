@@ -9,7 +9,7 @@ noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = pgr
 
 libperfmonger_la_SOURCES = perfmonger.c perfmonger.h
-libperfmonger_la_LIBADD = ./sysstat/libiostat.la
+libperfmonger_la_LIBADD = ./sysstat/libsysstat.la
 
 pgr_SOURCES = main.c
 pgr_LDADD = libperfmonger.la

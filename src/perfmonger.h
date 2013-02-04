@@ -14,7 +14,7 @@
 #include <sys/time.h>
 
 #include "../config.h"
-#include "sysstat/libiostat.h"
+#include "sysstat/libsysstat.h"
 
 
 typedef struct {
@@ -22,18 +22,26 @@ typedef struct {
     int nr_dev;
     char **dev_list;
 
+    // show cpu usage
+    bool show_cpu;
+
+    // show io info
+    bool show_io;
+
     // data collection interval
     double interval;
+
+    bool verbose;
 } option_t;
 
-extern option_t option;
 extern volatile bool running;
 
-int parse_args(int argc, char **argv);
-void init_iostat_subsystem(void);
-void destroy_iostat_subsystem(void);
+int  parse_args(int argc, char **argv, option_t *opt);
+void print_help(void);
+void init_subsystem(option_t *opt);
+void destroy_subsystem(option_t *opt);
 
-void io_collector_loop(void);
+void collector_loop(option_t *opt);
 void output_diskstats_stat(int curr);
 
 #endif

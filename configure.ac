@@ -62,21 +62,6 @@ m4_ifdef([AC_CHECK_GCUTTER],
 AM_CONDITIONAL([WITH_CUTTER], [test "$ac_cv_cutter_available" != "no"])
 
 
-dnl **************************************************************
-dnl Check for Mockart
-dnl **************************************************************
-
-AC_CHECK_HEADERS(mockart.h, [have_mockart_h=yes], [have_mockart_h=no])
-AC_CHECK_LIB(mockart, mockart_init, [have_libmockart=yes], [have_libmockart=no])
-AM_CONDITIONAL([WITH_MOCKART], [test "$have_libmockart" = "yes" && test "$have_mockart_h" = "yes"])
-
-if test "$have_libmockart" = "yes" && test "$have_mockart_h" = "yes"; then
-  have_mockart=yes
-else
-  have_mockart=no
-fi
-
-
 AC_OUTPUT
 
 
