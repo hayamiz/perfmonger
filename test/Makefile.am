@@ -15,7 +15,7 @@ INCLUDES =					\
 
 noinst_LTLIBRARIES = test-perfmonger.la
 
-test_perfmonger_la_SOURCES = test-perfmonger.c
+test_perfmonger_la_SOURCES = test-perfmonger.c test.h
 test_perfmonger_la_LIBADD = $(top_builddir)/src/libperfmonger.la
 
 

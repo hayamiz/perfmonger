@@ -7,6 +7,7 @@ SUBDIRS = sysstat
 
 noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = perfmonger
+dist_bin_SCRIPTS = pgr
 
 libperfmonger_la_SOURCES = perfmonger.c perfmonger.h
 libperfmonger_la_LIBADD = ./sysstat/libsysstat.la
