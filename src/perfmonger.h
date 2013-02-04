@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <glib.h>
@@ -42,6 +43,6 @@ void init_subsystem(option_t *opt);
 void destroy_subsystem(option_t *opt);
 
 void collector_loop(option_t *opt);
-void output_diskstats_stat(int curr);
+void output_stat(option_t *opt, int curr);
 
 #endif
