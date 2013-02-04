@@ -70,5 +70,4 @@ echo "Configure Result:"
 echo " sysstat conf : $SYSCONFIG_DIR/sysstat.ioconf"
 echo "       Cutter : $CUTTER"
 echo "        GLib2 : $ac_glib_2_0_available"
-echo "      Mockart : $have_mockart"
 echo
