@@ -59,7 +59,7 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->dev_list = NULL;
     opt->interval = 1.0;
     opt->verbose = false;
-    opt->show_cpu = false;
+    opt->report_cpu = false;
 
     while((optval = getopt(argc, argv, "d:i:vhC")) != -1) {
         switch(optval) {
@@ -79,7 +79,7 @@ parse_args(int argc, char **argv, option_t *opt)
             goto error;
             break;
         case 'C': // show CPU
-            opt->show_cpu = true;
+            opt->report_cpu = true;
             break;
         default:
             print_help();
@@ -89,12 +89,12 @@ parse_args(int argc, char **argv, option_t *opt)
 
     if (opt->nr_dev == 0)
     {
-        opt->show_io = false;
-        opt->show_cpu = true;
+        opt->report_io = false;
+        opt->report_cpu = true;
     }
     else
     {
-        opt->show_io = true;
+        opt->report_io = true;
     }
 
     return 0;
@@ -229,8 +229,8 @@ output_stat(option_t *opt, int curr)
     gettimeofday(&tv, NULL);
     g_print("{\"time\": %.4lf", tv.tv_sec + ((double) tv.tv_usec) / 1000000.0);
 
-    if (opt->show_cpu) output_cpu_stat(curr);
-    if (opt->show_io)  output_io_stat(curr);
+    if (opt->report_cpu) output_cpu_stat(curr);
+    if (opt->report_io)  output_io_stat(curr);
 
     g_print("}\n");
 }

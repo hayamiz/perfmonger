@@ -19,15 +19,13 @@
 
 
 typedef struct {
+    // switches
+    bool report_cpu;
+    bool report_io;
+
     // device nr and list
     int nr_dev;
     char **dev_list;
-
-    // show cpu usage
-    bool show_cpu;
-
-    // show io info
-    bool show_io;
 
     // data collection interval
     double interval;
