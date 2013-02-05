@@ -22,6 +22,7 @@ typedef struct {
     // switches
     bool report_cpu;
     bool report_io;
+    bool report_ctxsw;
 
     // device nr and list
     int nr_dev;

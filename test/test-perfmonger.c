@@ -13,8 +13,8 @@ char **argv;
 void setup_arguments(const char *arg, ...);
 
 /* test function proto */
-void test_parse_args(void);
-
+void test_parse_args         (void);
+void test_parse_args_switches(void);
 
 /* cutter setup/teardown */
 
@@ -72,6 +72,7 @@ test_parse_args(void)
     cut_assert_equal_int(1, option.nr_dev);
     cut_assert_equal_string("/path/to/dev", option.dev_list[0]);
     cut_assert_equal_double(1.0, 0.0001, option.interval);
+    cut_assert_false(option.report_cpu);
     cut_assert_true(option.report_io);
     cut_assert_false(option.verbose);
 
@@ -100,23 +101,45 @@ test_parse_args(void)
     cut_assert_equal_int(0, parse_args(argc, argv, &option));
     cut_assert_true(option.verbose);
     cut_assert_true(option.report_io);
+}
+
+void
+test_parse_args_switches(void)
+{
+    option_t option;
 
     /* with cpu (default if no device is specified) */
     setup_arguments("collector", NULL);
     cut_assert_equal_int(0, parse_args(argc, argv, &option));
-    cut_assert_true(option.report_cpu);
+    cut_assert_true (option.report_cpu);
     cut_assert_false(option.report_io);
+    cut_assert_false(option.report_ctxsw);
 
     /* without cpu if some devices are specified */
     setup_arguments("collector", "-d", "/path/to/dev", NULL);
     cut_assert_equal_int(0, parse_args(argc, argv, &option));
     cut_assert_false(option.report_cpu);
-    cut_assert_true(option.report_io);
+    cut_assert_true (option.report_io);
+    cut_assert_false(option.report_ctxsw);
 
     /* with cpu if explicitly specified by -C */
     setup_arguments("collector", "-C", "-d", "/path/to/dev", NULL);
     cut_assert_equal_int(0, parse_args(argc, argv, &option));
-    cut_assert_true(option.report_cpu);
-    cut_assert_true(option.report_io);
+    cut_assert_true (option.report_cpu);
+    cut_assert_true (option.report_io);
+    cut_assert_false(option.report_ctxsw);
 
+    /* without cpu if context switch option is specified */
+    setup_arguments("collector", "-S", NULL);
+    cut_assert_equal_int(0, parse_args(argc, argv, &option));
+    cut_assert_false(option.report_cpu);
+    cut_assert_false(option.report_io);
+    cut_assert_true (option.report_ctxsw);
+
+    /* with cpu if explicitly specified by -C */
+    setup_arguments("collector", "-C", "-S", NULL);
+    cut_assert_equal_int(0, parse_args(argc, argv, &option));
+    cut_assert_true (option.report_cpu);
+    cut_assert_false(option.report_io);
+    cut_assert_true (option.report_ctxsw);
 }

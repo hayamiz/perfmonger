@@ -4,8 +4,9 @@
 /*
  * Private functions
  */
-static void output_io_stat (int curr);
-static void output_cpu_stat(int curr);
+static void output_io_stat   (int curr);
+static void output_cpu_stat  (int curr);
+static void output_ctxsw_stat(int curr);
 
 /*
  * Global variables
@@ -44,6 +45,9 @@ extern int irqcpu_nr;
 extern int softirqcpu_nr;
 extern unsigned int actflags;
 
+/* Variables for pcsw */
+struct stats_pcsw st_pcsw[3];
+
 
 /* TODO: long options */
 int
@@ -55,18 +59,21 @@ parse_args(int argc, char **argv, option_t *opt)
     errmsg = g_string_new("");
     optind = 1;
 
-    opt->nr_dev = 0;
-    opt->dev_list = NULL;
-    opt->interval = 1.0;
-    opt->verbose = false;
-    opt->report_cpu = false;
+    opt->nr_dev       = 0;
+    opt->dev_list     = NULL;
+    opt->interval     = 1.0;
+    opt->verbose      = false;
+    opt->report_cpu   = false;
+    opt->report_io    = false;
+    opt->report_ctxsw = false;
 
-    while((optval = getopt(argc, argv, "d:i:vhC")) != -1) {
+    while((optval = getopt(argc, argv, "d:i:vhCS")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
             opt->dev_list = realloc(opt->dev_list, opt->nr_dev * sizeof(char *));
             opt->dev_list[opt->nr_dev - 1] = strdup(optarg);
+            opt->report_io = true;
             break;
         case 'i': // interval
             opt->interval = strtod(optarg, NULL);
@@ -81,21 +88,17 @@ parse_args(int argc, char **argv, option_t *opt)
         case 'C': // show CPU
             opt->report_cpu = true;
             break;
+        case 'S': // show context switch per second
+            opt->report_ctxsw = true;
+            break;
         default:
             print_help();
             goto error;
         }
     }
 
-    if (opt->nr_dev == 0)
-    {
-        opt->report_io = false;
+    if (! (opt->report_io || opt->report_ctxsw))
         opt->report_cpu = true;
-    }
-    else
-    {
-        opt->report_io = true;
-    }
 
     return 0;
 error:
@@ -164,11 +167,14 @@ init_subsystem(option_t *opt)
     read_stat_irq(st_irq[0], 1);
     // init st_interrupts_stat
     read_interrupts_stat(SOFTIRQS, st_softirqcpu, softirqcpu_nr, 0);
+    // init st_pcsw
+    read_stat_pcsw(&st_pcsw[0]);
 
     /* Save the first stats collected. Will be used to compute the average */
     mp_tstamp[2] = mp_tstamp[0];
     uptime[2] = uptime[0];
     uptime0[2] = uptime0[0];
+    st_pcsw[2] = st_pcsw[0];
     memcpy(st_cpu[2], st_cpu[0], STATS_CPU_SIZE * (cpu_nr + 1));
     memcpy(st_irq[2], st_irq[0], STATS_IRQ_SIZE * (cpu_nr + 1));
     memcpy(st_irqcpu[2], st_irqcpu[0], STATS_IRQCPU_SIZE * (cpu_nr + 1) * irqcpu_nr);
@@ -205,8 +211,12 @@ collector_loop(option_t *opt)
         uptime0[curr] = 0;
         read_uptime(&(uptime0[curr]));
 
-        read_stat_cpu(st_cpu[curr], cpu_nr + 1, &(uptime[curr]), &(uptime0[curr]));
-        read_diskstats_stat(curr);
+        if (opt->report_cpu)
+            read_stat_cpu(st_cpu[curr], cpu_nr + 1, &(uptime[curr]), &(uptime0[curr]));
+        if (opt->report_io)
+            read_diskstats_stat(curr);
+        if (opt->report_ctxsw)
+            read_stat_pcsw(&st_pcsw[curr]);
 
         output_stat(opt, curr);
 
@@ -229,8 +239,9 @@ output_stat(option_t *opt, int curr)
     gettimeofday(&tv, NULL);
     g_print("{\"time\": %.4lf", tv.tv_sec + ((double) tv.tv_usec) / 1000000.0);
 
-    if (opt->report_cpu) output_cpu_stat(curr);
-    if (opt->report_io)  output_io_stat(curr);
+    if (opt->report_cpu)   output_cpu_stat(curr);
+    if (opt->report_io)    output_io_stat(curr);
+    if (opt->report_ctxsw) output_ctxsw_stat(curr);
 
     g_print("}\n");
 }
@@ -477,6 +488,15 @@ output_cpu_stat(int curr)
         }
     }
     g_print("]}");
+}
+
+static void
+output_ctxsw_stat(int curr)
+{
+    unsigned long long itv;
+    itv = get_interval(uptime0[!curr], uptime0[curr]);
+    g_print(", \"ctxsw\": %.2f",
+            ll_s_value(st_pcsw[!curr].context_switch, st_pcsw[curr].context_switch, itv));
 }
 
 void
