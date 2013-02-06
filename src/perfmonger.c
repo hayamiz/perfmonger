@@ -169,6 +169,8 @@ init_subsystem(option_t *opt)
     read_interrupts_stat(SOFTIRQS, st_softirqcpu, softirqcpu_nr, 0);
     // init st_pcsw
     read_stat_pcsw(&st_pcsw[0]);
+    // init st_iodev
+    read_diskstats_stat(0);
 
     /* Save the first stats collected. Will be used to compute the average */
     mp_tstamp[2] = mp_tstamp[0];
