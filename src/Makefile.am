@@ -5,7 +5,7 @@ INCLUDES = $(GLIB_CFLAGS)
 
 SUBDIRS = sysstat
 
-dist_bin_SCRIPTS = perfmonger
+dist_bin_SCRIPTS = perfmonger perfmonger-plot
 
 noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = perfmonger-record
