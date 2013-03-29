@@ -2,6 +2,9 @@
 
   * New features
     * Context switch frequency monitoring
+    * 'perfmonger COMMAD' style invocation
+      * perfmonger record ... record monitoring data
+      * perfmonger plot   ... plot recorded data
   * Fixed bugs
     * Broken JSON data by partial flush
 

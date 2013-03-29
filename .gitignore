@@ -23,4 +23,4 @@ Makefile
 /README
 /perfmonger-*.tar.gz
 /src/sysstat/sysconfig.h
-/src/perfmonger
+/src/perfmonger-record

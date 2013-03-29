@@ -5,15 +5,13 @@ INCLUDES = $(GLIB_CFLAGS)
 
 SUBDIRS = sysstat
 
+dist_bin_SCRIPTS = perfmonger
+
 noinst_LTLIBRARIES = libperfmonger.la
-bin_PROGRAMS = perfmonger
-dist_bin_SCRIPTS = pgr
+bin_PROGRAMS = perfmonger-record
 
 libperfmonger_la_SOURCES = perfmonger.c perfmonger.h
 libperfmonger_la_LIBADD = ./sysstat/libsysstat.la
 
-perfmonger_SOURCES = main.c
-perfmonger_LDADD = libperfmonger.la
-
-pgr: perfmonger
-	cp $< $@
+perfmonger_record_SOURCES = main.c
+perfmonger_record_LDADD = libperfmonger.la
