@@ -41,3 +41,6 @@ PerfMonger is an yet anothor performance monitoring tool.
     $ perfmonger plot -o /path/to/output_dir/ -Tpng /tmp/perfmonger.log
     $ display /path/to/output_dir/read-iops.png
     $ display /path/to/output_dir/cpu.png
+
+![Sample image of IOPS graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-read-iops.png)
+![Sample image of CPU usage graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-cpu.png)
