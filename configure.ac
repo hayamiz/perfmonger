@@ -52,6 +52,32 @@ fi
 AM_CONDITIONAL([WITH_GLIB], [test "$ac_glib_2_0_available" = "yes"])
 
 dnl **************************************************************
+dnl Check for Ruby
+dnl **************************************************************
+ruby_available="no"
+AC_ARG_WITH([ruby],
+            AS_HELP_STRING([--with-ruby=PATH],
+                           [Ruby interpreter path (default: auto-detect)]),
+            [RUBY="$withval"])
+
+if test "$RUBY" = "no"; then
+  : # ignore
+elif test "$RUBY" = ""; then
+  AC_PATH_PROG(RUBY, ruby, none)
+  if test "$RUBY" != "none"; then
+    ruby_available="yes"
+  fi
+else
+  AC_CHECK_FILE([$RUBY],
+                [ruby_available="yes"],
+                [AC_MSG_WARN([$RUBY is not found. Disable milter manager.])])
+fi
+
+if test "x$ruby_available" != "xyes"; then
+  AC_MSG_ERROR([Ruby is required.])
+fi
+
+dnl **************************************************************
 dnl Check for Cutter
 dnl **************************************************************
 
@@ -70,6 +96,7 @@ AC_OUTPUT
 echo
 echo "Configure Result:"
 echo " sysstat conf : $SYSCONFIG_DIR/sysstat.ioconf"
+echo "         Ruby : $RUBY"
 echo "       Cutter : $CUTTER"
 echo "        GLib2 : $ac_glib_2_0_available"
 echo
