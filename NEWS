@@ -1,4 +1,4 @@
-## 2013-XX-XX: PerfMonger 0.3.0 released
+## 2013-05-26: PerfMonger 0.3.0 released
 
   * New features
     * Context switch frequency monitoring
@@ -7,6 +7,8 @@
       * perfmonger plot   ... plot recorded data
   * Fixed bugs
     * Broken JSON data by partial flush
+    * Do not say 'panic' if interval is too short
+    * Do not try to build tests without Cutter
 
 ## 2013-02-04: PerfMonger 0.2.0 released
 
