@@ -1,11 +1,6 @@
 ACLOCAL_AMFLAGS = $$ACLOCAL_ARGS -I m4
 
-SUBDIRS = src
-if WITH_CUTTER
-if WITH_GLIB
-SUBDIRS += test
-endif
-endif
+SUBDIRS = src test
 
 EXTRA_DIST = \
 	NEWS

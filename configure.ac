@@ -57,10 +57,12 @@ dnl **************************************************************
 
 m4_ifdef([AC_CHECK_GCUTTER],
          [AC_CHECK_GCUTTER],
-         [ac_cv_cutter_available="no"])
+         [cutter_use_cutter="no"])
 
-AM_CONDITIONAL([WITH_CUTTER], [test "$ac_cv_cutter_available" != "no"])
-
+AM_CONDITIONAL([WITH_CUTTER], [test "$cutter_use_cutter" != "no"])
+if test "$cutter_use_cutter" = "yes"; then
+  AC_DEFINE(WITH_CUTTER, 1, [Define to 1 if you use Cutter])
+fi
 
 AC_OUTPUT
 
