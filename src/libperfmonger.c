@@ -226,7 +226,8 @@ collector_loop(option_t *opt)
         gettimeofday(&tv, NULL);
         wait_interval = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
         if (wait_interval < 0){
-            g_print("panic!: %ld\n", wait_interval);
+            if (opt->verbose)
+                g_print("panic!: %ld\n", wait_interval);
         } else {
             usleep(wait_interval);
         }

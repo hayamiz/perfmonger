@@ -10,7 +10,7 @@ dist_bin_SCRIPTS = perfmonger perfmonger-plot
 noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = perfmonger-record
 
-libperfmonger_la_SOURCES = perfmonger.c perfmonger.h
+libperfmonger_la_SOURCES = libperfmonger.c perfmonger.h
 libperfmonger_la_LIBADD = ./sysstat/libsysstat.la
 
 perfmonger_record_SOURCES = main.c
