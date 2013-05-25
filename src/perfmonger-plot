@@ -16,6 +16,7 @@ EOS
     @data_file = nil
     @offset_time = 0.0
     @output_dir = Dir.pwd
+    @output_type = 'png'
   end
 
   def parse_args(argv)
