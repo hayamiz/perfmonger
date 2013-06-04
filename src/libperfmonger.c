@@ -66,8 +66,9 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->report_cpu   = false;
     opt->report_io    = false;
     opt->report_ctxsw = false;
+    opt->output       = stdout;
 
-    while((optval = getopt(argc, argv, "d:i:vhCS")) != -1) {
+    while((optval = getopt(argc, argv, "d:i:vhCSl:")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
@@ -90,6 +91,15 @@ parse_args(int argc, char **argv, option_t *opt)
             break;
         case 'S': // show context switch per second
             opt->report_ctxsw = true;
+            break;
+        case 'l': // show context switch per second
+            opt->output = fopen(optarg, "w");
+            if (opt->output == NULL)
+            {
+                errmsg = g_string_new("log file open failed");
+                print_help();
+                goto error;
+            }
             break;
         default:
             print_help();
@@ -251,7 +261,7 @@ output_stat(option_t *opt, int curr)
     if (opt->report_ctxsw) output_ctxsw_stat(output, curr);
 
     g_string_append(output, "}");
-    puts(output->str);
+    fprintf(opt->output, "%s\n",  output->str);
     g_string_free(output, true);
 }
 
