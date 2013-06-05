@@ -1,3 +1,9 @@
+## XXXX-XX-XX: PerfMonger 0.4.0 released
+
+  * New features
+    * added 'perfmonger stat <cmd>' command works like 'perf stat <cmd>'
+      * Measurement is still system-wide. Per-process monitoring is welcomed.
+
 ## 2013-05-26: PerfMonger 0.3.0 released
 
   * New features
