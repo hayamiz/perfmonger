@@ -24,3 +24,7 @@ Makefile
 /perfmonger-*.tar.gz
 /src/sysstat/sysconfig.h
 /src/perfmonger-record
+/src/cpu.eps
+/src/cpu.png
+/src/read-iops.eps
+/src/read-iops.png
