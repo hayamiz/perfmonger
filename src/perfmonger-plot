@@ -17,6 +17,7 @@ EOS
     @offset_time = 0.0
     @output_dir = Dir.pwd
     @output_type = 'png'
+    @intermediate_prefix = false
   end
 
   def parse_args(argv)
@@ -44,6 +45,11 @@ EOS
       @output_type = typ
     end
 
+    @parser.on('-g', '--gen PREFIX') do |prefix|
+      @intermediate_prefix = prefix
+    end
+
+
     @parser.parse!(argv)
 
     if argv.size == 0
@@ -51,6 +57,7 @@ EOS
       puts(@parser.help)
       exit(false)
     end
+
 
     @data_file = argv.shift
   end
@@ -86,10 +93,15 @@ EOS
     end
 
     datafile.close
+    if @intermediate_prefix
+      FileUtils.copy(datafile.path, @intermediate_prefix + ".dat")
+    end
+
+    datafile_path = @intermediate_prefix + ".dat"
 
     col_idx = 2
     plot_stmt_list = devices.map do |device|
-      plot_stmt = "\"#{datafile.path}\" usi 1:#{col_idx} with lines title \"#{device}\""
+      plot_stmt = "\"#{datafile_path}\" usi 1:#{col_idx} with lines title \"#{device}\""
       col_idx += 1
       plot_stmt
     end
@@ -111,6 +123,10 @@ plot #{plot_stmt_list.join(",\\\n     ")}
 EOS
 
     gpfile.close
+
+    if @intermediate_prefix
+      FileUtils.copy(gpfile.path, @intermediate_prefix + ".gp")
+    end
 
     system("gnuplot #{gpfile.path}")
 
@@ -188,37 +204,6 @@ def parse_args(argv)
 
   parser.banner = "Usage: #{$0} [options] LOGFILE"
 
-  opt[:some_option] = 'default value'
-  parser.on('-o', '--option VALUE') do |value|
-    opt[:some_option] = value
-  end
-
-  opt[:offset_time] = 0.0
-  parser.on('--offset-time VALUE') do |value|
-    opt[:offset_time] = value.to_f
-  end
-
-  parser.parse!(argv)
-
-  if argv.size != 1
-    puts parser.banner
-    exit false
-  end
-
-  opt[:logfile] = argv.first
-  if ! File.exists?(opt[:logfile])
-    $stderr.puts("ERROR: No such file: #{opt[:logfile]}")
-    $stderr.puts parser.banner
-    exit false
-  end
-
-  opt
-end
-
-def main(argv)
-  opt = parse_args(argv)
-
-  logfile = opt[:logfile]
 end
 
 if __FILE__ == $0
