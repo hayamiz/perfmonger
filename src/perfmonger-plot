@@ -3,6 +3,7 @@
 require 'optparse'
 require 'json'
 require 'tempfile'
+require 'tmpdir'
 
 class PerfmongerPlot
   def initialize
@@ -17,7 +18,8 @@ EOS
     @offset_time = 0.0
     @output_dir = Dir.pwd
     @output_type = 'png'
-    @intermediate_prefix = false
+    @output_prefix = ''
+    @save_gpfiles = true
   end
 
   def parse_args(argv)
@@ -45,8 +47,18 @@ EOS
       @output_type = typ
     end
 
-    @parser.on('-g', '--gen PREFIX') do |prefix|
-      @intermediate_prefix = prefix
+    @parser.on('-p', '--prefix PREFIX',
+               'Output file name prefix.') do |prefix|
+      if ! (prefix =~ /-\Z/)
+        prefix += '-'
+      end
+
+      @output_prefix = prefix
+    end
+
+    @parser.on('-s', '--save',
+               'Save GNUPLOT and data files.') do
+      @save_gpfiles = true
     end
 
 
@@ -59,7 +71,7 @@ EOS
     end
 
 
-    @data_file = argv.shift
+    @data_file = File.expand_path(argv.shift)
   end
 
   def run(argv)
@@ -71,46 +83,52 @@ EOS
 
   private
   def plot_ioinfo()
-    datafile = Tempfile.new("")
-    gpfile = Tempfile.new("")
-
-    start_time = nil
-    devices = nil
-
-    File.open(@data_file).each_line do |line|
-      record = JSON.parse(line)
-      time = record["time"]
-      ioinfo = record["ioinfo"]
-      return unless ioinfo
-
-      start_time ||= time
-      devices ||= ioinfo["devices"]
-
-      datafile.puts([time - start_time,
-                     devices.map{|device|
-                       ioinfo[device]["r/s"]
-                     }].flatten.map(&:to_s).join("\t"))
+    eps_filename = @output_prefix + 'read-iops.eps'
+    gp_filename  = @output_prefix + 'read-iops.gp'
+    dat_filename = @output_prefix + 'read-iops.dat'
+    if @output_type != 'eps'
+      img_filename = @output_prefix + 'read-iops.' + @output_type
+    else
+      img_filename = nil
     end
 
-    datafile.close
-    if @intermediate_prefix
-      FileUtils.copy(datafile.path, @intermediate_prefix + ".dat")
-    end
+    Dir.mktmpdir do |working_dir|
+      Dir.chdir(working_dir) do
+        datafile = File.open(dat_filename, 'w')
+        gpfile = File.new(gp_filename, 'w')
 
-    datafile_path = @intermediate_prefix + ".dat"
+        start_time = nil
+        devices = nil
 
-    col_idx = 2
-    plot_stmt_list = devices.map do |device|
-      plot_stmt = "\"#{datafile_path}\" usi 1:#{col_idx} with lines title \"#{device}\""
-      col_idx += 1
-      plot_stmt
-    end
+        File.open(@data_file).each_line do |line|
+          record = JSON.parse(line)
+          time = record["time"]
+          ioinfo = record["ioinfo"]
+          return unless ioinfo
 
-    eps_file = File.join(@output_dir, "read-iops.eps")
-    gpfile.puts <<EOS
+          start_time ||= time
+          devices ||= ioinfo["devices"]
+
+          datafile.puts([time - start_time,
+                         devices.map{|device|
+                           ioinfo[device]["r/s"]
+                         }].flatten.map(&:to_s).join("\t"))
+        end
+
+        datafile.close
+
+        col_idx = 2
+        plot_stmt_list = devices.map do |device|
+          plot_stmt = "\"#{dat_filename}\" usi 1:#{col_idx} with lines title \"#{device}\""
+          col_idx += 1
+          plot_stmt
+        end
+
+        gpfile.puts <<EOS
 set term postscript enhanced color
 set title "Read IOPS: #{@data_file}"
-set output "#{eps_file}"
+set size 1.0, 1.0
+set output "#{eps_filename}"
 
 set xlabel "elapsed time [sec]"
 set ylabel "IOPS"
@@ -122,62 +140,79 @@ set yrange [0:*]
 plot #{plot_stmt_list.join(",\\\n     ")}
 EOS
 
-    gpfile.close
+        gpfile.close
 
-    if @intermediate_prefix
-      FileUtils.copy(gpfile.path, @intermediate_prefix + ".gp")
-    end
+        system("gnuplot #{gpfile.path}")
 
-    system("gnuplot #{gpfile.path}")
+        if @output_type != 'eps'
+          system("convert -rotate 90 -background white #{eps_filename} #{img_filename}")
+        end
 
-    if @output_type != 'eps'
-      system("convert -rotate 90 -background white #{eps_file} #{eps_file.gsub(/\.eps$/, '.' + @output_type)}")
+        FileUtils.copy(eps_filename, @output_dir)
+        FileUtils.copy(img_filename, @output_dir) if img_filename
+        if @save_gpfiles
+          FileUtils.copy(gp_filename , @output_dir)
+          FileUtils.copy(dat_filename, @output_dir)
+        end
+      end
     end
   end
 
   def plot_cpuinfo()
-    datafile = Tempfile.new("")
-    gpfile = Tempfile.new("")
-
-    start_time = nil
-    devices = nil
-    nr_cpu = nil
-
-    File.open(@data_file).each_line do |line|
-      record = JSON.parse(line)
-      time = record["time"]
-      cpuinfo = record["cpuinfo"]
-      return unless cpuinfo
-      nr_cpu = cpuinfo['nr_cpu']
-
-      cores = cpuinfo['cpus']
-
-      start_time ||= time
-
-      datafile.puts([time - start_time,
-                     %w|%usr %nice %sys %iowait %irq %soft %steal %guest %idle|.map do |key|
-                       cores.map{|core| core[key]}.inject(&:+)
-                     end].flatten.map(&:to_s).join("\t"))
+    eps_filename = @output_prefix + 'cpu.eps'
+    gp_filename  = @output_prefix + 'cpu.gp'
+    dat_filename = @output_prefix + 'cpu.dat'
+    if @output_type != 'eps'
+      img_filename = @output_prefix + 'cpu.' + @output_type
+    else
+      img_filename = nil
     end
 
-    datafile.close
+    Dir.mktmpdir do |working_dir|
+      Dir.chdir(working_dir) do
+        datafile = File.open(dat_filename, 'w')
+        gpfile = File.open(gp_filename, 'w')
 
-    col_idx = 2
-    columns = []
-    plot_stmt_list = []
-    %w|%usr %nice %sys %iowait %irq %soft %steal %guest|.each do |key|
-      columns << col_idx
-      plot_stmt = "\"#{datafile.path}\" usi 1:(#{columns.map{|i| "$#{i}"}.join("+")}) with filledcurve x1 lw 0 lc #{col_idx - 1} title \"#{key}\""
-      plot_stmt_list << plot_stmt
-      col_idx += 1
-    end
+        start_time = nil
+        devices = nil
+        nr_cpu = nil
 
-    eps_file = File.join(@output_dir, "cpu.eps")
-    gpfile.puts <<EOS
+        File.open(@data_file).each_line do |line|
+          record = JSON.parse(line)
+          time = record["time"]
+          cpuinfo = record["cpuinfo"]
+          return unless cpuinfo
+          nr_cpu = cpuinfo['nr_cpu']
+
+          cores = cpuinfo['cpus']
+
+          start_time ||= time
+
+          datafile.puts([time - start_time,
+                         %w|%usr %nice %sys %iowait %irq %soft %steal %guest %idle|.map do |key|
+                           cores.map{|core| core[key]}.inject(&:+)
+                         end].flatten.map(&:to_s).join("\t"))
+        end
+
+        datafile.close
+
+        col_idx = 2
+        columns = []
+        plot_stmt_list = []
+        %w|%usr %nice %sys %iowait %irq %soft %steal %guest|.each do |key|
+          columns << col_idx
+          plot_stmt = "\"#{datafile.path}\" usi 1:(#{columns.map{|i| "$#{i}"}.join("+")}) with filledcurve x1 lw 0 lc #{col_idx - 1} title \"#{key}\""
+          plot_stmt_list << plot_stmt
+          col_idx += 1
+        end
+
+        eps_file = File.join(@output_dir, "cpu.eps")
+        gpfile.puts <<EOS
 set term postscript enhanced color
 set title "CPU usage: #{@data_file} (max: #{nr_cpu*100}%)"
-set output "#{eps_file}"
+set output "#{eps_filename}"
 set key outside center bottom horizontal
+set size 1.0, 1.0
 
 set xlabel "elapsed time [sec]"
 set ylabel "CPU usage"
@@ -189,11 +224,20 @@ set yrange [0:*]
 plot #{plot_stmt_list.reverse.join(",\\\n     ")}
 EOS
 
-    gpfile.close
-    system("gnuplot #{gpfile.path}")
+        gpfile.close
+        system("gnuplot #{gpfile.path}")
 
-    if @output_type != 'eps'
-      system("convert -rotate 90 -background white #{eps_file} #{eps_file.gsub(/\.eps$/, '.' + @output_type)}")
+        if @output_type != 'eps'
+          system("convert -rotate 90 -background white #{eps_filename} #{img_filename}")
+        end
+
+        FileUtils.copy(eps_filename, @output_dir)
+        FileUtils.copy(img_filename, @output_dir) if img_filename
+        if @save_gpfiles
+          FileUtils.copy(gp_filename , @output_dir)
+          FileUtils.copy(dat_filename, @output_dir)
+        end
+      end
     end
   end
 end
