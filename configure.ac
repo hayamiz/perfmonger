@@ -70,7 +70,7 @@ elif test "$RUBY" = ""; then
 else
   AC_CHECK_FILE([$RUBY],
                 [ruby_available="yes"],
-                [AC_MSG_WARN([$RUBY is not found. Disable milter manager.])])
+                [AC_MSG_ERROR([$RUBY is not found.])])
 fi
 
 if test "x$ruby_available" != "xyes"; then
