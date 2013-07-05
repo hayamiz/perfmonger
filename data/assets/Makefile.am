@@ -1,8 +1,7 @@
+perfmonger_assetsdir = $(perfmonger_datarootdir)/assets
 
 SUBDIRS = img css js
 
-EXTRA_DIST =					\
-	README					\
-	Twitter_Bootstrap_LICENSE.txt
+EXTRA_DIST = dashboard.erb
 
-dist_perfmonger_dataroot_DATA = README Twitter_Bootstrap_LICENSE.txt
+dist_perfmonger_assets_DATA = dashboard.erb
