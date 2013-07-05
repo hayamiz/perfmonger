@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Bootstrap, from Twitter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="../assets/css/bootstrap.css" rel="stylesheet">
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+    </style>
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <!-- Fav and touch icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+    <link rel="shortcut icon" href="../assets/ico/favicon.png">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#">PerfMonger Monitor</a>
+<!--
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li class="active"><a href="#">Home</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+-->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+<% devices.each do |dev| %>
+      <div id="<%= dev %>_graph" style="width: 100%; height: 600px;"></div>
+<% end %>
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script src="../assets/js/bootstrap.js"></script>
+    <script src="../assets/js/canvasjs.min.js"></script>
+
+<pre id="msg">
+<%= devices %>
+</pre>
+
+<script>
+var records = [];
+
+<% devices.each do |dev| %>
+var <%= dev %>_datapoints = [{x: new Date(new Date() - 1000), y: 0.0}];
+
+var <%= dev %>_chart = new CanvasJS.Chart("<%= dev %>_graph",
+{
+  title:{
+    text: "IOPS (device: <%= dev %>)",
+    },
+    axisX: {
+      valueFormatString: "HH:mm:ss",
+      interval:5,
+      intervalType: "second",
+    },
+      axisY:{
+        includeZero: true
+      },
+      data: [
+      {
+        type: "line",
+        dataPoints: <%= dev %>_datapoints
+      },
+      ]
+    });
+<%= dev %>_chart.render();
+<% end %>
+
+
+function add_record(record) {
+  if (records.length > 0 && records[records.length - 1]['time'] >= record) {
+    // old or duplicate record received
+    return;
+  }
+  records.push(record);
+
+<% devices.each do |dev| %>
+  <%= dev %>_datapoints.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['r/s']});
+<% end %>
+
+  last_record = records[records.length - 1];
+
+  while (records[0]['time'] < last_record['time'] - 30.0) {
+    records.shift();
+<% devices.each do |dev| %>
+    <%= dev %>_datapoints.shift();
+<% end %>
+  }
+
+<% devices.each do |dev| %>
+  <%= dev %>_chart.render();
+<% end %>
+}
+
+function draw_message() {
+  var e = document.getElementById( "msg" );
+  e.textContent = records.map(function(record){ return record['ioinfo']['sda']['r/s'].toString() }).join(", ")
+}
+
+var handleMessage = function handleMessage( evt ) {
+  var record = JSON.parse(evt.data);
+  if (record['ioinfo'] != null) {
+    add_record(record);
+  }
+  // draw_message();
+};
+var handleEnd = function handleEnd( evt ) {
+  evt.currentTarget.close();
+}
+
+var source = new EventSource( '/faucet' );
+source.addEventListener( 'message', handleMessage, false );
+source.addEventListener( 'end'    , handleEnd    , false );
+</script>
+  </body>
+</html>

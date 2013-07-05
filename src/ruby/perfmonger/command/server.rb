@@ -5,10 +5,9 @@ require 'webrick'
 require 'thread'
 require 'tmpdir'
 require 'fileutils'
-require 'base64'
+require 'erb'
 
 # monkey patching HTTPResponse for server-sent events
-
 class WEBrick::HTTPResponse
   CRLF = "\r\n"
   def send_body_io(socket)
@@ -28,6 +27,7 @@ class WEBrick::HTTPResponse
             @sent_size += buf.bytesize
           end
         rescue EOFError # do nothing
+        rescue IOError # do nothing
         end
         _write_data(socket, "0#{CRLF}#{CRLF}")
       else
@@ -36,7 +36,7 @@ class WEBrick::HTTPResponse
         @sent_size = size
       end
     ensure
-      @body.close
+      begin; @body.close; rescue IOError; end
     end
   end
 end
@@ -90,7 +90,10 @@ EOS
   def run(argv)
     tmp_rootdir = Dir.mktmpdir
     parse_args(argv)
-    load_frontend_files()
+
+    p @record_cmd_args
+
+    _, record_option = PerfMonger::Command::RecordOption.parse(@record_cmd_args)
 
     # find perfmonger command
     perfmonger_bin = File.expand_path('../../../../perfmonger', __FILE__)
@@ -110,7 +113,7 @@ EOS
     @http_server =  WEBrick::HTTPServer.new({:DocumentRoot => tmp_rootdir,
                                               :BindAddress => '0.0.0.0',
                                               :Port => @http_port})
-    setup_webrick(@http_server)
+    setup_webrick(@http_server, record_option)
 
     trap(:INT) do
       @http_server.stop
@@ -171,7 +174,7 @@ EOS
       end
     end
 
-    def current_record
+    def get_current_record
       @mutex.synchronize do
         if @working
           @cond.wait(@mutex)
@@ -184,35 +187,19 @@ EOS
   end
 
   class DashboardServlet < WEBrick::HTTPServlet::AbstractServlet
+    def initialize(server, assets_dir, record_option)
+      @assets_dir = assets_dir
+      @record_option = record_option
+      super
+    end
+
     def do_GET(req, res)
       res.content_type = 'text/html'
-      res.body = $frontend_files['/html/dashboard']
       res['cache-control'] = 'no-cache'
-    end
-  end
 
-  class AssetsServlet < WEBrick::HTTPServlet::AbstractServlet
-    def do_GET(req, res)
-      if ! $frontend_files[req.path]
-        puts "Not found: #{req.path}"
-        res.status = 404
-        res.content_type = 'text/plain'
-        res.body = "404 Not Found: #{req.path}"
-        return
-      end
-
-      res.content_type = case req.path
-                         when /\.css\Z/
-                           "text/css"
-                         when /\.js\Z/
-                           "text/javascript"
-                         when /\.png\Z/
-                           "image/png"
-                         else
-                           "text/plain"
-                         end
-
-      res.body = $frontend_files[req.path]
+      devices = @record_option.devices
+      erb = ERB.new(File.read(File.expand_path('dashboard.erb', @assets_dir)))
+      res.body = erb.result(Kernel.binding)
     end
   end
 
@@ -230,19 +217,23 @@ EOS
 
       Thread.start do
         begin
-          while record = @recorder.current_record
+          while record = @recorder.get_current_record
             w << "data: " << record << "\r\n" << "\r\n"
           end
         rescue Errno::EPIPE
-          puts("Connection closed for /faucet")
+          # puts("Connection closed for /faucet")
           # connection closed
         rescue EOFError
-          puts("Recorder has been terminated")
+          # puts("Recorder has been terminated")
           # connection closed
         rescue Exception => err
           puts("ERROR: Exception in faucet pipe writer")
           puts("#{err.class.to_s}: #{err.message}")
           puts(err.backtrace)
+        ensure
+          # puts("[FaucetServlet][do_GET] close w,r pipe")
+          begin; w.close; rescue IOError; end
+          begin; r.close; rescue IOError; end
         end
       end
 
@@ -250,7 +241,7 @@ EOS
     end
   end
 
-  def setup_webrick(webrick_server)
+  def setup_webrick(webrick_server, record_option)
     # find assets dir
     # Search build environment first, then installed dir
     assets_dir = [File.expand_path('../../../../../data/assets', __FILE__),
@@ -270,149 +261,10 @@ EOS
         res.set_redirect(WEBrick::HTTPStatus::TemporaryRedirect, '/html/dashboard')
       end
     end
-    webrick_server.mount('/html/dashboard', DashboardServlet)
+    webrick_server.mount('/html/dashboard', DashboardServlet, assets_dir, record_option)
     webrick_server.mount('/assets', WEBrick::HTTPServlet::FileHandler, assets_dir)
     webrick_server.mount('/faucet', FaucetServlet, @recorder)
   end
-
-  def load_frontend_files()
-$frontend_files = Hash.new
-def register_file(path, content)
-  $frontend_files[path] = content
-end
-
-register_file '/html/dashboard', <<EOS
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Bootstrap, from Twitter</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
-
-    <!-- Le styles -->
-    <link href="../assets/css/bootstrap.css" rel="stylesheet">
-    <style>
-      body {
-        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-      }
-    </style>
-
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-      <script src="../assets/js/html5shiv.js"></script>
-    <![endif]-->
-
-    <!-- Fav and touch icons -->
-    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
-    <link rel="shortcut icon" href="../assets/ico/favicon.png">
-  </head>
-
-  <body>
-
-    <div class="navbar navbar-inverse navbar-fixed-top">
-      <div class="navbar-inner">
-        <div class="container">
-          <a class="brand" href="#">PerfMonger Monitor</a>
-<!--
-          <div class="nav-collapse collapse">
-            <ul class="nav">
-              <li class="active"><a href="#">Home</a></li>
-              <li><a href="#about">About</a></li>
-              <li><a href="#contact">Contact</a></li>
-            </ul>
-          </div><!--/.nav-collapse -->
--->
-        </div>
-      </div>
-    </div>
-
-    <div class="container">
-      <div id="graph" style="width: 100%; height: 600px;"></div>
-    </div> <!-- /container -->
-
-    <!-- Le javascript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
-    <script src="../assets/js/bootstrap.js"></script>
-    <script src="../assets/js/canvasjs.min.js"></script>
-
-<pre id="msg"></pre>
-
-<script>
-var records = [];
-var datapoints = [{x: new Date(new Date() - 1000), y: 0.0}];
-
-var chart = new CanvasJS.Chart("graph",
-{
-  title:{
-    text: "IOPS",
-    },
-    axisX: {
-      valueFormatString: "HH:mm:ss",
-      interval:5,
-      intervalType: "second",
-    },
-      axisY:{
-        includeZero: true
-      },
-      data: [
-      {
-        type: "line",
-        dataPoints: datapoints
-      },
-      ]
-    });
-chart.render();
-
-function add_record(record) {
-  records.push(record);
-  datapoints.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['sda']['r/s']});
-
-  last_record = records[records.length - 1];
-
-  while (records[0]['time'] < last_record['time'] - 30.0) {
-    records.shift();
-    datapoints.shift();
-  }
-
-  chart.data = [{
-    type: "line",
-    dataPoints: records.map(function(r){ return {x: r['time'], y: r['ioinfo']['sda']['r/s']};})
-  }];
-  chart.render();
-}
-
-function draw_message() {
-  var e = document.getElementById( "msg" );
-  e.textContent = records.map(function(record){ return record['ioinfo']['sda']['r/s'].toString() }).join(", ")
-}
-
-var handleMessage = function handleMessage( evt ) {
-  var record = JSON.parse(evt.data);
-  if (record['ioinfo'] != null) {
-    add_record(record);
-  }
-  // draw_message();
-};
-var handleEnd = function handleEnd( evt ) {
-  evt.currentTarget.close();
-}
-
-var source = new EventSource( '/faucet' );
-source.addEventListener( 'message', handleMessage, false );
-source.addEventListener( 'end'    , handleEnd    , false );
-</script>
-  </body>
-</html>
-EOS
-
- end
 end
 
 end # module Command
