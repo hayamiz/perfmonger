@@ -219,6 +219,15 @@ class Plot < Command
   end
 end
 
+class Server < Command
+  register_command 'server'
+
+  def run(argv)
+    cmd = File.expand_path("../perfmonger-server", __FILE__)
+    Process.exec(cmd, *argv)
+  end
+end
+
 end
 end
 
