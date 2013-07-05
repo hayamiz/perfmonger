@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = $$ACLOCAL_OPTIONS
 
-SUBDIRS = src test
+SUBDIRS = src data test
 
 EXTRA_DIST = \
 	NEWS
