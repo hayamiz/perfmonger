@@ -23,6 +23,11 @@ EOS
 
     parser.summary_indent = "  "
 
+    parser.on('-v', '--version', 'Show version number') do
+      puts("PerfMonger version " + PerfMonger::VERSION)
+      exit(true)
+    end
+
     parser.order!(argv)
 
     if argv.size == 0

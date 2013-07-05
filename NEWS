@@ -1,8 +1,9 @@
 ## XXXX-XX-XX: PerfMonger 0.4.0 released
 
   * New features
-    * added 'perfmonger stat <cmd>' command works like 'perf stat <cmd>'
-      * Measurement is still system-wide. Per-process monitoring is welcomed.
+    * Show version number with -v option
+    * 'perfmonger stat <cmd>' ... monitoring during command execution. It works like 'perf stat <cmd>'
+    * 'perfmonger server' ... self-contained realtime HTML5-based monitor
 
 ## 2013-05-26: PerfMonger 0.3.0 released
 
