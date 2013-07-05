@@ -1,9 +1,10 @@
  PerfMonger
 ============
 
-PerfMonger is an yet anothor performance monitoring tool.
+PerfMonger is an yet anothor performance measurement/monitoring tool
+speaking JSON.
 
-** PerfMonger is still in early stage, so there may be a drastic change in the future. Do not use it for critical jobs **
+**CAUTION: PerfMonger is still in early stage, so there may be a drastic change in the future. Do not use it for critical jobs**
 
  Prerequisites
 ---------------
