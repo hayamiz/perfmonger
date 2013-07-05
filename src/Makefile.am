@@ -3,9 +3,9 @@ AM_CFLAGS = -g -Wall
 LDFLAGS = -no-undefined $(GLIB_LIBS)
 INCLUDES = $(GLIB_CFLAGS)
 
-SUBDIRS = sysstat
+SUBDIRS = sysstat ruby
 
-dist_bin_SCRIPTS = perfmonger perfmonger-plot perfmonger-server
+dist_bin_SCRIPTS = perfmonger
 
 noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = perfmonger-record

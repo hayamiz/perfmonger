@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 
 require 'optparse'
 require 'json'
@@ -42,7 +41,13 @@ class WEBrick::HTTPResponse
   end
 end
 
-class PerfmongerServer
+
+module PerfMonger
+module Command
+
+class ServerCommand < BaseCommand
+  register_command 'server'
+
   def initialize
     @parser = OptionParser.new
     @parser.banner = <<EOS
@@ -85,9 +90,19 @@ EOS
   def run(argv)
     tmp_rootdir = Dir.mktmpdir
     parse_args(argv)
+    load_frontend_files()
 
-    record_cmd = [File.expand_path('../perfmonger', $0),
-                  'record',
+    # find perfmonger command
+    perfmonger_bin = File.expand_path('../../../../perfmonger', __FILE__)
+    if ! File.executable?(perfmonger_bin)
+      perfmonger_bin = File.expand_path('perfmonger', PerfMonger::BINDIR)
+    end
+    if ! File.executable?(perfmonger_bin)
+      puts("ERROR: perfmonger(1) not found!")
+      exit(false)
+    end
+
+    record_cmd = [perfmonger_bin, 'record',
                   *@record_cmd_args]
 
     @recorder = Recorder.new(record_cmd).start
@@ -107,6 +122,67 @@ EOS
   end
 
   private
+  class Recorder
+    def initialize(record_cmd)
+      @current_record = nil
+      @mutex = Mutex.new
+      @cond = ConditionVariable.new
+      @thread = nil
+      @record_cmd = record_cmd
+
+      @working = false
+    end
+
+    def start
+      @mutex.synchronize do
+        if @thread.nil?
+          @thread = true
+          @working = true
+        else
+          return
+        end
+      end
+
+      @thread = Thread.start do
+        begin
+          IO.popen(@record_cmd, "r") do |io|
+            io.each_line do |line|
+              @mutex.synchronize do
+                @current_perf_data = line.strip
+                @cond.broadcast
+              end
+            end
+          end
+        rescue Exception => err
+          puts("ERROR: Exception in record_thread(#{@record_thread}) in perfmonger-server")
+          puts("#{err.class.to_s}: #{err.message}")
+          puts(err.backtrace)
+        end
+      end
+
+      self
+    end
+
+    def stop
+      @mutex.synchronize do
+        @working = false
+        @thread.terminate
+        @cond.broadcast
+      end
+    end
+
+    def current_record
+      @mutex.synchronize do
+        if @working
+          @cond.wait(@mutex)
+          current_perf_data = @current_perf_data
+        else
+          raise EOFError
+        end
+      end
+    end
+  end
+
   class DashboardServlet < WEBrick::HTTPServlet::AbstractServlet
     def do_GET(req, res)
       res.content_type = 'text/html'
@@ -187,77 +263,8 @@ EOS
     webrick_server.mount('/assets', AssetsServlet)
     webrick_server.mount('/faucet', FaucetServlet, @recorder)
   end
-end
 
-class Recorder
-  def initialize(record_cmd)
-    @current_record = nil
-    @mutex = Mutex.new
-    @cond = ConditionVariable.new
-    @thread = nil
-    @record_cmd = record_cmd
-
-    @working = false
-  end
-
-  def start
-    @mutex.synchronize do
-      if @thread.nil?
-        @thread = true
-        @working = true
-      else
-        return
-      end
-    end
-
-    @thread = Thread.start do
-      begin
-        IO.popen(@record_cmd, "r") do |io|
-          io.each_line do |line|
-            @mutex.synchronize do
-              @current_perf_data = line.strip
-              @cond.broadcast
-            end
-          end
-        end
-      rescue Exception => err
-        puts("ERROR: Exception in record_thread(#{@record_thread}) in perfmonger-server")
-        puts("#{err.class.to_s}: #{err.message}")
-        puts(err.backtrace)
-      end
-    end
-
-    self
-  end
-
-  def stop
-    @mutex.synchronize do
-      @working = false
-      @thread.terminate
-      @cond.broadcast
-    end
-  end
-
-  def current_record
-    @mutex.synchronize do
-      if @working
-        @cond.wait(@mutex)
-        current_perf_data = @current_perf_data
-      else
-        raise EOFError
-      end
-    end
-  end
-end
-
-def parse_args(argv)
-  opt = Hash.new
-  parser = OptionParser.new
-
-  parser.banner = "Usage: #{$0} [options] LOGFILE"
-end
-
-
+  def load_frontend_files()
 $frontend_files = Hash.new
 def register_file(path, content)
   $frontend_files[path] = content
@@ -9610,7 +9617,8 @@ f&&b.mouseout&&b.mouseout.call(b,{x:j.x,y:j.y,dataPoint:b,dataSeries:a,dataPoint
 b.globalAlpha=k))):"square"===d?(b.beginPath(),b.rect(a-e/2,c-e/2,e,e),f&&b.fill(),j&&(g?b.stroke():(k=b.globalAlpha,b.globalAlpha=0.15,b.strokeStyle="black",b.stroke(),b.globalAlpha=k))):"triangle"===d?(b.beginPath(),b.moveTo(a-e/2,c+e/2),b.lineTo(a+e/2,c+e/2),b.lineTo(a,c-e/2),b.closePath(),f&&b.fill(),j&&(g?b.stroke():(k=b.globalAlpha,b.globalAlpha=0.15,b.strokeStyle="black",b.stroke(),b.globalAlpha=k))):"cross"===d&&(b.strokeStyle=f,b.lineWidth=e/4,b.beginPath(),b.moveTo(a-e/2,c-e/2),b.lineTo(a+
 e/2,c+e/2),b.stroke(),b.moveTo(a+e/2,c-e/2),b.lineTo(a-e/2,c+e/2),b.stroke())}},drawMarkers:function(a){for(var c=0;c<a.length;c++){var b=a[c];F.drawMarker(b.x,b.y,b.ctx,b.type,b.size,b.color,b.borderColor,b.borderThickness)}}},ea={Chart:function(a,c){var b=new s(a,c,this);this.render=function(){b.render()};this.options=b._options},addColorSet:function(a,c){P[a]=c},addCultureInfo:function(a,c){V[a]=c}};ea.Chart.version="1.2.1";window.CanvasJS=ea})();
 EOS
-
-if __FILE__ == $0
-  PerfmongerServer.new.run(ARGV.dup)
+ end
 end
+
+end # module Command
+end # module PerfMonger

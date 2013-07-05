@@ -6,14 +6,21 @@ AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE($PACKAGE_NAME, $PACKAGE_VERSION)
+AC_SUBST(PACKAGE_VERSION)
 
 AC_PROG_LIBTOOL
 
 AC_CONFIG_FILES([Makefile
 	src/Makefile
 	src/sysstat/Makefile
+	src/ruby/Makefile
+	src/ruby/perfmonger/Makefile
+	src/ruby/perfmonger/command/Makefile
 	test/Makefile])
-AC_CONFIG_FILES([src/sysstat/sysconfig.h:src/sysstat/sysconfig.in])
+AC_CONFIG_FILES([src/sysstat/sysconfig.h:src/sysstat/sysconfig.in
+	src/ruby/perfmonger/version.rb
+	src/ruby/perfmonger/config.rb])
+AC_CONFIG_FILES([src/perfmonger], [chmod +x src/perfmonger])
 
 dnl **************************************************************
 dnl Sysstat settings
@@ -77,6 +84,9 @@ if test "x$ruby_available" != "xyes"; then
   AC_MSG_ERROR([Ruby is required.])
 fi
 
+perfmonger_ruby_path=$RUBY
+AC_SUBST(perfmonger_ruby_path)
+
 dnl **************************************************************
 dnl Check for Cutter
 dnl **************************************************************
@@ -90,13 +100,56 @@ if test "$cutter_use_cutter" = "yes"; then
   AC_DEFINE(WITH_CUTTER, 1, [Define to 1 if you use Cutter])
 fi
 
+
+dnl **************************************************************
+dnl Check for path
+dnl **************************************************************
+
+if test "$exec_prefix" = "NONE"; then
+  if test "$prefix" = "NONE"; then
+    perfmonger_exec_prefix="$ac_default_prefix"
+  else
+    perfmonger_exec_prefix="$prefix"
+  fi
+else
+  perfmonger_exec_prefix="$exec_prefix"
+fi
+
+if echo -- "$bindir" | grep '\$' > /dev/null 2>&1; then
+  perfmonger_bindir="$perfmonger_exec_prefix/bin"
+else
+  perfmonger_bindir="$bindir"
+fi
+
+if echo -- "$libdir" | grep '\$' > /dev/null 2>&1; then
+  perfmonger_libdir="$perfmonger_exec_prefix/lib"
+else
+  perfmonger_libdir="$libdir"
+fi
+perfmonger_libdir="$perfmonger_libdir/perfmonger"
+
+perfmonger_rubylibdir="$perfmonger_libdir/ruby"
+
+AC_SUBST(perfmonger_bindir)
+AC_SUBST(perfmonger_rubylibdir)
+
+
+dnl **************************************************************
+dnl Misc
+dnl **************************************************************
+
+perfmonger_ac_date=`date +'%Y-%m-%d %H:%M:%S'`
+AC_SUBST(perfmonger_ac_date)
+
 AC_OUTPUT
 
 
 echo
 echo "Configure Result:"
-echo " sysstat conf : $SYSCONFIG_DIR/sysstat.ioconf"
-echo "         Ruby : $RUBY"
-echo "       Cutter : $CUTTER"
-echo "        GLib2 : $ac_glib_2_0_available"
+echo "== Prerequisites =="
+echo "             Ruby : $RUBY"
+echo "     sysstat conf : $SYSCONFIG_DIR/sysstat.ioconf"
+echo " Cutter(optional) : $CUTTER"
+echo "            GLib2 : $ac_glib_2_0_available"
+echo ""
 echo

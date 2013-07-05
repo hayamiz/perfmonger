@@ -1,11 +1,15 @@
-#!/usr/bin/env ruby
 
 require 'optparse'
 require 'json'
 require 'tempfile'
 require 'tmpdir'
 
-class PerfmongerPlot
+module PerfMonger
+module Command
+
+class PlotCommand < BaseCommand
+  register_command 'plot'
+
   def initialize
     @parser = OptionParser.new
     @parser.banner = <<EOS
@@ -242,14 +246,5 @@ EOS
   end
 end
 
-def parse_args(argv)
-  opt = Hash.new
-  parser = OptionParser.new
-
-  parser.banner = "Usage: #{$0} [options] LOGFILE"
-
-end
-
-if __FILE__ == $0
-  PerfmongerPlot.new.run(ARGV.dup)
-end
+end # module Command
+end # module PerfMonger
