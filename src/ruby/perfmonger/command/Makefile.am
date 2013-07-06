@@ -7,5 +7,7 @@ dist_perfmonger_rubylib_perfmonger_command_DATA =	\
 	base_command.rb				\
 	plot.rb					\
 	record.rb					\
+	record_option.rb				\
 	server.rb					\
-	record_option.rb
+	stat.rb					\
+	stat_option.rb
