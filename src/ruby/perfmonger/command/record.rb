@@ -35,20 +35,9 @@ private
       exit(false)
     end
 
-    args = []
-    args << '-i'
-    args << @option.interval.to_s
-    args << '-C' if @option.report_cpu
-    args << '-S' if @option.report_ctx_switch
-    args << '-l' if @option.logfile != STDOUT
-    args << @option.logfile if @option.logfile != STDOUT
-    @option.devices.each do |device|
-      args << '-d'
-      args << device
-    end
-    args << 'v' if @option.verbose
+    cmd = @option.make_command
 
-    Process.exec(cmd, *args)
+    Process.exec(*cmd)
   end
 end
 

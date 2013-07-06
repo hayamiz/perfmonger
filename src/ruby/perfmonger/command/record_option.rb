@@ -31,6 +31,35 @@ class RecordOption
     argv
   end
 
+  def make_command
+    # try to search perfmonger-record in build environment
+    # then search installed directory
+    record_bin = [File.expand_path("../../../../perfmonger-record", __FILE__),
+                  File.expand_path("perfmonger-record", PerfMonger::BINDIR)].find do |bin|
+      File.executable?(bin)
+    end
+
+    if ! File.executable?(record_bin)
+      puts("ERROR: perfmonger-record(1) not found!")
+      exit(false)
+    end
+
+    cmd = [record_bin]
+    cmd << '-i'
+    cmd << @interval.to_s
+    cmd << '-C' if @report_cpu
+    cmd << '-S' if @report_ctx_switch
+    cmd << '-l' if @logfile != STDOUT
+    cmd << @logfile if @logfile != STDOUT
+    @devices.each do |device|
+      cmd << '-d'
+      cmd << device
+    end
+    cmd << '-v' if @verbose
+
+    cmd
+  end
+
   private
   def initialize
     @devices           = []
