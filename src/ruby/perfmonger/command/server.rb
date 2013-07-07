@@ -123,7 +123,7 @@ EOS
 
     @recorder = Recorder.new(record_cmd).start
 
-    puts("PerfMonger Realtime Monitor: http://#{@http_hostname}:#{@http_port}/html/dashboard")
+    puts("PerfMonger Realtime Monitor: http://#{@http_hostname}:#{@http_port}/dashboard")
     puts("")
 
     @http_server =  WEBrick::HTTPServer.new({:DocumentRoot => tmp_rootdir,
@@ -283,10 +283,10 @@ EOS
       if req.path == '/favicon.ico'
         res.set_redirect(WEBrick::HTTPStatus::TemporaryRedirect, '/assets/favicon.ico')
       else
-        res.set_redirect(WEBrick::HTTPStatus::TemporaryRedirect, '/html/dashboard')
+        res.set_redirect(WEBrick::HTTPStatus::TemporaryRedirect, '/dashboard')
       end
     end
-    webrick_server.mount('/html/dashboard', DashboardServlet, assets_dir, record_option,
+    webrick_server.mount('/dashboard', DashboardServlet, assets_dir, record_option,
                          :hostname => @hostname)
     webrick_server.mount('/assets', WEBrick::HTTPServlet::FileHandler, assets_dir)
     webrick_server.mount('/faucet', FaucetServlet, @recorder)
