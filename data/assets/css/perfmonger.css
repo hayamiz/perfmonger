@@ -1,0 +1,12 @@
+/*!
+ * PerfMonger Monitor CSS
+ *
+ * Copyright 2013, Yuto HAYAMIZU <y.hayamizu@gmail.com>
+ * Licensed under GPLv3
+ *
+ */
+
+div.perfmonger-graph {
+  width: 100%;
+  height: 600px;
+}
