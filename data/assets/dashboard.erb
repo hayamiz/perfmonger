@@ -48,10 +48,14 @@
     </div>
 
     <div class="container">
+<% if report_cpu %>
+<div id="cpu_graph" style="width: 100%; height: 600px;"></div>
+<% end %>
+
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>
-      <div id="<%= edev %>_iops_graph" style="width: 100%; height: 600px;"></div>
-      <div id="<%= edev %>_throughput_graph" style="width: 100%; height: 600px;"></div>
+<div id="<%= edev %>_iops_graph" style="width: 100%; height: 600px;"></div>
+<div id="<%= edev %>_throughput_graph" style="width: 100%; height: 600px;"></div>
 <% end %>
     </div> <!-- /container -->
 
@@ -70,6 +74,45 @@
 var records = [];
 
 var sector2mb = 512 / 1024.0 / 1024.0;
+
+<% if report_cpu %>
+var cpu_usr_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_sys_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_other_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_chart = new CanvasJS.Chart("cpu_graph",
+{
+  title:{
+    text: "CPU usage",
+    },
+    axisX: {
+      valueFormatString: "HH:mm:ss",
+      interval:5,
+      intervalType: "second",
+    },
+      axisY:{
+        includeZero: true
+      },
+      data: [
+      {
+        type: "stackedArea",
+        showInLegend: true,
+        name: "%usr",
+        dataPoints: cpu_usr_data
+      },{
+        type: "stackedArea",
+        showInLegend: true,
+        name: "%sys",
+        dataPoints: cpu_sys_data
+      },{
+        type: "stackedArea",
+        showInLegend: true,
+        name: "%other",
+        dataPoints: cpu_other_data
+      },
+      ]
+    });
+cpu_chart.render();
+<% end %>
 
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>
@@ -146,19 +189,40 @@ function add_record(record) {
   }
   records.push(record);
 
+  var t = new Date(record['time'] * 1000);
+
+<% if report_cpu %>
+  var cpu_record = record['cpuinfo']['all'];
+  var cpu_usr = cpu_record['%usr'] + cpu_record['%nice'];
+  var cpu_sys = cpu_record['%sys'];
+  var cpu_other = 100.0 - cpu_record['%idle'] - cpu_usr - cpu_sys;
+  if (cpu_other < 0.0) cpu_other = 0.0;
+
+  cpu_usr_data.push({x: t, y: cpu_usr});
+  cpu_sys_data.push({x: t, y: cpu_sys});
+  cpu_other_data.push({x: t, y: cpu_other});
+<% end %>
+
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>
-  <%= edev %>_riops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['r/s']});
-  <%= edev %>_wiops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['w/s']});
+  <%= edev %>_riops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['r/s']});
+  <%= edev %>_wiops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['w/s']});
 
-  <%= edev %>_rthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
-  <%= edev %>_wthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
+  <%= edev %>_rthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
+  <%= edev %>_wthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
 <% end %>
 
   last_record = records[records.length - 1];
 
   while (records[0]['time'] < last_record['time'] - 30.0) {
     records.shift();
+
+<% if report_cpu %>
+    cpu_usr_data.shift();
+    cpu_sys_data.shift();
+    cpu_other_data.shift();
+<% end %>
+
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>
     <%= edev %>_riops_data.shift();
@@ -168,6 +232,10 @@ function add_record(record) {
     <%= edev %>_wthroughput_data.shift();
 <% end %>
   }
+
+<% if report_cpu %>
+  cpu_chart.render();
+<% end %>
 
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>

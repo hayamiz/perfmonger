@@ -199,7 +199,10 @@ EOS
       res.content_type = 'text/html'
       res['cache-control'] = 'no-cache'
 
+      # Variables for erb template
       devices = @record_option.devices
+      report_cpu = @record_option.report_cpu
+
       erb = ERB.new(File.read(File.expand_path('dashboard.erb', @assets_dir)))
       res.body = erb.result(Kernel.binding)
     end
