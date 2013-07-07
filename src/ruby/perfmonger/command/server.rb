@@ -91,8 +91,6 @@ EOS
     tmp_rootdir = Dir.mktmpdir
     parse_args(argv)
 
-    p @record_cmd_args
-
     _, record_option = PerfMonger::Command::RecordOption.parse(@record_cmd_args)
 
     # find perfmonger command
@@ -191,6 +189,10 @@ EOS
       @assets_dir = assets_dir
       @record_option = record_option
       super
+    end
+
+    def escape_device_name(dev)
+      dev.gsub(' ', '_').gsub('-', '_')
     end
 
     def do_GET(req, res)

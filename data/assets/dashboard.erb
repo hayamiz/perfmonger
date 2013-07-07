@@ -49,8 +49,9 @@
 
     <div class="container">
 <% devices.each do |dev| %>
-      <div id="<%= dev %>_iops_graph" style="width: 100%; height: 600px;"></div>
-      <div id="<%= dev %>_throughput_graph" style="width: 100%; height: 600px;"></div>
+<% edev = escape_device_name(dev) %>
+      <div id="<%= edev %>_iops_graph" style="width: 100%; height: 600px;"></div>
+      <div id="<%= edev %>_throughput_graph" style="width: 100%; height: 600px;"></div>
 <% end %>
     </div> <!-- /container -->
 
@@ -71,15 +72,16 @@ var records = [];
 var sector2mb = 512 / 1024.0 / 1024.0;
 
 <% devices.each do |dev| %>
-var <%= dev %>_riops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
-var <%= dev %>_wiops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
-var <%= dev %>_rthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
-var <%= dev %>_wthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+<% edev = escape_device_name(dev) %>
+var <%= edev %>_riops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_wiops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_rthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_wthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
 
-var <%= dev %>_iops_chart = new CanvasJS.Chart("<%= dev %>_iops_graph",
+var <%= edev %>_iops_chart = new CanvasJS.Chart("<%= edev %>_iops_graph",
 {
   title:{
-    text: "I/O per second of <%= dev %>",
+    text: "<%= dev %>: I/O per second",
     },
     axisX: {
       valueFormatString: "HH:mm:ss",
@@ -94,21 +96,21 @@ var <%= dev %>_iops_chart = new CanvasJS.Chart("<%= dev %>_iops_graph",
         type: "line",
         showInLegend: true,
         name: "Read IOPS",
-        dataPoints: <%= dev %>_riops_data
+        dataPoints: <%= edev %>_riops_data
       },{
         type: "line",
         showInLegend: true,
         name: "Write IOPS",
-        dataPoints: <%= dev %>_wiops_data
+        dataPoints: <%= edev %>_wiops_data
       },
       ]
     });
-<%= dev %>_iops_chart.render();
+<%= edev %>_iops_chart.render();
 
-var <%= dev %>_throughput_chart = new CanvasJS.Chart("<%= dev %>_throughput_graph",
+var <%= edev %>_throughput_chart = new CanvasJS.Chart("<%= edev %>_throughput_graph",
 {
   title:{
-    text: "I/O throughput of <%= dev %>",
+    text: "<%= dev %>: I/O throughput",
     },
     axisX: {
       valueFormatString: "HH:mm:ss",
@@ -124,16 +126,16 @@ var <%= dev %>_throughput_chart = new CanvasJS.Chart("<%= dev %>_throughput_grap
         type: "line",
         showInLegend: true,
         name: "Read throughput",
-        dataPoints: <%= dev %>_rthroughput_data
+        dataPoints: <%= edev %>_rthroughput_data
       },{
         type: "line",
         showInLegend: true,
         name: "Write throughput",
-        dataPoints: <%= dev %>_wthroughput_data
+        dataPoints: <%= edev %>_wthroughput_data
       },
       ]
     });
-<%= dev %>_throughput_chart.render();
+<%= edev %>_throughput_chart.render();
 <% end %>
 
 
@@ -145,11 +147,12 @@ function add_record(record) {
   records.push(record);
 
 <% devices.each do |dev| %>
-  <%= dev %>_riops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['r/s']});
-  <%= dev %>_wiops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['w/s']});
+<% edev = escape_device_name(dev) %>
+  <%= edev %>_riops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['r/s']});
+  <%= edev %>_wiops_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['w/s']});
 
-  <%= dev %>_rthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
-  <%= dev %>_wthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
+  <%= edev %>_rthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
+  <%= edev %>_wthroughput_data.push({x: new Date(record['time'] * 1000), y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
 <% end %>
 
   last_record = records[records.length - 1];
@@ -157,17 +160,19 @@ function add_record(record) {
   while (records[0]['time'] < last_record['time'] - 30.0) {
     records.shift();
 <% devices.each do |dev| %>
-    <%= dev %>_riops_data.shift();
-    <%= dev %>_wiops_data.shift();
+<% edev = escape_device_name(dev) %>
+    <%= edev %>_riops_data.shift();
+    <%= edev %>_wiops_data.shift();
 
-    <%= dev %>_rthroughput_data.shift();
-    <%= dev %>_wthroughput_data.shift();
+    <%= edev %>_rthroughput_data.shift();
+    <%= edev %>_wthroughput_data.shift();
 <% end %>
   }
 
 <% devices.each do |dev| %>
-  <%= dev %>_iops_chart.render();
-  <%= dev %>_throughput_chart.render();
+<% edev = escape_device_name(dev) %>
+  <%= edev %>_iops_chart.render();
+  <%= edev %>_throughput_chart.render();
 <% end %>
 }
 
