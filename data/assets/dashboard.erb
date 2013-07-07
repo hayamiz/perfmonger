@@ -83,34 +83,38 @@ var cpu_chart = new CanvasJS.Chart("cpu_graph",
 {
   title:{
     text: "CPU usage",
-    },
-    axisX: {
-      valueFormatString: "HH:mm:ss",
-      interval:5,
-      intervalType: "second",
-    },
-      axisY:{
-        includeZero: true
-      },
-      data: [
-      {
-        type: "stackedArea",
-        showInLegend: true,
-        name: "%usr",
-        dataPoints: cpu_usr_data
-      },{
-        type: "stackedArea",
-        showInLegend: true,
-        name: "%sys",
-        dataPoints: cpu_sys_data
-      },{
-        type: "stackedArea",
-        showInLegend: true,
-        name: "%other",
-        dataPoints: cpu_other_data
-      },
-      ]
-    });
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    suffix: "%",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%usr",
+    dataPoints: cpu_usr_data
+  },{
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%sys",
+    dataPoints: cpu_sys_data
+  },{
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%other",
+    dataPoints: cpu_other_data
+  },
+  ]
+});
 cpu_chart.render();
 <% end %>
 
@@ -125,59 +129,66 @@ var <%= edev %>_iops_chart = new CanvasJS.Chart("<%= edev %>_iops_graph",
 {
   title:{
     text: "<%= dev %>: I/O per second",
-    },
-    axisX: {
-      valueFormatString: "HH:mm:ss",
-      interval:5,
-      intervalType: "second",
-    },
-      axisY:{
-        includeZero: true
-      },
-      data: [
-      {
-        type: "line",
-        showInLegend: true,
-        name: "Read IOPS",
-        dataPoints: <%= edev %>_riops_data
-      },{
-        type: "line",
-        showInLegend: true,
-        name: "Write IOPS",
-        dataPoints: <%= edev %>_wiops_data
-      },
-      ]
-    });
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    title: "# of I/O [1/sec]",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "line",
+    showInLegend: true,
+    name: "Read IOPS",
+    dataPoints: <%= edev %>_riops_data
+  },{
+    type: "line",
+    showInLegend: true,
+    name: "Write IOPS",
+    dataPoints: <%= edev %>_wiops_data
+  },
+  ]
+});
 <%= edev %>_iops_chart.render();
 
 var <%= edev %>_throughput_chart = new CanvasJS.Chart("<%= edev %>_throughput_graph",
 {
   title:{
     text: "<%= dev %>: I/O throughput",
-    },
-    axisX: {
-      valueFormatString: "HH:mm:ss",
-      interval:5,
-      intervalType: "second",
-    },
-      axisY:{
-        title: "throughput [MB/s]",
-        includeZero: true,
-      },
-      data: [
-      {
-        type: "line",
-        showInLegend: true,
-        name: "Read throughput",
-        dataPoints: <%= edev %>_rthroughput_data
-      },{
-        type: "line",
-        showInLegend: true,
-        name: "Write throughput",
-        dataPoints: <%= edev %>_wthroughput_data
-      },
-      ]
-    });
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    title: "throughput [MB/s]",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "line",
+    showInLegend: true,
+    name: "Read throughput",
+    dataPoints: <%= edev %>_rthroughput_data
+  },{
+    type: "line",
+    showInLegend: true,
+    name: "Write throughput",
+    dataPoints: <%= edev %>_wthroughput_data
+  },
+  ]
+});
 <%= edev %>_throughput_chart.render();
 <% end %>
 
