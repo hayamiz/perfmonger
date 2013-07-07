@@ -59,12 +59,23 @@ perfmonger data record via network.
 Options:
 EOS
 
+    @hostname = `hostname -f`.strip
+    @http_hostname = nil
     @http_port = 20202
     @tcp_port  = 20203
   end
 
   def parse_args(argv)
-    @parser.on('--http-port PORT') do |port|
+    @parser.on('-H', '--hostname NAME', "Host name to display (default: #{@hostname})") do |hostname|
+      @hostname = hostname
+    end
+
+    @parser.on('--http-hostname NAME',
+               "Host name for HTTP server URL. If not specified, value of '--hostname' option is used.") do |hostname|
+      @http_hostname = hostname
+    end
+
+    @parser.on('--http-port PORT', 'HTTP server port to listen.') do |port|
       if ! port =~ /\A\d+\Z/
         puts("ERROR: invalid port number value: #{port}")
         puts(@parser.help)
@@ -83,6 +94,10 @@ EOS
     # end
 
     @parser.parse!(argv)
+
+    if @http_hostname.nil?
+      @http_hostname = @hostname
+    end
 
     @record_cmd_args = argv
   end
@@ -107,6 +122,9 @@ EOS
                   *@record_cmd_args]
 
     @recorder = Recorder.new(record_cmd).start
+
+    puts("PerfMonger Realtime Monitor: http://#{@http_hostname}:#{@http_port}/html/dashboard")
+    puts("")
 
     @http_server =  WEBrick::HTTPServer.new({:DocumentRoot => tmp_rootdir,
                                               :BindAddress => '0.0.0.0',
@@ -185,9 +203,10 @@ EOS
   end
 
   class DashboardServlet < WEBrick::HTTPServlet::AbstractServlet
-    def initialize(server, assets_dir, record_option)
+    def initialize(server, assets_dir, record_option, opt = {})
       @assets_dir = assets_dir
       @record_option = record_option
+      @opt = opt
       super
     end
 
@@ -202,6 +221,7 @@ EOS
       # Variables for erb template
       devices = @record_option.devices
       report_cpu = @record_option.report_cpu
+      hostname = @opt[:hostname]
 
       erb = ERB.new(File.read(File.expand_path('dashboard.erb', @assets_dir)))
       res.body = erb.result(Kernel.binding)
@@ -266,7 +286,8 @@ EOS
         res.set_redirect(WEBrick::HTTPStatus::TemporaryRedirect, '/html/dashboard')
       end
     end
-    webrick_server.mount('/html/dashboard', DashboardServlet, assets_dir, record_option)
+    webrick_server.mount('/html/dashboard', DashboardServlet, assets_dir, record_option,
+                         :hostname => @hostname)
     webrick_server.mount('/assets', WEBrick::HTTPServlet::FileHandler, assets_dir)
     webrick_server.mount('/faucet', FaucetServlet, @recorder)
   end
