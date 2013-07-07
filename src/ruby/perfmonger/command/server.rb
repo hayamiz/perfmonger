@@ -73,14 +73,14 @@ EOS
       @http_port = port.to_i
     end
 
-    @parser.on('--tcp-port PORT') do |port|
-      if ! port =~ /\A\d+\Z/
-        puts("ERROR: invalid port number value: #{port}")
-        puts(@parser.help)
-        exit(false)
-      end
-      @tcp_port = port.to_i
-    end
+    # @parser.on('--tcp-port PORT', 'TCP data server port to listen.') do |port|
+    #   if ! port =~ /\A\d+\Z/
+    #     puts("ERROR: invalid port number value: #{port}")
+    #     puts(@parser.help)
+    #     exit(false)
+    #   end
+    #   @tcp_port = port.to_i
+    # end
 
     @parser.parse!(argv)
 
