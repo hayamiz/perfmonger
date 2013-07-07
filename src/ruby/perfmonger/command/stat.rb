@@ -64,6 +64,11 @@ class StatCommand < BaseCommand
     printf("Execution time: %.4f\n", @end_time - @start_time)
 
     if header_record && header_record['cpuinfo']
+<<<<<<< HEAD
+=======
+      p records
+      p records.map
+>>>>>>> 085a107047720e08956b3ee78647393e79bc80c9
       usr, sys, iowait, irq, soft, other = records.map do |record|
         [record['cpuinfo']['all']['%usr'] + record['cpuinfo']['all']['%nice'],
          record['cpuinfo']['all']['%sys'],
