@@ -53,17 +53,19 @@
     <div class="container">
       <div class="row">
         <div class="span3">
-          <ul class="nav nav-list affix">
+          <div class="well sidebar-nav affix">
+            <ul class="nav nav-list">
 <% if report_cpu %>
-            <li><a href="#cpu_section">CPU usage</a></li>
+              <li><a href="#cpu_section">CPU usage</a></li>
 <% end %>
 <% devices.each do |dev| %>
 <%   edev = escape_device_name(dev) %>
-            <li><a href="#<%= edev %>_iops_section"><code><%= dev %></code>: IOPS</a></li>
-            <li><a href="#<%= edev %>_throughput_section"><code><%= dev %></code>: I/O throughput</a></li>
+              <li><a href="#<%= edev %>_iops_section"><code><%= dev %></code>: IOPS</a></li>
+              <li><a href="#<%= edev %>_throughput_section"><code><%= dev %></code>: I/O throughput</a></li>
 <% end %>
-          </ul>
-        </div>
+            </ul>
+          </div>
+        </div> <!-- div.well -->
 <% graph_divs = ['cpu_graph'] %>
 
         <div class="span9">
