@@ -10,12 +10,13 @@
     <!-- Le styles -->
     <link href="../assets/css/perfmonger.css" rel="stylesheet">
     <link href="../assets/css/bootstrap.css" rel="stylesheet">
-    <link href="../assets/css/bootstrap-responsive.css" rel="stylesheet">
-    <style>
+    <style type="text/css">
       body {
-        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+        padding-top: 60px;
+        padding-bottom: 40px;
       }
     </style>
+    <link href="../assets/css/bootstrap-responsive.css" rel="stylesheet">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -50,15 +51,43 @@
     </div>
 
     <div class="container">
+      <div class="row">
+        <div class="span3">
+          <ul class="nav nav-list affix">
 <% if report_cpu %>
-<div id="cpu_graph" style="width: 100%; height: 600px;"></div>
+            <li><a href="#cpu_section">CPU usage</a></li>
+<% end %>
+<% devices.each do |dev| %>
+<%   edev = escape_device_name(dev) %>
+            <li><a href="#<%= edev %>_iops_section"><code><%= dev %></code>: IOPS</a></li>
+            <li><a href="#<%= edev %>_throughput_section"><code><%= dev %></code>: I/O throughput</a></li>
+<% end %>
+          </ul>
+        </div>
+<% graph_divs = ['cpu_graph'] %>
+
+        <div class="span9">
+<% if report_cpu %>
+          <section id="cpu_section" class="graph-wrapper">
+            <div id="cpu_graph" class="perfmonger-graph"></div>
+          </section>
 <% end %>
 
 <% devices.each do |dev| %>
-<% edev = escape_device_name(dev) %>
-<div id="<%= edev %>_iops_graph" style="width: 100%; height: 600px;"></div>
-<div id="<%= edev %>_throughput_graph" style="width: 100%; height: 600px;"></div>
+<%   edev = escape_device_name(dev) %>
+<%   graph_divs.push(edev + "_iops_graph") %>
+<%   graph_divs.push(edev + "_throughput_graph") %>
+
+          <section id="<%= edev %>_iops_section" class="graph-wrapper">
+            <div id="<%= edev %>_iops_graph" class="perfmonger-graph"></div>
+          </section>
+
+          <section id="<%= edev %>_throughput_section" class="graph-wrapper">
+            <div id="<%= edev %>_throughput_graph" class="perfmonger-graph"></div>
+          </section>
 <% end %>
+        </div> <!-- /span9 -->
+      </div>  <!-- /row -->
     </div> <!-- /container -->
 
     <!-- Le javascript
@@ -68,14 +97,23 @@
     <script src="../assets/js/bootstrap.js"></script>
     <script src="../assets/js/canvasjs.min.js"></script>
 
-<pre id="msg">
-<%= devices %>
-</pre>
 
 <script>
 var records = [];
 
 var sector2mb = 512 / 1024.0 / 1024.0;
+
+function fitGraphHeight() {
+  var new_height = $(window).height() - 60;
+<% graph_divs.each do |graph_div| %>
+  $('div#<%= graph_div %>').height(new_height);
+<% end %>
+}
+
+$(window).resize(function() {
+  fitGraphHeight();
+});
+fitGraphHeight();
 
 <% if report_cpu %>
 var cpu_usr_data = [{x: new Date(new Date() - 1000), y: 0.0}];
@@ -194,6 +232,17 @@ var <%= edev %>_throughput_chart = new CanvasJS.Chart("<%= edev %>_throughput_gr
 <%= edev %>_throughput_chart.render();
 <% end %>
 
+function render_all() {
+<% if report_cpu %>
+  cpu_chart.render();
+<% end %>
+
+<% devices.each do |dev| %>
+<% edev = escape_device_name(dev) %>
+  <%= edev %>_iops_chart.render();
+  <%= edev %>_throughput_chart.render();
+<% end %>
+}
 
 function add_record(record) {
   if (records.length > 0 && records[records.length - 1]['time'] >= record) {
@@ -246,15 +295,7 @@ function add_record(record) {
 <% end %>
   }
 
-<% if report_cpu %>
-  cpu_chart.render();
-<% end %>
-
-<% devices.each do |dev| %>
-<% edev = escape_device_name(dev) %>
-  <%= edev %>_iops_chart.render();
-  <%= edev %>_throughput_chart.render();
-<% end %>
+  render_all();
 }
 
 var handleMessage = function handleMessage( evt ) {
@@ -270,6 +311,7 @@ var handleEnd = function handleEnd( evt ) {
 var source = new EventSource( '/faucet' );
 source.addEventListener( 'message', handleMessage, false );
 source.addEventListener( 'end'    , handleEnd    , false );
+
 </script>
   </body>
 </html>

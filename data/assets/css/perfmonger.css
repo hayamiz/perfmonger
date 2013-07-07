@@ -8,5 +8,10 @@
 
 div.perfmonger-graph {
   width: 100%;
-  height: 600px;
+  height: 90%;
+}
+
+section.graph-wrapper {
+  padding-top: 30px;
+  padding-bottom: 30px;
 }
