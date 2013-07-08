@@ -24,7 +24,7 @@ EOS
     parser.summary_indent = "  "
 
     parser.on('-v', '--version', 'Show version number') do
-      puts("PerfMonger version " + PerfMonger::VERSION)
+      puts("PerfMonger version " + PerfMonger::VERSION + PerfMonger::BUILD_AUX)
       exit(true)
     end
 

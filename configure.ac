@@ -160,6 +160,13 @@ dnl **************************************************************
 perfmonger_ac_date=`date +'%Y-%m-%d %H:%M:%S'`
 AC_SUBST(perfmonger_ac_date)
 
+perfmonger_build_aux=""
+if test -d '.git'; then
+  perfmonger_build_aux=", git:$(git log | head -1 | awk '{print $2}' | head -c 8)"
+fi
+
+AC_SUBST(perfmonger_build_aux)
+
 AC_OUTPUT
 
 
