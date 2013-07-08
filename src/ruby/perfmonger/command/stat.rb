@@ -45,12 +45,12 @@ class StatCommand < BaseCommand
       Process.kill(:INT, record_pid)
     end
 
-    show_summary
+    show_summary(@option.logfile)
   end
 
-  def show_summary
+  def show_summary(logfile)
     sleep(1)
-    records = File.read(@option.logfile).lines.map do |line|
+    records = File.read(logfile).lines.map do |line|
       begin
         JSON.parse(line)
       rescue JSON::ParserError => err
@@ -63,6 +63,19 @@ class StatCommand < BaseCommand
     puts("== Performance summary of '#{@argv.join(" ")}' ==")
     printf("Execution time: %.4f\n", @end_time - @start_time)
 
+    a = records.map do |record|
+      [record['cpuinfo']['all']['%usr'] + record['cpuinfo']['all']['%nice'],
+       record['cpuinfo']['all']['%sys'],
+       record['cpuinfo']['all']['%iowait'],
+       record['cpuinfo']['all']['%irq'],
+       record['cpuinfo']['all']['%soft'],
+       [100.0 - record['cpuinfo']['all']['%idle'], 0.0].max]
+    end.inject do |a, b|
+        (0..5).map do |idx|
+          a[idx] + b[idx]
+        end
+    end
+
     if header_record && header_record['cpuinfo']
       usr, sys, iowait, irq, soft, other = records.map do |record|
         [record['cpuinfo']['all']['%usr'] + record['cpuinfo']['all']['%nice'],
@@ -71,49 +84,53 @@ class StatCommand < BaseCommand
          record['cpuinfo']['all']['%irq'],
          record['cpuinfo']['all']['%soft'],
          [100.0 - record['cpuinfo']['all']['%idle'], 0.0].max]
-      end.inject do |a, b|
+      end.reduce([nil] * 6) do |a, b|
         (0..5).map do |idx|
-          a[idx] + b[idx]
+          (a[idx] || 0.0) + (b[idx] || 0.0)
         end
       end.map do |sum|
-        sum / records.size.to_f
-      end.map do |avg|
-        sprintf("%.4f", avg)
+        if sum
+          sprintf("%.4f", sum / records.size.to_f)
+        else
+          "N/A"
+        end
       end
 
       puts("")
-      puts("* CPU USAGE")
-      puts("     %usr: #{usr || 'N/A'}")
-      puts("     %sys: #{sys || 'N/A'}")
-      puts("  %iowait: #{iowait || 'N/A'}")
-      puts("     %irq: #{irq || 'N/A'}")
-      puts("    %soft: #{soft || 'N/A'}")
-      puts("   %other: #{other || 'N/A'}")
+      puts("* Average CPU usage")
+      puts("     %usr: #{usr}")
+      puts("     %sys: #{sys}")
+      puts("  %iowait: #{iowait}")
+      puts("     %irq: #{irq}")
+      puts("    %soft: #{soft}")
+      puts("   %other: #{other}")
     end
 
     if header_record && header_record['ioinfo']
-      records.first['ioinfo']['devices'].each do |device|
+      header_record['ioinfo']['devices'].each do |device|
         r_iops, w_iops, r_sec, w_sec = records.map do |record|
           [record['ioinfo'][device]['r/s'],
            record['ioinfo'][device]['w/s'],
            record['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
            record['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0]
-        end.inject do |a, b|
+        end.reduce([nil] * 4) do |a, b|
           (0..3).map do |idx|
-            a[idx] + b[idx]
+            (a[idx] || 0.0) + (b[idx] || 0.0)
           end
         end.map do |sum|
-          sum / records.size.to_f
-        end.map do |avg|
-          sprintf("%.4f", avg)
+          if sum
+            sprintf("%.4f", sum / records.size.to_f)
+          else
+            'N/A'
+          end
         end
 
         puts("")
-        puts("* DEVICE: #{device}")
-        puts("        avg. read IOPS: #{r_iops || 'N/A'}")
-        puts("       avg. write IOPS: #{w_iops || 'N/A'}")
-        puts("  avg. read throughput: #{r_sec || 'N/A'} MB/s")
-        puts(" avg. write throughput: #{w_sec || 'N/A'} MB/s")
+        puts("* Average DEVICE usage: #{device}")
+        puts("        read IOPS: #{r_iops}")
+        puts("       write IOPS: #{w_iops}")
+        puts("  read throughput: #{r_sec} MB/s")
+        puts(" write throughput: #{w_sec} MB/s")
       end
     end
   end
