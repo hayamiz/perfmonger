@@ -27,27 +27,6 @@ AC_CONFIG_FILES([src/sysstat/sysconfig.h:src/sysstat/sysconfig.in
 	src/ruby/perfmonger/config.rb])
 AC_CONFIG_FILES([src/perfmonger], [chmod +x src/perfmonger])
 
-dnl **************************************************************
-dnl Sysstat settings
-dnl **************************************************************
-
-AC_MSG_CHECKING(sysstat configuration directory)
-AC_ARG_VAR([sysstat_conf_dir],[sysstat configuration directory])
-if test x$sysstat_conf_dir != x""; then
-  SYSCONFIG_DIR=$sysstat_conf_dir
-else
-  if test -f /etc/sysconfig/sysstat.ioconf; then
-    SYSCONFIG_DIR=/etc/sysconfig
-  else
-    SYSCONFIG_DIR=/etc/sysstat
-  fi
-fi
-if test ! -f $SYSCONFIG_DIR/sysstat.ioconf; then
-  AC_MSG_ERROR([sysstat.ioconf not found. Check "sysstat" is installed in your system.])
-fi
-AC_MSG_RESULT([$SYSCONFIG_DIR])
-AC_SUBST(SYSCONFIG_DIR)
-
 
 dnl **************************************************************
 dnl Check for GLib
@@ -173,9 +152,10 @@ AC_OUTPUT
 echo
 echo "Configure Result:"
 echo "== Prerequisites =="
-echo "             Ruby : $RUBY"
-echo "     sysstat conf : $SYSCONFIG_DIR/sysstat.ioconf"
+echo "  Ruby : $RUBY"
+echo " GLib2 : $ac_glib_2_0_available"
+echo ""
+echo "== Optional requirements =="
 echo " Cutter(optional) : $CUTTER"
-echo "            GLib2 : $ac_glib_2_0_available"
 echo ""
 echo
