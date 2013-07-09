@@ -45,3 +45,10 @@ speaking JSON.
 
 ![Sample image of IOPS graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-read-iops.png)
 ![Sample image of CPU usage graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-cpu.png)
+
+ Special Thanks
+----------------
+
+Large portion of PerfMonger comes from
+[SYSSTAT](http://sebastien.godard.pagesperso-orange.fr/) codebase. Thanks for
+their great work.
