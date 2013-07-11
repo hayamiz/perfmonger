@@ -1,3 +1,9 @@
+GTAGS
+GPATH
+GRTAGS
+*.la
+*.o
+*.lo
 /config.h.in
 /config
 /m4
@@ -31,3 +37,4 @@ Makefile
 /src/ruby/perfmonger/config.rb
 /src/ruby/perfmonger/version.rb
 /src/perfmonger
+/config.log
