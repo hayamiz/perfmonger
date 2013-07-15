@@ -138,6 +138,26 @@ class StatCommand < BaseCommand
 
     avg_record
   end
+
+  def show_summary(logfile)
+    records = read_logfile(logfile)
+    summary = make_summary(records)
+
+    puts("")
+    puts("== Performance summary of '#{@argv.join(" ")}' ==")
+    printf("Execution time: %.4f\n", @end_time - @start_time)
+
+    if summary && summary["cpuinfo"]
+      usr, sys, iowait, irq, soft, other =
+        [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
+         summary['cpuinfo']['all']['%sys'],
+         summary['cpuinfo']['all']['%iowait'],
+         summary['cpuinfo']['all']['%irq'],
+         summary['cpuinfo']['all']['%soft'],
+         [100.0 - summary['cpuinfo']['all']['%idle'], 0.0].max].map do |value|
+        sprintf("% 2.3f", value)
+      end
+
       puts("")
       puts("* Average CPU usage")
       puts("     %usr: #{usr}")
@@ -148,23 +168,14 @@ class StatCommand < BaseCommand
       puts("   %other: #{other}")
     end
 
-    if header_record && header_record['ioinfo']
-      header_record['ioinfo']['devices'].each do |device|
-        r_iops, w_iops, r_sec, w_sec = records.map do |record|
-          [record['ioinfo'][device]['r/s'],
-           record['ioinfo'][device]['w/s'],
-           record['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
-           record['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0]
-        end.reduce([nil] * 4) do |a, b|
-          (0..3).map do |idx|
-            (a[idx] || 0.0) + (b[idx] || 0.0)
-          end
-        end.map do |sum|
-          if sum
-            sprintf("%.4f", sum / records.size.to_f)
-          else
-            'N/A'
-          end
+    if summary['ioinfo']
+      summary['ioinfo']['devices'].each do |device|
+        r_iops, w_iops, r_sec, w_sec =
+          [summary['ioinfo'][device]['r/s'],
+           summary['ioinfo'][device]['w/s'],
+           summary['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
+           summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0].map do |value|
+          sprintf("%.2f", value)
         end
 
         puts("")
