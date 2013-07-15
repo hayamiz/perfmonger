@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>PerfMonger Realtime Monitor: <%= hostname %></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="../assets/css/perfmonger.css" rel="stylesheet">
+    <link href="../assets/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+    <link href="../assets/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <!-- Fav and touch icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+    <link rel="shortcut icon" href="../assets/ico/favicon.png">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#">PerfMonger Realtime Monitor: <%= hostname %></a>
+<!--
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li class="active"><a href="#">Home</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+-->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="row">
+        <div class="span3">
+          <div class="well sidebar-nav affix">
+            <ul class="nav nav-list">
+<% if report_cpu %>
+              <li><a href="#cpu_section">CPU usage</a></li>
+<% end %>
+<% devices.each do |dev| %>
+<%   edev = escape_device_name(dev) %>
+              <li><a href="#<%= edev %>_iops_section"><code><%= dev %></code>: IOPS</a></li>
+              <li><a href="#<%= edev %>_throughput_section"><code><%= dev %></code>: I/O throughput</a></li>
+<% end %>
+            </ul>
+          </div>
+        </div> <!-- div.well -->
+<% graph_divs = ['cpu_graph'] %>
+
+        <div class="span9">
+<% if report_cpu %>
+          <section id="cpu_section" class="graph-wrapper">
+            <div id="cpu_graph" class="perfmonger-graph"></div>
+          </section>
+<% end %>
+
+<% devices.each do |dev| %>
+<%   edev = escape_device_name(dev) %>
+<%   graph_divs.push(edev + "_iops_graph") %>
+<%   graph_divs.push(edev + "_throughput_graph") %>
+
+          <section id="<%= edev %>_iops_section" class="graph-wrapper">
+            <div id="<%= edev %>_iops_graph" class="perfmonger-graph"></div>
+          </section>
+
+          <section id="<%= edev %>_throughput_section" class="graph-wrapper">
+            <div id="<%= edev %>_throughput_graph" class="perfmonger-graph"></div>
+          </section>
+<% end %>
+        </div> <!-- /span9 -->
+      </div>  <!-- /row -->
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script src="../assets/js/bootstrap.js"></script>
+    <script src="../assets/js/canvasjs.min.js"></script>
+
+
+<script>
+var records = [];
+
+var sector2mb = 512 / 1024.0 / 1024.0;
+
+function fitGraphHeight() {
+  var new_height = $(window).height() - 60;
+<% graph_divs.each do |graph_div| %>
+  $('div#<%= graph_div %>').height(new_height);
+<% end %>
+}
+
+$(window).resize(function() {
+  fitGraphHeight();
+});
+fitGraphHeight();
+
+<% if report_cpu %>
+var cpu_usr_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_sys_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_other_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var cpu_chart = new CanvasJS.Chart("cpu_graph",
+{
+  title:{
+    text: "CPU usage",
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    suffix: "%",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%usr",
+    dataPoints: cpu_usr_data
+  },{
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%sys",
+    dataPoints: cpu_sys_data
+  },{
+    type: "stackedArea",
+    showInLegend: true,
+    name: "%other",
+    dataPoints: cpu_other_data
+  },
+  ]
+});
+cpu_chart.render();
+<% end %>
+
+<% devices.each do |dev| %>
+<% edev = escape_device_name(dev) %>
+var <%= edev %>_riops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_wiops_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_rthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+var <%= edev %>_wthroughput_data = [{x: new Date(new Date() - 1000), y: 0.0}];
+
+var <%= edev %>_iops_chart = new CanvasJS.Chart("<%= edev %>_iops_graph",
+{
+  title:{
+    text: "<%= dev %>: I/O per second",
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    title: "# of I/O [1/sec]",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "line",
+    showInLegend: true,
+    name: "Read IOPS",
+    dataPoints: <%= edev %>_riops_data
+  },{
+    type: "line",
+    showInLegend: true,
+    name: "Write IOPS",
+    dataPoints: <%= edev %>_wiops_data
+  },
+  ]
+});
+<%= edev %>_iops_chart.render();
+
+var <%= edev %>_throughput_chart = new CanvasJS.Chart("<%= edev %>_throughput_graph",
+{
+  title:{
+    text: "<%= dev %>: I/O throughput",
+  },
+  toolTip: {
+    enabled: false,
+  },
+  axisX: {
+    valueFormatString: "HH:mm:ss",
+    interval:5,
+    intervalType: "second",
+  },
+  axisY:{
+    title: "throughput [MB/s]",
+    includeZero: true,
+  },
+  data: [
+  {
+    type: "line",
+    showInLegend: true,
+    name: "Read throughput",
+    dataPoints: <%= edev %>_rthroughput_data
+  },{
+    type: "line",
+    showInLegend: true,
+    name: "Write throughput",
+    dataPoints: <%= edev %>_wthroughput_data
+  },
+  ]
+});
+<%= edev %>_throughput_chart.render();
+<% end %>
+
+function render_all() {
+<% if report_cpu %>
+  cpu_chart.render();
+<% end %>
+
+<% devices.each do |dev| %>
+<% edev = escape_device_name(dev) %>
+  <%= edev %>_iops_chart.render();
+  <%= edev %>_throughput_chart.render();
+<% end %>
+}
+
+function add_record(record) {
+  if (records.length > 0 && records[records.length - 1]['time'] >= record) {
+    // old or duplicate record received
+    return;
+  }
+  records.push(record);
+
+  var t = new Date(record['time'] * 1000);
+
+<% if report_cpu %>
+  var cpu_record = record['cpuinfo']['all'];
+  var cpu_usr = cpu_record['%usr'] + cpu_record['%nice'];
+  var cpu_sys = cpu_record['%sys'];
+  var cpu_other = 100.0 - cpu_record['%idle'] - cpu_usr - cpu_sys;
+  if (cpu_other < 0.0) cpu_other = 0.0;
+
+  cpu_usr_data.push({x: t, y: cpu_usr});
+  cpu_sys_data.push({x: t, y: cpu_sys});
+  cpu_other_data.push({x: t, y: cpu_other});
+<% end %>
+
+<% devices.each do |dev| %>
+<% edev = escape_device_name(dev) %>
+  <%= edev %>_riops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['r/s']});
+  <%= edev %>_wiops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['w/s']});
+
+  <%= edev %>_rthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
+  <%= edev %>_wthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
+<% end %>
+
+  last_record = records[records.length - 1];
+
+  while (records[0]['time'] < last_record['time'] - 30.0) {
+    records.shift();
+
+<% if report_cpu %>
+    cpu_usr_data.shift();
+    cpu_sys_data.shift();
+    cpu_other_data.shift();
+<% end %>
+
+<% devices.each do |dev| %>
+<% edev = escape_device_name(dev) %>
+    <%= edev %>_riops_data.shift();
+    <%= edev %>_wiops_data.shift();
+
+    <%= edev %>_rthroughput_data.shift();
+    <%= edev %>_wthroughput_data.shift();
+<% end %>
+  }
+
+  render_all();
+}
+
+var handleMessage = function handleMessage( evt ) {
+  var record = JSON.parse(evt.data);
+  if (record['ioinfo'] != null) {
+    add_record(record);
+  }
+};
+var handleEnd = function handleEnd( evt ) {
+  evt.currentTarget.close();
+}
+
+var source = new EventSource( '/faucet' );
+source.addEventListener( 'message', handleMessage, false );
+source.addEventListener( 'end'    , handleEnd    , false );
+
+</script>
+  </body>
+</html>

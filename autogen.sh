@@ -10,7 +10,16 @@ run()
 }
 
 run aclocal ${ACLOCAL_ARGS}
-run libtoolize --copy --force
+
+case $(uname) in
+    Darwin*)
+        run glibtoolize --copy --force
+        ;;
+    *)
+        run libtoolize --copy --force
+        ;;
+esac
+
 run autoheader
 run automake --add-missing --foreign --copy
 run autoconf

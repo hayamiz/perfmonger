@@ -1,4 +1,11 @@
-## 2013-XX-XX: PerfMonger 0.3.0 released
+## XXXX-XX-XX: PerfMonger 0.4.0 released
+
+  * New features
+    * Show version number with -v option
+    * 'perfmonger stat <cmd>' ... monitoring during command execution. It works like 'perf stat <cmd>'
+    * 'perfmonger server' ... self-contained realtime HTML5-based monitor
+
+## 2013-05-26: PerfMonger 0.3.0 released
 
   * New features
     * Context switch frequency monitoring
@@ -7,6 +14,8 @@
       * perfmonger plot   ... plot recorded data
   * Fixed bugs
     * Broken JSON data by partial flush
+    * Do not say 'panic' if interval is too short
+    * Do not try to build tests without Cutter
 
 ## 2013-02-04: PerfMonger 0.2.0 released
 

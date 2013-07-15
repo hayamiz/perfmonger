@@ -7,7 +7,7 @@
 #define _SYSCONFIG_H
 
 /* sysstat configuration directory */
-#define IOCONF		"@SYSCONFIG_DIR@/sysstat.ioconf"
+#define IOCONF		"@perfmonger_datarootdir@/sysstat.ioconf"
 #define LOCAL_IOCONF	"./sysstat.ioconf"
 
 #endif  /* _SYSCONFIG_H */

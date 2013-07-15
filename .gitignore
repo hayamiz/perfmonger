@@ -1,3 +1,9 @@
+GTAGS
+GPATH
+GRTAGS
+*.la
+*.o
+*.lo
 /config.h.in
 /config
 /m4
@@ -24,3 +30,12 @@ Makefile
 /perfmonger-*.tar.gz
 /src/sysstat/sysconfig.h
 /src/perfmonger-record
+/src/cpu.eps
+/src/cpu.png
+/src/read-iops.eps
+/src/read-iops.png
+/src/ruby/perfmonger/config.rb
+/src/ruby/perfmonger/version.rb
+/src/perfmonger
+/config.log
+/Gemfile.lock

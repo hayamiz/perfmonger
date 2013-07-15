@@ -28,6 +28,9 @@ typedef struct {
     int nr_dev;
     char **dev_list;
 
+    // OUTPUT FILE
+    FILE *output;
+
     // data collection interval
     double interval;
 
