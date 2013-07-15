@@ -69,7 +69,7 @@ describe PerfMonger::Command::StatCommand do
       summary["cpuinfo"].should include "nr_cpu"
       summary["cpuinfo"].should include "cpus"
       summary["cpuinfo"].should include "all"
-      cpu_entries = [summary["cpuinfo"], *summary["cpus"]]
+      cpu_entries = [summary["cpuinfo"]["all"], *summary["cpuinfo"]["cpus"]]
       cpu_entries.each do |entry|
         entry.should be_a Hash
         entry.should include "%usr"
