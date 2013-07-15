@@ -9,4 +9,8 @@ describe "PerfmongerCommand" do
   it "should be an executable" do
     File.executable?(@perfmonger_command).should be_true
   end
+
+  it 'should print version number if --version specified' do
+    `#{@perfmonger_command} --version`.should include(PerfMonger::VERSION)
+  end
 end
