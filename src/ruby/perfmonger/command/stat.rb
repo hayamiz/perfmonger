@@ -57,54 +57,87 @@ class StatCommand < BaseCommand
       end
     end.compact
   end
-  def show_summary(logfile)
-    sleep(1)
-    records = File.read(logfile).lines.map do |line|
-      begin
-        JSON.parse(line)
-      rescue JSON::ParserError => err
-        nil
-      end
-    end.compact
-    header_record = records.shift # removed first all-zero line
 
-    puts("")
-    puts("== Performance summary of '#{@argv.join(" ")}' ==")
-    printf("Execution time: %.4f\n", @end_time - @start_time)
-
-    a = records.map do |record|
-      [record['cpuinfo']['all']['%usr'] + record['cpuinfo']['all']['%nice'],
-       record['cpuinfo']['all']['%sys'],
-       record['cpuinfo']['all']['%iowait'],
-       record['cpuinfo']['all']['%irq'],
-       record['cpuinfo']['all']['%soft'],
-       [100.0 - record['cpuinfo']['all']['%idle'], 0.0].max]
-    end.inject do |a, b|
-        (0..5).map do |idx|
-          a[idx] + b[idx]
-        end
+  def make_summary(records)
+    if records.empty?
+      return nil
+    elsif records.size == 1
+      return records.first
     end
 
-    if header_record && header_record['cpuinfo']
-      usr, sys, iowait, irq, soft, other = records.map do |record|
-        [record['cpuinfo']['all']['%usr'] + record['cpuinfo']['all']['%nice'],
-         record['cpuinfo']['all']['%sys'],
-         record['cpuinfo']['all']['%iowait'],
-         record['cpuinfo']['all']['%irq'],
-         record['cpuinfo']['all']['%soft'],
-         [100.0 - record['cpuinfo']['all']['%idle'], 0.0].max]
-      end.reduce([nil] * 6) do |a, b|
-        (0..5).map do |idx|
-          (a[idx] || 0.0) + (b[idx] || 0.0)
+    # setup getters and setters all attributes for avg. calculation
+    # getter.call(record) returns value
+    # setter.call(record, value) set value
+    # getters and setters include attribute info as a closure
+    getters = []
+    setters = []
+
+    if records.first.include?("ioinfo")
+      records.first["ioinfo"]["devices"].each do |device|
+        records.first["ioinfo"][device].keys.each do |attr|
+          getters << lambda do |record|
+            record["ioinfo"][device][attr]
+          end
+          setters << lambda do |record, value|
+            record["ioinfo"][device][attr] = value
+          end
         end
-      end.map do |sum|
-        if sum
-          sprintf("%.4f", sum / records.size.to_f)
-        else
-          "N/A"
+      end
+    end
+
+    if records.first.include?("cpuinfo")
+      records.first["cpuinfo"]["all"].keys.each do |attr|
+        getters << lambda do |record|
+          record["cpuinfo"]["all"][attr]
+        end
+        setters << lambda do |record, value|
+          record["cpuinfo"]["all"][attr] = value
         end
       end
 
+      records.first["cpuinfo"]["nr_cpu"].times do |cpu_idx|
+        records.first["cpuinfo"]["cpus"][cpu_idx].keys.each do |attr|
+          getters << lambda do |record|
+            record["cpuinfo"]["cpus"][cpu_idx][attr]
+          end
+          setters << lambda do |record, value|
+            record["cpuinfo"]["cpus"][cpu_idx][attr] = value
+          end
+        end
+      end
+    end
+
+    avg_record = Marshal.load(Marshal.dump(records.first)); # deep copy
+
+    setters.each do |setter|
+      setter.call(avg_record, 0.0)
+    end
+
+    (1..(records.size - 1)).each do |idx|
+      record = records[idx]
+
+      last_t = records[idx - 1]["time"]
+      t      = record["time"]
+
+      getters.size.times do |_etters_idx|
+        getter = getters[_etters_idx]
+        setter = setters[_etters_idx]
+
+        setter.call(avg_record,
+                    getter.call(avg_record) + getter.call(record) * (t - last_t))
+      end
+    end
+
+    getters.size.times do |_etters_idx|
+      getter = getters[_etters_idx]
+      setter = setters[_etters_idx]
+
+      setter.call(avg_record,
+                  getter.call(avg_record) / (records[-1]["time"] - records[0]["time"]))
+    end
+
+    avg_record
+  end
       puts("")
       puts("* Average CPU usage")
       puts("     %usr: #{usr}")
