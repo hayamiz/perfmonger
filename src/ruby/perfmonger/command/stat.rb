@@ -147,6 +147,12 @@ class StatCommand < BaseCommand
     puts("== Performance summary of '#{@argv.join(" ")}' ==")
     printf("Execution time: %.4f\n", @end_time - @start_time)
 
+    if ! summary
+      puts("")
+      puts("No performance info was collected.")
+      puts("This is because command execution time was too short, or something went wrong.")
+    end
+
     if summary && summary["cpuinfo"]
       usr, sys, iowait, irq, soft, other =
         [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
@@ -168,7 +174,7 @@ class StatCommand < BaseCommand
       puts("   %other: #{other}")
     end
 
-    if summary['ioinfo']
+    if summary && summary['ioinfo']
       summary['ioinfo']['devices'].each do |device|
         r_iops, w_iops, r_sec, w_sec =
           [summary['ioinfo'][device]['r/s'],
