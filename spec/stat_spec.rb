@@ -83,5 +83,20 @@ describe PerfMonger::Command::StatCommand do
         entry.should include "%idle"
       end
     end
+
+    it 'should calculate avg. value correctly against non-equal intervals' do
+      @records[0]["time"] = 0.0
+      @records[1]["time"] = 1.0
+      @records[2]["time"] = 3.0
+
+      @records[0]["ioinfo"]["sda"]["r/s"] = 0.0 # no effect for result
+      @records[1]["ioinfo"]["sda"]["r/s"] = 3.0
+      @records[2]["ioinfo"]["sda"]["r/s"] = 6.0
+
+      # avg. r/s should be ((3.0 * 1.0 + 6.0 * 3.0) / 3.0) == 5.0
+      summary = @stat.make_summary(@records)
+
+      summary["ioinfo"]["sda"]["r/s"].should be_within(0.005).of(5.0)
+    end
   end
 end
