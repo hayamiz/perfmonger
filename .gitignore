@@ -38,3 +38,4 @@ Makefile
 /src/ruby/perfmonger/version.rb
 /src/perfmonger
 /config.log
+/Gemfile.lock
