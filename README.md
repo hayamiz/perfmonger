@@ -6,23 +6,20 @@ speaking JSON.
 
 **CAUTION: PerfMonger is still in early stage, so there may be a drastic change in the future. Do not use it for critical jobs**
 
- Prerequisites
----------------
+## Prerequisites
 
   * GLib 2
   * sysstat
   * gnuplot
 
 
- How to build
---------------
+## How to build
 
     $ ./configure
     $ make install
 
 
- How to use: case study
-------------------------
+## How to use: case study
 
 ### Monitor IO performance of /dev/sda for each 0.1 second
 
@@ -46,8 +43,7 @@ speaking JSON.
 ![Sample image of IOPS graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-read-iops.png)
 ![Sample image of CPU usage graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-cpu.png)
 
- Special Thanks
-----------------
+## Special Thanks
 
 Large portion of PerfMonger comes from
 [SYSSTAT](http://sebastien.godard.pagesperso-orange.fr/) codebase. Thanks for
