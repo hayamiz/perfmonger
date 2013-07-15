@@ -48,6 +48,15 @@ class StatCommand < BaseCommand
     show_summary(@option.logfile)
   end
 
+  def read_logfile(logfile)
+    File.read(logfile).lines.map do |line|
+      begin
+        JSON.parse(line)
+      rescue JSON::ParserError => err
+        nil
+      end
+    end.compact
+  end
   def show_summary(logfile)
     sleep(1)
     records = File.read(logfile).lines.map do |line|
