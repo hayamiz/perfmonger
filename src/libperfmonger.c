@@ -376,7 +376,8 @@ output_io_stat (GString *output, int curr)
         g_string_append_printf(output,
                                "\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
                                "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
-                               "\"r_await\": %.4lf, \"w_await\": %.4lf}, ",
+                               "\"r_await\": %.4lf, \"w_await\": %.4lf, "
+                               "\"avgrq-sz\": %.4lf, \"avgqu-sz\": %.4lf}, ",
                                shi->name,
                                S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
                                S_VALUE(ioj->wr_ios, ioi->wr_ios, interval),
@@ -387,7 +388,9 @@ output_io_stat (GString *output, int curr)
                                ((double) (ioi->rd_ios - ioj->rd_ios)) : 0.0,
                                (ioi->wr_ios - ioj->wr_ios) ?
                                (ioi->wr_ticks - ioj->wr_ticks) /
-                               ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0
+                               ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0,
+                               (double) xds.arqsz,
+                               (double) S_VALUE(ioj->rq_ticks, ioi->rq_ticks, interval) / 1000.0
             );
     }
     r_await /= nr_dev;
