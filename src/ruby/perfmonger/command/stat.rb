@@ -176,12 +176,24 @@ class StatCommand < BaseCommand
 
     if summary && summary['ioinfo']
       summary['ioinfo']['devices'].each do |device|
-        r_iops, w_iops, r_sec, w_sec =
+        r_iops, w_iops, r_sec, w_sec, r_await, w_await =
           [summary['ioinfo'][device]['r/s'],
            summary['ioinfo'][device]['w/s'],
            summary['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
-           summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0].map do |value|
+           summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0,
+           summary['ioinfo'][device]['r_await'],
+           summary['ioinfo'][device]['w_await']]
+
+        r_iops, w_iops, r_sec, w_sec = [r_iops, w_iops, r_sec, w_sec].map do |value|
           sprintf("%.2f", value)
+        end
+
+        r_await, w_await = [r_await, w_await].map do |await|
+          if await < 1.0
+            sprintf("%.1f usec", await * 1000)
+          else
+            sprintf("%.2f msec", await)
+          end
         end
 
         puts("")
@@ -190,6 +202,8 @@ class StatCommand < BaseCommand
         puts("       write IOPS: #{w_iops}")
         puts("  read throughput: #{r_sec} MB/s")
         puts(" write throughput: #{w_sec} MB/s")
+        puts("     read latency: #{r_await}")
+        puts("    write latency: #{w_await}")
       end
     end
   end
