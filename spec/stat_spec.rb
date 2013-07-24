@@ -84,7 +84,7 @@ describe PerfMonger::Command::StatCommand do
       end
     end
 
-    it 'should calculate avg. value correctly against non-equal intervals' do
+    it 'should calculate avg. IOPS correctly against non-equal intervals' do
       @records[0]["time"] = 0.0
       @records[1]["time"] = 1.0
       @records[2]["time"] = 3.0
@@ -97,6 +97,19 @@ describe PerfMonger::Command::StatCommand do
       summary = @stat.make_summary(@records)
 
       summary["ioinfo"]["sda"]["r/s"].should be_within(0.005).of(5.0)
+    end
+
+    it 'should calculate avg. r_await/w_await correctly' do
+      @records[0]["ioinfo"]["sda"]["r/s"] = 0.0
+      @records[0]["ioinfo"]["sda"]["r_await"] = 0.0
+      @records[1]["ioinfo"]["sda"]["r/s"] = 100.0
+      @records[1]["ioinfo"]["sda"]["r_await"] = 1.0
+      @records[2]["ioinfo"]["sda"]["r/s"] = 200.0
+      @records[2]["ioinfo"]["sda"]["r_await"] = 4.0
+
+      summary = @stat.make_summary(@records)
+
+      summary["ioinfo"]["sda"]["r_await"].should be_within(0.003).of(3.0)
     end
   end
 end

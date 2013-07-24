@@ -136,6 +136,32 @@ class StatCommand < BaseCommand
                   getter.call(avg_record) / (records[-1]["time"] - records[0]["time"]))
     end
 
+
+    # r_await/w_await need special handling
+    if records.first.include?("ioinfo")
+      records.first["ioinfo"]["devices"].each do |device|
+        accum_r_io_time = 0.0
+        accum_w_io_time = 0.0
+        r_io_count = 0
+        w_io_count = 0
+
+        (records.size - 1).times do |idx|
+          rec0 = records[idx]
+          rec1 = records[idx + 1]
+          dev_ioinfo = rec1["ioinfo"][device]
+          dt = rec1["time"] - rec0["time"]
+
+          accum_r_io_time += dev_ioinfo["r_await"] * dev_ioinfo["r/s"] * dt
+          accum_w_io_time += dev_ioinfo["w_await"] * dev_ioinfo["w/s"] * dt
+          r_io_count += dev_ioinfo["r/s"] * dt
+          w_io_count += dev_ioinfo["w/s"] * dt
+        end
+
+        avg_record["ioinfo"][device]["r_await"] = accum_r_io_time / r_io_count
+        avg_record["ioinfo"][device]["w_await"] = accum_w_io_time / w_io_count
+      end
+    end
+
     avg_record
   end
 
