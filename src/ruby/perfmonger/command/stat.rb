@@ -43,6 +43,7 @@ class StatCommand < BaseCommand
     ensure
       @end_time = Time.now
       Process.kill(:INT, record_pid)
+      Process.wait(record_pid)
     end
 
     show_summary(@option.logfile)
@@ -173,7 +174,7 @@ class StatCommand < BaseCommand
     puts("== Performance summary of '#{@argv.join(" ")}' ==")
     printf("Execution time: %.4f\n", @end_time - @start_time)
 
-    if ! summary
+    if summary.nil?
       puts("")
       puts("No performance info was collected.")
       puts("This is because command execution time was too short, or something went wrong.")
