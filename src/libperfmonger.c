@@ -4,6 +4,9 @@
 /*
  * Private functions
  */
+static void sigint_handler(int signum, siginfo_t *info, void *handler);
+static void sigterm_handler(int signum, siginfo_t *info, void *handler);
+
 static void output_io_stat   (GString *output, int curr);
 static void output_cpu_stat  (GString *output, int curr);
 static void output_ctxsw_stat(GString *output, int curr);
@@ -47,6 +50,10 @@ extern unsigned int actflags;
 
 /* Variables for pcsw */
 struct stats_pcsw st_pcsw[3];
+
+/* Variables for handling signals */
+static volatile sig_atomic_t sigint_sent = 0;
+static volatile sig_atomic_t sigterm_sent = 0;
 
 
 /* TODO: long options */
@@ -128,11 +135,29 @@ print_help(void)
     printf("Usage: perfmonger [options]\n");
 }
 
+/*
+ * signal handlers
+ */
+static void
+sigint_handler(int signum, siginfo_t *info, void *handler)
+{
+    sigint_sent = 1;
+}
+
+static void
+sigterm_handler(int signum, siginfo_t *info, void *handler)
+{
+    sigterm_sent = 1;
+}
+
+
 void
 init_subsystem(option_t *opt)
 {
     int i;
     struct io_dlist *st_dev_list_i;
+    struct sigaction sigint_act;
+    struct sigaction sigterm_act;
 
     get_HZ();
     salloc_dev_list(opt->nr_dev);
@@ -194,6 +219,24 @@ init_subsystem(option_t *opt)
         memcpy(st_softirqcpu[2], st_softirqcpu[0],
                STATS_IRQCPU_SIZE * (cpu_nr + 1) * softirqcpu_nr);
     }
+
+    /* setup signal handlers */
+
+    bzero(&sigint_act, sizeof(struct sigaction));
+    sigint_act.sa_sigaction = sigint_handler;
+    sigint_act.sa_flags = SA_SIGINFO | SA_RESTART;
+    if (sigaction(SIGINT, &sigint_act, NULL) != 0) {
+        perror("failed to set SIGINT handler");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero(&sigterm_act, sizeof(struct sigaction));
+    sigterm_act.sa_sigaction = sigterm_handler;
+    sigterm_act.sa_flags = SA_SIGINFO | SA_RESTART;
+    if (sigaction(SIGTERM, &sigterm_act, NULL) != 0) {
+        perror("failed to set SIGTERM handler");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void
@@ -218,6 +261,10 @@ collector_loop(option_t *opt)
     wait_until = tv.tv_sec * 1000000L + tv.tv_usec;
 
     while(running) {
+        if (sigint_sent || sigterm_sent) {
+            break;
+        }
+
         wait_until += opt->interval * 1000000L;
 
         uptime0[curr] = 0;
@@ -242,6 +289,9 @@ collector_loop(option_t *opt)
             usleep(wait_interval);
         }
     }
+
+    fflush(opt->output);
+    fclose(opt->output);
 }
 
 void
