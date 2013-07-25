@@ -1,3 +1,4 @@
+require 'rubygems'
 
 require 'perfmonger/version.rb'
 require 'perfmonger/config.rb'
