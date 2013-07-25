@@ -69,31 +69,70 @@ EOS
     $stderr.print(message + " ... ")
     $stderr.flush
 
+    @errors = []
+
     begin
       yield
     rescue StandardError => err
       $stderr.puts("failed")
-      raise err
+      @errors.push(err)
     end
 
-    $stderr.puts("done")
+    if @errors.empty?
+      $stderr.puts("done")
+      $stderr.puts("")
+    else
+      $stderr.puts("failed")
+      $stderr.puts("")
+      @errors.each do |error|
+        $stderr.puts(" ERROR: #{error.message}")
+      end
+      $stderr.puts("")
+    end
   end
 
   def save_proc_file(src, dest)
     if File.exists?(src)
+      begin
+        content = File.read(src)
+      rescue StandardError => err
+        @errors.push(err)
+      end
       File.open(dest, "w") do |f|
-        f.print(File.read(src))
+        f.print(content)
       end
     end
   end
 
   def save_proc_info()
-    save_proc_file('/proc/cpuinfo', "#{@output_dir}/proc-cpuinfo.log")
-    save_proc_file('/proc/meminfo', "#{@output_dir}/proc-meminfo.log")
-    save_proc_file('/proc/mdstat',  "#{@output_dir}/proc-mdstat.log")
-    save_proc_file('/proc/mounts',  "#{@output_dir}/proc-mounts.log")
-    save_proc_file('/proc/interrupts',  "#{@output_dir}/proc-interrupts.log")
+    ["cpuinfo", "meminfo", "mdstat", "mounts", "interrupts",
+     "diskstats", "partitions", "ioports",
+    ].each do |entry|
+      save_proc_file("/proc/#{entry}", "#{@output_dir}/proc-cpuinfo.log")
+    end
+
     save_proc_file('/proc/scsi/scsi',  "#{@output_dir}/proc-scsi.log")
+
+    File.open("#{@output_dir}/proc-sys-fs.log", "w") do |f|
+      Dir.glob("/proc/sys/fs/*").each do |path|
+        next unless File.file?(path)
+        begin
+          content = File.read(path)
+        rescue Errno::EACCES => err
+          @errors.push(err)
+          f.puts("## #{path}")
+          f.puts("permission denied")
+          f.puts("")
+          next
+        rescue StandardError => err
+          @errors.push(err)
+          next
+        end
+        f.puts("## #{path}")
+        f.puts(content)
+        f.puts("")
+      end
+    end
   end
 
   def save_irq_info()
@@ -128,6 +167,10 @@ EOS
 
     File.open("#{@output_dir}/disk-by-uuid.log", "w") do |f|
       f.puts(`ls -l /dev/disk/by-uuid/`)
+    end
+
+    File.open("#{@output_dir}/disk-by-id.log", "w") do |f|
+      f.puts(`ls -l /dev/disk/by-id/`)
     end
 
     File.open("#{@output_dir}/disk-multipath.log", "w") do |f|
