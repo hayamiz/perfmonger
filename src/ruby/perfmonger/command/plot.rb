@@ -199,7 +199,7 @@ EOS
     end
 
     Dir.mktmpdir do |working_dir|
-      Dir.chdir("/tmp/debug") do
+      Dir.chdir(working_dir) do
         datafile = File.open(dat_filename, 'w')
         gpfile = File.open(gp_filename, 'w')
         all_datafile = File.open(all_dat_filename, 'w')
