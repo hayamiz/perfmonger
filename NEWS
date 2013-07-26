@@ -2,8 +2,18 @@
 
   * New features
     * Show version number with -v option
-    * 'perfmonger stat <cmd>' ... monitoring during command execution. It works like 'perf stat <cmd>'
-    * 'perfmonger server' ... self-contained realtime HTML5-based monitor
+    * Add new subcommands
+      * 'perfmonger stat <cmd>' ... monitoring during command execution. It works like 'perf stat <cmd>'
+      * 'perfmonger server' ... self-contained realtime HTML5-based monitor
+      * 'perfmonger bukko' ... gathering system information as much as possible
+    * 'perfmonger record' records # of sectors per second, I/O latency, I/O block size, I/O queue length
+    * add RSpec specs for testing ruby library part
+    * 'perfmonger plot' generates a graph of CPU usage for each core
+  * Changes
+    * Default output format of 'perfmonger plot' is changed from EPS to PDF
+      * It requires pdfcairo supported gnuplot 4.6 or later
+  * Fixed bugs
+    * Avoid broken JSON by interrupted with SIGINT/SIGTERM by handling signals correctly
 
 ## 2013-05-26: PerfMonger 0.3.0 released
 

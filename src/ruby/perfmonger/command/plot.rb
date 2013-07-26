@@ -41,8 +41,8 @@ EOS
       @output_dir = dir
     end
 
-    @parser.on('-T', '--output-type TYPE', 'Available: eps, png') do |typ|
-      unless ['eps', 'png'].include?(typ)
+    @parser.on('-T', '--output-type TYPE', 'Available: pdf, png') do |typ|
+      unless ['pdf', 'png'].include?(typ)
         puts("ERROR: non supported image type: #{typ}")
         puts(@parser.help)
         exit(false)
@@ -80,6 +80,11 @@ EOS
 
   def run(argv)
     parse_args(argv)
+    unless system('which gnuplot >/dev/null 2>&1')
+      puts("ERROR: gnuplot not found")
+      puts(@parser.help)
+      exit(false)
+    end
 
     plot_ioinfo()
     plot_cpuinfo()
@@ -87,10 +92,10 @@ EOS
 
   private
   def plot_ioinfo()
-    eps_filename = @output_prefix + 'read-iops.eps'
+    pdf_filename = @output_prefix + 'read-iops.pdf'
     gp_filename  = @output_prefix + 'read-iops.gp'
     dat_filename = @output_prefix + 'read-iops.dat'
-    if @output_type != 'eps'
+    if @output_type != 'pdf'
       img_filename = @output_prefix + 'read-iops.' + @output_type
     else
       img_filename = nil
@@ -129,10 +134,10 @@ EOS
         end
 
         gpfile.puts <<EOS
-set term postscript enhanced color
+set term pdfcairo enhanced color
 set title "Read IOPS: #{@data_file}"
 set size 1.0, 1.0
-set output "#{eps_filename}"
+set output "#{pdf_filename}"
 
 set xlabel "elapsed time [sec]"
 set ylabel "IOPS"
@@ -148,11 +153,11 @@ EOS
 
         system("gnuplot #{gpfile.path}")
 
-        if @output_type != 'eps'
-          system("convert -rotate 90 -background white #{eps_filename} #{img_filename}")
+        if @output_type != 'pdf'
+          system("convert -background white #{pdf_filename} #{img_filename}")
         end
 
-        FileUtils.copy(eps_filename, @output_dir)
+        FileUtils.copy(pdf_filename, @output_dir)
         FileUtils.copy(img_filename, @output_dir) if img_filename
         if @save_gpfiles
           FileUtils.copy(gp_filename , @output_dir)
@@ -163,26 +168,39 @@ EOS
   end
 
   def plot_cpuinfo()
-    eps_filename = @output_prefix + 'cpu.eps'
+    pdf_filename = @output_prefix + 'cpu.pdf'
     gp_filename  = @output_prefix + 'cpu.gp'
     dat_filename = @output_prefix + 'cpu.dat'
-    if @output_type != 'eps'
+
+    all_pdf_filename = @output_prefix + 'allcpu.pdf'
+    all_gp_filename  = @output_prefix + 'allcpu.gp'
+    all_dat_filename = @output_prefix + 'allcpu.dat'
+
+    if @output_type != 'pdf'
       img_filename = @output_prefix + 'cpu.' + @output_type
+      all_img_filename = @output_prefix + 'allcpu.' + @output_type
     else
       img_filename = nil
+      all_img_filename = nil
     end
 
     Dir.mktmpdir do |working_dir|
-      Dir.chdir(working_dir) do
+      Dir.chdir("/tmp/debug") do
         datafile = File.open(dat_filename, 'w')
         gpfile = File.open(gp_filename, 'w')
+        all_datafile = File.open(all_dat_filename, 'w')
+        all_gpfile = File.open(all_gp_filename, 'w')
 
         start_time = nil
+        end_time = 0
         devices = nil
         nr_cpu = nil
 
-        File.open(@data_file).each_line do |line|
-          record = JSON.parse(line)
+        records = File.read(@data_file).split("\n").map do |line|
+          JSON.parse(line)
+        end
+
+        records.each do |record|
           time = record["time"]
           cpuinfo = record["cpuinfo"]
           return unless cpuinfo
@@ -191,13 +209,13 @@ EOS
           cores = cpuinfo['cpus']
 
           start_time ||= time
+          end_time = [end_time, time].max
 
           datafile.puts([time - start_time,
                          %w|%usr %nice %sys %iowait %irq %soft %steal %guest %idle|.map do |key|
                            cores.map{|core| core[key]}.inject(&:+)
                          end].flatten.map(&:to_s).join("\t"))
         end
-
         datafile.close
 
         col_idx = 2
@@ -210,11 +228,11 @@ EOS
           col_idx += 1
         end
 
-        eps_file = File.join(@output_dir, "cpu.eps")
+        pdf_file = File.join(@output_dir, "cpu.pdf")
         gpfile.puts <<EOS
-set term postscript enhanced color
+set term pdfcairo enhanced color
 set title "CPU usage: #{@data_file} (max: #{nr_cpu*100}%)"
-set output "#{eps_filename}"
+set output "#{pdf_filename}"
 set key outside center bottom horizontal
 set size 1.0, 1.0
 
@@ -222,7 +240,7 @@ set xlabel "elapsed time [sec]"
 set ylabel "CPU usage"
 
 set grid
-set xrange [#{@offset_time}:*]
+set xrange [#{@offset_time}:#{end_time - start_time}]
 set yrange [0:*]
 
 plot #{plot_stmt_list.reverse.join(",\\\n     ")}
@@ -231,18 +249,126 @@ EOS
         gpfile.close
         system("gnuplot #{gpfile.path}")
 
-        if @output_type != 'eps'
-          system("convert -rotate 90 -background white #{eps_filename} #{img_filename}")
+        if @output_type != 'pdf'
+          system("convert -background white #{pdf_filename} #{img_filename}")
         end
 
-        FileUtils.copy(eps_filename, @output_dir)
+puts `ls`
+
+        FileUtils.copy(pdf_filename, @output_dir)
         FileUtils.copy(img_filename, @output_dir) if img_filename
         if @save_gpfiles
           FileUtils.copy(gp_filename , @output_dir)
           FileUtils.copy(dat_filename, @output_dir)
         end
+
+
+        ## Plot all CPUs in a single file
+
+        nr_cpu_factors = factors(nr_cpu)
+        nr_cols = nr_cpu_factors.select do |x|
+          x <= Math.sqrt(nr_cpu)
+        end.max
+        nr_rows = nr_cpu / nr_cols
+
+        all_gpfile.puts <<EOS
+set term pdfcairo color enhanced size 8.5inch, 11inch
+set output "#{all_pdf_filename}"
+set size 1.0, 1.0
+set multiplot
+set grid
+set xrange [#{@offset_time}:#{end_time - start_time}]
+set yrange [0:100]
+
+EOS
+
+        legend_height = 0.02
+        nr_cpu.times do |cpu_idx|
+          all_datafile.puts("# cpu #{cpu_idx}")
+          records.each do |record|
+            time = record["time"]
+            cpurec = record["cpuinfo"]["cpus"][cpu_idx]
+            all_datafile.puts([time - start_time,
+                              cpurec["%usr"] + cpurec["%nice"],
+                              cpurec["%sys"],
+                              cpurec["%irq"],
+                              cpurec["%soft"],
+                              cpurec["%steal"] + cpurec["%guest"],
+                              cpurec["%iowait"]].map(&:to_s).join("\t"))
+          end
+          all_datafile.puts("")
+          all_datafile.puts("")
+
+          xpos = (1.0 / nr_cols) * (cpu_idx % nr_cols)
+          ypos = ((1.0 - legend_height) / nr_rows) * (nr_rows - 1 - (cpu_idx / nr_cols).to_i) + legend_height
+
+          all_gpfile.puts <<EOS
+set title 'cpu #{cpu_idx}' offset 0.0,-0.7 font 'Arial,16'
+unset key
+set origin #{xpos}, #{ypos}
+set size #{1.0/nr_cols}, #{(1.0 - legend_height)/nr_rows}
+set rmargin 0.5
+set lmargin 3.5
+set tmargin 1.3
+set bmargin 1.3
+set xtics offset 0.0,0.5
+set ytics offset 0.5,0
+set style fill noborder
+plot '#{all_datafile.path}' index #{cpu_idx} using 1:($2+$3+$4+$5+$6+$7) with filledcurve x1 lw 0 lc 6 title '%iowait', \\
+     '#{all_datafile.path}' index #{cpu_idx} using 1:($2+$3+$4+$5+$6) with filledcurve x1 lw 0 lc 5 title '%other', \\
+     '#{all_datafile.path}' index #{cpu_idx} using 1:($2+$3+$4+$5) with filledcurve x1 lw 0 lc 4 title '%soft', \\
+     '#{all_datafile.path}' index #{cpu_idx} using 1:($2+$3+$4) with filledcurve x1 lw 0 lc 3 title '%irq', \\
+     '#{all_datafile.path}' index #{cpu_idx} using 1:($2+$3) with filledcurve x1 lw 0 lc 2 title '%sys', \\
+     '#{all_datafile.path}' index #{cpu_idx} using 1:2 with filledcurve x1 lw 0 lc 1 title '%usr'
+
+EOS
+
+        end
+
+        all_gpfile.puts <<EOS
+unset title
+set key center center font "Arial,20"
+set origin 0.0, 0.0
+set size 1.0, #{legend_height}
+set rmargin 0
+set lmargin 0
+set tmargin 0
+set bmargin 0
+unset tics
+set border 0
+set yrange [0:1]
+# plot -1 with filledcurve x1 title '%usr'
+
+plot -1 with filledcurve x1 lw 0 lc 1 title '%usr', \\
+     -1 with filledcurve x1 lw 0 lc 2 title '%sys', \\
+     -1 with filledcurve x1 lw 0 lc 3 title '%irq', \\
+     -1 with filledcurve x1 lw 0 lc 4 title '%soft', \\
+     -1 with filledcurve x1 lw 0 lc 5 title '%other', \\
+     -1 with filledcurve x1 lw 0 lc 6 title '%iowait'
+EOS
+
+        all_gpfile.close
+        system("gnuplot #{all_gpfile.path}")
+
+        if @output_type != 'pdf'
+          system("convert -background white #{all_pdf_filename} #{all_img_filename}")
+        end
+
+        FileUtils.copy(all_pdf_filename, @output_dir)
+        FileUtils.copy(all_img_filename, @output_dir) if all_img_filename
+        if @save_gpfiles
+          FileUtils.copy(all_gp_filename , @output_dir)
+          FileUtils.copy(all_dat_filename, @output_dir)
+        end
       end
     end
+  end
+
+  private
+  def factors(n)
+    (2..(n / 2).to_i).select do |x|
+      n % x == 0
+    end.sort
   end
 end
 
