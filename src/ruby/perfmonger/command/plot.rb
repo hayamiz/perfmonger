@@ -292,7 +292,7 @@ set size 1.0, 1.0
 set multiplot
 set grid
 set xrange [#{@offset_time}:#{end_time - start_time}]
-set yrange [0:100]
+set yrange [0:101]
 
 EOS
 
