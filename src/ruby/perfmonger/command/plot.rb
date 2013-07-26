@@ -267,8 +267,6 @@ EOS
           system("convert -background white #{pdf_filename} #{img_filename}")
         end
 
-puts `ls`
-
         FileUtils.copy(pdf_filename, @output_dir)
         FileUtils.copy(img_filename, @output_dir) if img_filename
         if @save_gpfiles
