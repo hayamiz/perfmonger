@@ -179,8 +179,20 @@ EOS
   end
 
   def save_pci_info()
-    File.open("#{@output_dir}/lspci.log", "w") do |f|
-      f.puts(`lspci -D -vvv`)
+    # try to find lspci
+    dirs = ["/sbin", "/usr/sbin", "/usr/local/sbin", "/usr/bin", "/usr/local/bin"]
+    dirs += ENV['PATH'].split(":")
+
+    lspci_bindir = dirs.find do |dir|
+      File.executable?(File.expand_path("lspci", dir))
+    end
+
+    unless lspci_bindir
+      @errors << RuntimeError.new("lspci(1) not found")
+    else
+      File.open("#{@output_dir}/lspci.log", "w") do |f|
+        f.puts(`#{lspci_bindir}/lspci -D -vvv`)
+      end
     end
 
     Dir.glob("/sys/devices/pci*/*/*/vendor") do |vendor|
