@@ -21,7 +21,7 @@ EOS
     @data_file = nil
     @offset_time = 0.0
     @output_dir = Dir.pwd
-    @output_type = 'png'
+    @output_type = 'pdf'
     @output_prefix = ''
     @save_gpfiles = true
   end
