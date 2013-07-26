@@ -294,7 +294,7 @@ set yrange [0:101]
 
 EOS
 
-        legend_height = 0.02
+        legend_height = 0.04
         nr_cpu.times do |cpu_idx|
           all_datafile.puts("# cpu #{cpu_idx}")
           records.each do |record|
@@ -339,7 +339,7 @@ EOS
 
         all_gpfile.puts <<EOS
 unset title
-set key center center font "Arial,20"
+set key center center horizontal font "Arial,16"
 set origin 0.0, 0.0
 set size 1.0, #{legend_height}
 set rmargin 0
@@ -359,7 +359,11 @@ plot -1 with filledcurve x1 lw 0 lc 1 title '%usr', \\
      -1 with filledcurve x1 lw 0 lc 6 title '%iowait'
 EOS
 
+        all_datafile.fsync
+        all_gpfile.fsync
+        all_datafile.close
         all_gpfile.close
+
         system("gnuplot #{all_gpfile.path}")
 
         if @output_type != 'pdf'
