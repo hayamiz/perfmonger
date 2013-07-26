@@ -48,6 +48,13 @@ EOS
         exit(false)
       end
 
+      if typ != 'pdf' && ! system('which convert >/dev/null 2>&1')
+        puts("ERROR: convert(1) not found.")
+        puts("ERROR: ImageMagick is required for #{typ}")
+        puts(@parser.help)
+        exit(false)
+      end
+
       @output_type = typ
     end
 
@@ -82,6 +89,13 @@ EOS
     parse_args(argv)
     unless system('which gnuplot >/dev/null 2>&1')
       puts("ERROR: gnuplot not found")
+      puts(@parser.help)
+      exit(false)
+    end
+
+    unless system('gnuplot -e "set terminal"|grep pdfcairo >/dev/null 2>&1')
+      puts("ERROR: pdfcairo is not supported by installed gnuplot")
+      puts("ERROR: PerfMonger requires pdfcairo-supported gnuplot")
       puts(@parser.help)
       exit(false)
     end
