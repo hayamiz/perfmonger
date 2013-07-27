@@ -215,11 +215,13 @@ EOS
         f.puts("## ls -l #{pcidir}")
         f.puts(`ls -l #{pcidir}`)
         f.puts("")
-        ["irq", "local_cpulist", "local_cpus", "pools", "numa_node", "vendor", "device"].each do |entry|
-          path = "#{pcidir}/#{entry}"
-          if File.exists?(path)
+        Dir.foreach(pcidir) do |filename|
+          path = File.expand_path(filename, pcidir)
+          next unless File.file?(path)
+          content = read_file(path)
+          if content
             f.puts("## #{path}")
-            f.puts(`cat #{path}`)
+            f.puts(content)
             f.puts("")
           end
         end
