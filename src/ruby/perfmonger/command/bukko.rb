@@ -108,7 +108,7 @@ EOS
     ["cpuinfo", "meminfo", "mdstat", "mounts", "interrupts",
      "diskstats", "partitions", "ioports",
     ].each do |entry|
-      save_proc_file("/proc/#{entry}", "#{@output_dir}/proc-cpuinfo.log")
+      save_proc_file("/proc/#{entry}", "#{@output_dir}/proc-#{entry}.log")
     end
 
     save_proc_file('/proc/scsi/scsi',  "#{@output_dir}/proc-scsi.log")
