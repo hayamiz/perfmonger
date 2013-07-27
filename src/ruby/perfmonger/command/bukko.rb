@@ -215,7 +215,10 @@ EOS
         f.puts("## ls -l #{pcidir}")
         f.puts(`ls -l #{pcidir}`)
         f.puts("")
-        Dir.foreach(pcidir) do |filename|
+        Dir.entries(pcidir).select do |filename|
+          ! (["remove", "reset", "rescan", "rom"].include?(filename) ||
+             filename =~ /\Aresource\d+\Z/)
+        end.each do |filename|
           path = File.expand_path(filename, pcidir)
           next unless File.file?(path)
           content = read_file(path)
