@@ -91,13 +91,22 @@ EOS
     end
   end
 
-  def save_proc_file(src, dest)
+  def read_file(src)
     if File.exists?(src)
       begin
-        content = File.read(src)
+        return File.read(src)
       rescue StandardError => err
         @errors.push(err)
       end
+    end
+
+    nil
+  end
+
+  def copy_file(src, dest)
+    content = read_file(src)
+
+    if content
       File.open(dest, "w") do |f|
         f.print(content)
       end
@@ -108,10 +117,10 @@ EOS
     ["cpuinfo", "meminfo", "mdstat", "mounts", "interrupts",
      "diskstats", "partitions", "ioports",
     ].each do |entry|
-      save_proc_file("/proc/#{entry}", "#{@output_dir}/proc-#{entry}.log")
+      copy_file("/proc/#{entry}", "#{@output_dir}/proc-#{entry}.log")
     end
 
-    save_proc_file('/proc/scsi/scsi',  "#{@output_dir}/proc-scsi.log")
+    copy_file('/proc/scsi/scsi',  "#{@output_dir}/proc-scsi.log")
 
     File.open("#{@output_dir}/proc-sys-fs.log", "w") do |f|
       Dir.glob("/proc/sys/fs/*").each do |path|
@@ -138,7 +147,7 @@ EOS
   def save_irq_info()
     Dir.glob('/proc/irq/*/smp_affinity').each do |path|
       irqno = File.basename(File.dirname(path))
-      save_proc_file(path,  "#{@output_dir}/irq-#{irqno}-smp-affinity.log")
+      copy_file(path,  "#{@output_dir}/irq-#{irqno}-smp-affinity.log")
     end
   end
 
