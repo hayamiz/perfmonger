@@ -23,7 +23,7 @@ EOS
     @output_dir = Dir.pwd
     @output_type = 'pdf'
     @output_prefix = ''
-    @save_gpfiles = true
+    @save_gpfiles = false
   end
 
   def parse_args(argv)
