@@ -106,11 +106,11 @@ EOS
 
   private
   def plot_ioinfo()
-    pdf_filename = @output_prefix + 'read-iops.pdf'
-    gp_filename  = @output_prefix + 'read-iops.gp'
-    dat_filename = @output_prefix + 'read-iops.dat'
+    pdf_filename = @output_prefix + 'iops.pdf'
+    gp_filename  = @output_prefix + 'iops.gp'
+    dat_filename = @output_prefix + 'iops.dat'
     if @output_type != 'pdf'
-      img_filename = @output_prefix + 'read-iops.' + @output_type
+      img_filename = @output_prefix + 'iops.' + @output_type
     else
       img_filename = nil
     end
@@ -134,7 +134,7 @@ EOS
 
           datafile.puts([time - start_time,
                          devices.map{|device|
-                           ioinfo[device]["r/s"]
+                           [ioinfo[device]["r/s"], ioinfo[device]["w/s"]]
                          }].flatten.map(&:to_s).join("\t"))
         end
 
@@ -142,14 +142,16 @@ EOS
 
         col_idx = 2
         plot_stmt_list = devices.map do |device|
-          plot_stmt = "\"#{dat_filename}\" usi 1:#{col_idx} with lines title \"#{device}\""
-          col_idx += 1
+          plot_stmt = []
+          plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx} with lines lw 2 title \"#{device} read\"")
+          plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx + 1} with lines lw 2 title \"#{device} write\"")
+          col_idx += 2
           plot_stmt
-        end
+        end.flatten
 
         gpfile.puts <<EOS
 set term pdfcairo enhanced color
-set title "Read IOPS: #{@data_file}"
+set title "IOPS: #{@data_file}"
 set size 1.0, 1.0
 set output "#{pdf_filename}"
 
@@ -159,6 +161,8 @@ set ylabel "IOPS"
 set grid
 set xrange [#{@offset_time}:*]
 set yrange [0:*]
+
+set key below center
 
 plot #{plot_stmt_list.join(",\\\n     ")}
 EOS
