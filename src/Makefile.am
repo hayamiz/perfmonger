@@ -5,7 +5,7 @@ INCLUDES = $(GLIB_CFLAGS)
 
 SUBDIRS = sysstat ruby
 
-# dist_bin_SCRIPTS = perfmonger
+bin_SCRIPTS = perfmonger
 
 noinst_LTLIBRARIES = libperfmonger.la
 bin_PROGRAMS = perfmonger-record
