@@ -39,6 +39,8 @@ EOS
 
     $stderr.puts("System information is gathered into #{@output_dir}")
 
+    ## Collect generic info.
+
     do_with_message("Saving /proc info") do
       save_proc_info()
     end
@@ -61,6 +63,17 @@ EOS
 
     do_with_message("Saving kernel module info") do
       save_module_info()
+    end
+
+
+    ## Collect vendor specific info
+
+    # LSI MegaRAID
+    megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
+    if File.executable?(megacli_bin) && Process::UID.rid == 0
+      do_with_message("Saving MegaRAID settings") do
+        save_megaraid_info(megacli_bin)
+      end
     end
   end
 
@@ -216,7 +229,7 @@ EOS
         f.puts(`ls -l #{pcidir}`)
         f.puts("")
         Dir.entries(pcidir).select do |filename|
-          ! (["remove", "reset", "rescan", "rom"].include?(filename) ||
+          ! (["remove", "reset", "rescan", "rom", "uevent"].include?(filename) ||
              filename =~ /\Aresource\d+\Z/)
         end.each do |filename|
           path = File.expand_path(filename, pcidir)
@@ -235,6 +248,21 @@ EOS
   def save_module_info()
     File.open("#{@output_dir}/lsmod.log", "w") do |f|
       f.puts(`/sbin/lsmod`)
+    end
+  end
+
+  def save_megaraid_info(megacli_bin)
+    File.open("#{@output_dir}/megaraid.log", "w") do |f|
+      params_list = ["-AdpCount",
+                     "-AdpAllinfo -aALL",
+                     "-AdpBbuCmd -aALL",
+                     "-LDInfo -Lall -aALL",
+                     "-PDList -aALL"
+                    ].each do |params|
+        f.puts("## #{megacli_bin} #{params}")
+        f.puts(`#{megacli_bin} #{params}`.gsub(/\r/, ""))
+        f.puts("")
+      end
     end
   end
 end
