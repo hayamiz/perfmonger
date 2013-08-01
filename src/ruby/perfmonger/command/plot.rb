@@ -8,7 +8,7 @@ module PerfMonger
 module Command
 
 class PlotCommand < BaseCommand
-  register_command 'plot'
+  register_command 'plot', "Plot system performance graphs collected by 'record'"
 
   def initialize
     @parser = OptionParser.new

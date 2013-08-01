@@ -5,10 +5,12 @@ module Command
 class BaseCommand
   class << self
     attr_accessor :command_name
+    attr_accessor :description
 
-    def register_command(command_name)
+    def register_command(command_name, description = "")
       PerfMonger::CLI::Runner.register_command(command_name, self)
       self.command_name = command_name
+      self.description = description
     end
   end
 

@@ -46,7 +46,7 @@ module PerfMonger
 module Command
 
 class ServerCommand < BaseCommand
-  register_command 'server'
+  register_command 'server', 'Launch self-contained HTML5 realtime graph server'
 
   def initialize
     @parser = OptionParser.new

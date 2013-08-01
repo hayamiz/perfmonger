@@ -5,7 +5,7 @@ module PerfMonger
 module Command
 
 class BukkoCommand < BaseCommand
-  register_command 'bukko'
+  register_command 'bukko', 'Gather all possible system config information'
 
   def initialize
     @parser = OptionParser.new

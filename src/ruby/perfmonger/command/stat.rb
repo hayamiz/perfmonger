@@ -6,7 +6,7 @@ module PerfMonger
 module Command
 
 class StatCommand < BaseCommand
-  register_command 'stat'
+  register_command 'stat', "Run a command and record system performance during execution"
 
   def initialize
     super

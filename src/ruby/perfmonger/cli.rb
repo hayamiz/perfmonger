@@ -22,8 +22,9 @@ Usage: #{File.basename($0)} [options] COMMAND [args]
 EOS
 
     ## make list of subcommands
-    command_names = @@commands.keys.sort_by do |command_name|
+    commands = @@commands.values.sort_by do |command|
       # important command first: sort by [priority, name]
+      command_name = command.command_name
       case command_name
       when "record"
         [0, command_name]
@@ -36,10 +37,18 @@ EOS
       end
     end
 
+    max_len = commands.map(&:command_name).map(&:size).max
+    command_list_str = commands.map do |command|
+      # pad command names
+      command_name = command.command_name
+      command_name = command_name + (" " * (max_len - command_name.size))
+      "    " + command_name + "   " + command.description
+    end.join("\n")
+
     subcommand_list = <<EOS
 
 Commands:
-#{command_names.map{|sc| "  " + sc}.join("\n")}
+#{command_list_str}
 EOS
 
     parser.summary_indent = "  "

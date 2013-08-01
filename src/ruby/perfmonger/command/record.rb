@@ -8,7 +8,7 @@ module PerfMonger
 module Command
 
 class RecordCommand < BaseCommand
-  register_command 'record'
+  register_command 'record', 'Record system performance information'
 
   def initialize
     super
