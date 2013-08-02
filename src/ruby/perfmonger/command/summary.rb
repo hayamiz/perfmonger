@@ -174,28 +174,39 @@ EOS
     end
 
     if summary && summary["cpuinfo"]
+      nr_cpu = records.first["cpuinfo"]["nr_cpu"]
+
       usr, sys, iowait, irq, soft, idle =
         [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
          summary['cpuinfo']['all']['%sys'],
          summary['cpuinfo']['all']['%iowait'],
          summary['cpuinfo']['all']['%irq'],
          summary['cpuinfo']['all']['%soft'],
-         summary['cpuinfo']['all']['%idle']]
-      other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max
+         summary['cpuinfo']['all']['%idle']].map do |val|
+        val * nr_cpu
+      end
 
-      usr, sys, iowait, irq, soft, other =
-        [usr, sys, iowait, irq, soft, other].map do |value|
-        sprintf("% 2.3f", value)
+      other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max * nr_cpu
+
+      usr, sys, iowait, irq, soft, other, idle =
+        [usr, sys, iowait, irq, soft, other, idle].map do |value|
+        sprintf("%.2f", value)
       end
 
       puts("")
-      puts("* Average CPU usage")
-      puts("     %usr: #{usr}")
-      puts("     %sys: #{sys}")
-      puts("  %iowait: #{iowait}")
-      puts("     %irq: #{irq}")
-      puts("    %soft: #{soft}")
-      puts("   %other: #{other}")
+      puts <<EOS
+* Average CPU usage (MAX: #{100 * nr_cpu} %)
+  * Non idle portion:
+       %usr: #{usr}
+       %sys: #{sys}
+       %irq: #{irq}
+      %soft: #{soft}
+     %other: #{other}
+  * Idle portion:
+    %iowait: #{iowait}
+      %idle: #{idle}
+
+EOS
     end
 
     if summary && summary['ioinfo']
