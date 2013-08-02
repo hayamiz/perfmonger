@@ -1,15 +1,15 @@
 
 require 'spec_helper'
 
-describe PerfMonger::Command::StatCommand do
+describe PerfMonger::Command::SummaryCommand do
   before(:each) do
-    @stat = PerfMonger::Command::StatCommand.new
+    @summary = PerfMonger::Command::SummaryCommand.new
     @logfile = data_file('test.log')
   end
 
   describe 'read_logfile method' do
     it 'should return 3 valid records' do
-      records = @stat.read_logfile(@logfile)
+      records = @summary.read_logfile(@logfile)
       records.size.should == 3
       records.each do |record|
         record.should be_a Hash
@@ -39,15 +39,15 @@ describe PerfMonger::Command::StatCommand do
 
   describe 'make_summary method' do
     before(:each) do
-      @records = @stat.read_logfile(@logfile)
+      @records = @summary.read_logfile(@logfile)
     end
 
     it 'should return nil for empty records' do
-      @stat.make_summary([]).should be_nil
+      @summary.make_summary([]).should be_nil
     end
 
     it 'should return valid format result' do
-      summary = @stat.make_summary(@records)
+      summary = @summary.make_summary(@records)
 
       summary.should be_a Hash
       summary.should include "time"
@@ -94,7 +94,7 @@ describe PerfMonger::Command::StatCommand do
       @records[2]["ioinfo"]["sda"]["r/s"] = 6.0
 
       # avg. r/s should be ((3.0 * 1.0 + 6.0 * 3.0) / 3.0) == 5.0
-      summary = @stat.make_summary(@records)
+      summary = @summary.make_summary(@records)
 
       summary["ioinfo"]["sda"]["r/s"].should be_within(0.005).of(5.0)
     end
@@ -107,7 +107,7 @@ describe PerfMonger::Command::StatCommand do
       @records[2]["ioinfo"]["sda"]["r/s"] = 200.0
       @records[2]["ioinfo"]["sda"]["r_await"] = 4.0
 
-      summary = @stat.make_summary(@records)
+      summary = @summary.make_summary(@records)
 
       summary["ioinfo"]["sda"]["r_await"].should be_within(0.003).of(3.0)
     end

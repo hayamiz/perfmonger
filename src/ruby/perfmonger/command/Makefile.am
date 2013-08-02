@@ -11,4 +11,5 @@ dist_perfmonger_rubylib_perfmonger_command_DATA =	\
 	server.rb					\
 	stat.rb					\
 	stat_option.rb					\
+	summary.rb					\
 	bukko.rb
