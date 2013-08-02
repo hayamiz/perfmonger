@@ -1,6 +1,8 @@
 ## XXXX-XX-XX: PerfMonger X.X.X released
 
   * New features
+    * Add new subcommands
+      * 'perfmonger summary LOG_FILE' ... split summarization part of 'stat' as a individual subcommand
   * Bug fixes
     * Corrected invalid %other in 'stat' summary
 
