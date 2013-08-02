@@ -181,13 +181,17 @@ class StatCommand < BaseCommand
     end
 
     if summary && summary["cpuinfo"]
-      usr, sys, iowait, irq, soft, other =
+      usr, sys, iowait, irq, soft, idle =
         [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
          summary['cpuinfo']['all']['%sys'],
          summary['cpuinfo']['all']['%iowait'],
          summary['cpuinfo']['all']['%irq'],
          summary['cpuinfo']['all']['%soft'],
-         [100.0 - summary['cpuinfo']['all']['%idle'], 0.0].max].map do |value|
+         summary['cpuinfo']['all']['%idle']]
+      other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max
+
+      usr, sys, iowait, irq, soft, other =
+        [usr, sys, iowait, irq, soft, other].map do |value|
         sprintf("% 2.3f", value)
       end
 
