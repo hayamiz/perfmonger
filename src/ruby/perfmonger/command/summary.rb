@@ -205,7 +205,6 @@ EOS
   * Idle portion:
     %iowait: #{iowait}
       %idle: #{idle}
-
 EOS
     end
 
