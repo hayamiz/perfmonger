@@ -106,13 +106,16 @@ EOS
 
   private
   def plot_ioinfo()
-    pdf_filename = @output_prefix + 'iops.pdf'
-    gp_filename  = @output_prefix + 'iops.gp'
-    dat_filename = @output_prefix + 'iops.dat'
+    iops_pdf_filename = @output_prefix + 'iops.pdf'
+    transfer_pdf_filename = @output_prefix + 'transfer.pdf'
+    gp_filename  = @output_prefix + 'io.gp'
+    dat_filename = @output_prefix + 'io.dat'
     if @output_type != 'pdf'
-      img_filename = @output_prefix + 'iops.' + @output_type
+      iops_img_filename = @output_prefix + 'iops.' + @output_type
+      transfer_img_filename = @output_prefix + 'transfer.' + @output_type
     else
-      img_filename = nil
+      iops_img_filename = nil
+      transfer_img_filename = nil
     end
 
     Dir.mktmpdir do |working_dir|
@@ -134,18 +137,30 @@ EOS
 
           datafile.puts([time - start_time,
                          devices.map{|device|
-                           [ioinfo[device]["r/s"], ioinfo[device]["w/s"]]
+                           [ioinfo[device]["r/s"], ioinfo[device]["w/s"],
+                            ioinfo[device]["rsec/s"] * 512 / 1024 / 1024, # in MB/s
+                            ioinfo[device]["wsec/s"] * 512 / 1024 / 1024, # in MB/s
+                           ]
                          }].flatten.map(&:to_s).join("\t"))
         end
 
         datafile.close
 
         col_idx = 2
-        plot_stmt_list = devices.map do |device|
+        iops_plot_stmt_list = devices.map do |device|
           plot_stmt = []
           plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx} with lines lw 2 title \"#{device} read\"")
           plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx + 1} with lines lw 2 title \"#{device} write\"")
-          col_idx += 2
+          col_idx += 4
+          plot_stmt
+        end.flatten
+
+        col_idx = 4
+        transfer_plot_stmt_list = devices.map do |device|
+          plot_stmt = []
+          plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx} with lines lw 2 title \"#{device} read\"")
+          plot_stmt.push("\"#{dat_filename}\" usi 1:#{col_idx + 1} with lines lw 2 title \"#{device} write\"")
+          col_idx += 4
           plot_stmt
         end.flatten
 
@@ -153,7 +168,7 @@ EOS
 set term pdfcairo enhanced color
 set title "IOPS: #{@data_file}"
 set size 1.0, 1.0
-set output "#{pdf_filename}"
+set output "#{iops_pdf_filename}"
 
 set xlabel "elapsed time [sec]"
 set ylabel "IOPS"
@@ -164,7 +179,13 @@ set yrange [0:*]
 
 set key below center
 
-plot #{plot_stmt_list.join(",\\\n     ")}
+plot #{iops_plot_stmt_list.join(",\\\n     ")}
+
+
+set title "Transfer rate: #{@data_file}"
+set output "#{transfer_pdf_filename}"
+set ylabel "transfer rate [MB/s]"
+plot #{transfer_plot_stmt_list.join(",\\\n     ")}
 EOS
 
         gpfile.close
@@ -172,11 +193,14 @@ EOS
         system("gnuplot #{gpfile.path}")
 
         if @output_type != 'pdf'
-          system("convert -background white #{pdf_filename} #{img_filename}")
+          system("convert -background white #{iops_pdf_filename} #{iops_img_filename}")
+          system("convert -background white #{transfer_pdf_filename} #{transfer_img_filename}")
         end
 
-        FileUtils.copy(pdf_filename, @output_dir)
-        FileUtils.copy(img_filename, @output_dir) if img_filename
+        FileUtils.copy(iops_pdf_filename, @output_dir)
+        FileUtils.copy(transfer_pdf_filename, @output_dir)
+        FileUtils.copy(iops_img_filename, @output_dir) if iops_img_filename
+        FileUtils.copy(transfer_img_filename, @output_dir) if transfer_img_filename
         if @save_gpfiles
           FileUtils.copy(gp_filename , @output_dir)
           FileUtils.copy(dat_filename, @output_dir)
