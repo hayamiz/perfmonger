@@ -67,6 +67,10 @@ EOS
       save_module_info()
     end
 
+    do_with_message("Saving distro info") do
+      save_distro_info()
+    end
+
 
     ## Collect vendor specific info
 
@@ -286,6 +290,35 @@ EOS
   def save_module_info()
     File.open("#{@output_dir}/lsmod.log", "w") do |f|
       f.puts(`/sbin/lsmod`)
+  def save_distro_info()
+    File.open("#{@output_dir}/distro.log", "w") do |f|
+      if system("which uname >/dev/null 2>&1")
+        content = `uname -a`
+        f.puts("## uname -a")
+        f.puts(content)
+        f.puts("")
+      end
+
+      if system("which lsb_release >/dev/null 2>&1")
+        content = `lsb_release -a 2>/dev/null`
+        f.puts("## lsb_release -a")
+        f.puts(content)
+        f.puts("")
+      end
+
+      if File.exists?("/etc/debian_version")
+        content = read_file("/etc/debian_version")
+        f.puts("## /etc/debian_version")
+        f.puts(content)
+        f.puts("")
+      end
+
+      if File.exists?("/etc/redhat-release")
+        content = read_file("/etc/redhat-release")
+        f.puts("## /etc/redhat-release")
+        f.puts(content)
+        f.puts("")
+      end
     end
   end
 
