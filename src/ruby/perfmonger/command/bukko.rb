@@ -249,8 +249,12 @@ EOS
         f.puts(`ls -l #{pcidir}`)
         f.puts("")
         Dir.entries(pcidir).select do |filename|
-          ! (["remove", "reset", "rescan", "rom", "uevent"].include?(filename) ||
-             filename =~ /\Aresource\d+\Z/)
+          ! (["remove", "reset", "rescan", "rom", "uevent", "config",
+              "vpd"
+             ].include?(filename) ||
+             filename =~ /\Aresource\d+\Z/ ||
+             filename =~ /\Aresource\d+_wc\Z/ # DDN device specific node (?)
+             )
         end.each do |filename|
           path = File.expand_path(filename, pcidir)
           next unless File.file?(path)
