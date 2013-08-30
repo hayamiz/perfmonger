@@ -188,23 +188,26 @@ EOS
 
       other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max * nr_cpu
 
-      usr, sys, iowait, irq, soft, other, idle =
+      usr_str, sys_str, iowait_str, irq_str, soft_str, other_str, idle_str =
         [usr, sys, iowait, irq, soft, other, idle].map do |value|
         sprintf("%.2f", value)
       end
 
+      total_non_idle_str = sprintf("%.2f", usr + sys + irq + soft + other)
+      total_idle_str = sprintf("%.2f", iowait + idle)
+
       puts("")
       puts <<EOS
 * Average CPU usage (MAX: #{100 * nr_cpu} %)
-  * Non idle portion:
-       %usr: #{usr}
-       %sys: #{sys}
-       %irq: #{irq}
-      %soft: #{soft}
-     %other: #{other}
-  * Idle portion:
-    %iowait: #{iowait}
-      %idle: #{idle}
+  * Non idle portion: #{total_non_idle_str}
+       %usr: #{usr_str}
+       %sys: #{sys_str}
+       %irq: #{irq_str}
+      %soft: #{soft_str}
+     %other: #{other_str}
+  * Idle portion: #{total_idle_str}
+    %iowait: #{iowait_str}
+      %idle: #{idle_str}
 EOS
     end
 
