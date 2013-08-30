@@ -177,7 +177,20 @@ EOS
         f.puts("## ls -l #{sd_dev}")
         f.puts(`ls -l #{sd_dev}`)
         f.puts("")
-        ['device/queue_depth', 'queue/scheduler', 'queue/nr_requests'].each do |entity|
+        ['device/queue_depth',
+         'device/queue_type',
+         'device/iorequest_cnt',
+         'device/vendor',
+         'queue/scheduler',
+         'queue/nr_requests',
+         'queue/rq_affinity',
+         'queue/nomerges',
+         'queue/add_random',
+         'queue/rotational',
+         'queue/max_hw_sectors_kb',
+         'queue/physical_block_size',
+         'queue/optimal_io_size',
+        ].each do |entity|
           path = "#{sd_dev}/#{entity}"
           if File.exists?(path)
             f.puts("## #{path}")
