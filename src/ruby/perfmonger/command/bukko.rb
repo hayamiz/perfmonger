@@ -160,9 +160,14 @@ EOS
   end
 
   def save_irq_info()
-    Dir.glob('/proc/irq/*/smp_affinity').each do |path|
-      irqno = File.basename(File.dirname(path))
-      copy_file(path,  "#{@output_dir}/irq-#{irqno}-smp-affinity.log")
+    File.open("#{@output_dir}/irq-smp-affinity.log", "w") do |f|
+      Dir.glob('/proc/irq/*/smp_affinity').sort_by do |path|
+        irqno = File.basename(File.dirname(path)).to_i
+      end.each do |path|
+        f.puts("## cat #{path}")
+        f.puts(`cat #{path}`)
+        f.puts("")
+      end
     end
   end
 
