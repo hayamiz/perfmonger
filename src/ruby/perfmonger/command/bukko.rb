@@ -248,6 +248,20 @@ EOS
             f.puts("")
           end
         end
+
+        msi_irqs_dir = File.expand_path("msi_irqs", pcidir)
+        if File.directory?(msi_irqs_dir)
+          f.puts("## ls -l #{msi_irqs_dir}")
+          f.puts(`ls -l #{msi_irqs_dir}`)
+          f.puts("")
+
+          Dir.glob("#{msi_irqs_dir}/*/mode").each do |mode_path|
+            content = read_file(mode_path)
+            f.puts("## #{mode_path}")
+            f.puts(content)
+            f.puts("")
+          end
+        end
       end
     end
   end
