@@ -37,6 +37,8 @@ EOS
   def run(argv)
     parse_args(argv)
 
+    ENV['LANG'] = 'C'
+
     $stderr.puts("System information is gathered into #{@output_dir}")
 
     ## Collect generic info.
