@@ -132,6 +132,24 @@ EOS
     end
   end
 
+  def find_executable(command_name)
+    # try to find lspci
+    dirs = ["/sbin", "/usr/sbin", "/usr/local/sbin", "/usr/bin", "/usr/local/bin"]
+    dirs += ENV['PATH'].split(":")
+
+    bindir = dirs.find do |dir|
+      File.executable?(File.expand_path(command_name, dir))
+    end
+
+    if bindir
+      File.expand_path(command_name, bindir)
+    else
+      @errors << RuntimeError.new("#{command_name}(1) not found")
+      nil
+    end
+  end
+
+
   def save_proc_info()
     ["cpuinfo", "meminfo", "mdstat", "mounts", "interrupts",
      "diskstats", "partitions", "ioports",
@@ -225,19 +243,11 @@ EOS
   end
 
   def save_pci_info()
-    # try to find lspci
-    dirs = ["/sbin", "/usr/sbin", "/usr/local/sbin", "/usr/bin", "/usr/local/bin"]
-    dirs += ENV['PATH'].split(":")
+    lspci_bin = find_executable("lspci")
 
-    lspci_bindir = dirs.find do |dir|
-      File.executable?(File.expand_path("lspci", dir))
-    end
-
-    unless lspci_bindir
-      @errors << RuntimeError.new("lspci(1) not found")
-    else
+    if lspci_bin
       File.open("#{@output_dir}/lspci.log", "w") do |f|
-        f.puts(`#{lspci_bindir}/lspci -D -vvv`)
+        f.puts(`#{lspci_bin} -D -vvv`)
       end
     end
 
