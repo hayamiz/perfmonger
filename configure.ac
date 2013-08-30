@@ -5,10 +5,13 @@ AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE($PACKAGE_NAME, $PACKAGE_VERSION)
+AM_INIT_AUTOMAKE([check-news foreign 1.11 -Wall -Wno-portability silent-rules tar-pax subdir-objects])
 AC_SUBST(PACKAGE_VERSION)
 
+AC_PROG_CC_STDC
 AC_PROG_LIBTOOL
+AM_SILENT_RULES([yes])
+AC_PREFIX_DEFAULT([/usr/local])
 
 AC_CONFIG_FILES([Makefile
 	src/Makefile
