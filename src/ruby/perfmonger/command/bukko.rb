@@ -298,8 +298,52 @@ EOS
   end
 
   def save_module_info()
-    File.open("#{@output_dir}/lsmod.log", "w") do |f|
-      f.puts(`/sbin/lsmod`)
+    modules = []
+
+    if lsmod_bin = find_executable("lsmod")
+      File.open("#{@output_dir}/lsmod.log", "w") do |f|
+        content = `#{lsmod_bin}`
+        f.puts(content)
+
+        lines = content.split("\n")
+        lines.shift # omit 1st line (label)
+        modules = lines.map do |line|
+          line.split[0]
+        end
+      end
+    else
+      return
+    end
+
+    modinfo_bin = find_executable("modinfo")
+
+    Dir.glob("/sys/module/*/parameters") do |params_dir|
+      module_name = File.basename(File.dirname(params_dir))
+      next unless modules.include?(module_name)
+
+      File.open("#{@output_dir}/module-#{module_name}.log", "w") do |f|
+        Dir.glob("#{params_dir}/*").each do |param_file|
+          param_name = File.basename(param_file)
+          # blacklisting
+          next if module_name == "apparmor" && param_name == "audit"
+          next if module_name == "apparmor" && param_name == "mode"
+
+          content = read_file(param_file)
+          f.puts("## #{param_file}")
+          f.puts(content)
+          f.puts("")
+        end
+
+        if modinfo_bin
+          content = `#{modinfo_bin} #{module_name}`
+          f.puts("## modinfo #{module_name}")
+          f.puts(content)
+          f.puts("")
+        end
+      end
+    end
+  end
+
   def save_distro_info()
     File.open("#{@output_dir}/distro.log", "w") do |f|
       if system("which uname >/dev/null 2>&1")
