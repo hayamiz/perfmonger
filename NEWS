@@ -3,6 +3,10 @@
   * New features
     * Add new subcommands
       * 'perfmonger summary LOG_FILE' ... split summarization part of 'stat' as a individual subcommand
+  * Changes
+    * bukko subcommand
+      * Detailed PCIe config collection
+      * Detailed IO queue config collection
   * Bug fixes
     * Corrected invalid %other in 'stat' summary
 
