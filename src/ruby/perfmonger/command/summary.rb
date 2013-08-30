@@ -212,6 +212,8 @@ EOS
     end
 
     if summary && summary['ioinfo']
+      total_r_iops, total_w_iops, total_r_sec, total_w_sec = [0.0] * 4
+
       summary['ioinfo']['devices'].each do |device|
         r_iops, w_iops, r_sec, w_sec, r_await, w_await =
           [summary['ioinfo'][device]['r/s'],
@@ -221,11 +223,16 @@ EOS
            summary['ioinfo'][device]['r_await'],
            summary['ioinfo'][device]['w_await']]
 
-        r_iops, w_iops, r_sec, w_sec = [r_iops, w_iops, r_sec, w_sec].map do |value|
+        total_r_iops += r_iops
+        total_w_iops += w_iops
+        total_r_sec  += r_sec
+        total_w_sec  += w_sec
+
+        r_iops_str, w_iops_str, r_sec_str, w_sec_str = [r_iops, w_iops, r_sec, w_sec].map do |value|
           sprintf("%.2f", value)
         end
 
-        r_await, w_await = [r_await, w_await].map do |await|
+        r_await_str, w_await_str = [r_await, w_await].map do |await|
           if await < 1.0
             sprintf("%.1f usec", await * 1000)
           else
@@ -235,13 +242,29 @@ EOS
 
         puts("")
         puts("* Average DEVICE usage: #{device}")
-        puts("        read IOPS: #{r_iops}")
-        puts("       write IOPS: #{w_iops}")
-        puts("  read throughput: #{r_sec} MB/s")
-        puts(" write throughput: #{w_sec} MB/s")
-        puts("     read latency: #{r_await}")
-        puts("    write latency: #{w_await}")
+        puts("        read IOPS: #{r_iops_str}")
+        puts("       write IOPS: #{w_iops_str}")
+        puts("  read throughput: #{r_sec_str} MB/s")
+        puts(" write throughput: #{w_sec_str} MB/s")
+        puts("     read latency: #{r_await_str}")
+        puts("    write latency: #{w_await_str}")
       end
+
+      if summary['ioinfo']['devices'].size > 1
+        total_r_iops_str, total_w_iops_str, total_r_sec_str, total_w_sec_str =
+          [total_r_iops, total_w_iops, total_r_sec, total_w_sec].map do |value|
+          sprintf("%.2f", value)
+        end
+
+        puts("")
+        puts("* TOTAL DEVICE usage: #{summary['ioinfo']['devices'].join(', ')}")
+        puts("        read IOPS: #{total_r_iops_str}")
+        puts("       write IOPS: #{total_w_iops_str}")
+        puts("  read throughput: #{total_r_sec_str} MB/s")
+        puts(" write throughput: #{total_w_sec_str} MB/s")
+      end
+
+      puts("")
     end
   end
 end
