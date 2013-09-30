@@ -166,7 +166,7 @@ EOS
 
         gpfile.puts <<EOS
 set term pdfcairo enhanced color
-set title "IOPS: #{@data_file}"
+set title "IOPS: #{File.basename(@data_file)}"
 set size 1.0, 1.0
 set output "#{iops_pdf_filename}"
 
@@ -182,7 +182,7 @@ set key below center
 plot #{iops_plot_stmt_list.join(",\\\n     ")}
 
 
-set title "Transfer rate: #{@data_file}"
+set title "Transfer rate: #{File.basename(@data_file)}"
 set output "#{transfer_pdf_filename}"
 set ylabel "transfer rate [MB/s]"
 plot #{transfer_plot_stmt_list.join(",\\\n     ")}
@@ -273,7 +273,7 @@ EOS
         pdf_file = File.join(@output_dir, "cpu.pdf")
         gpfile.puts <<EOS
 set term pdfcairo enhanced color
-set title "CPU usage: #{@data_file} (max: #{nr_cpu*100}%)"
+set title "CPU usage: #{File.basename(@data_file)} (max: #{nr_cpu*100}%)"
 set output "#{pdf_filename}"
 set key outside center bottom horizontal
 set size 1.0, 1.0
