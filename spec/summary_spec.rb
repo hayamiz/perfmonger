@@ -112,4 +112,53 @@ describe PerfMonger::Command::SummaryCommand do
       summary["ioinfo"]["sda"]["r_await"].should be_within(0.003).of(3.0)
     end
   end
+
+  it "should respond to make_accumulation" do
+    @summary.should respond_to(:make_accumulation)
+  end
+
+  describe "make_accumulation" do
+    before(:each) do
+      @records = @summary.read_logfile(@logfile)
+    end
+
+    it "should return valid format" do
+      accum = @summary.make_accumulation(@records)
+      accum.should be_a Hash
+      accum.keys.should include "ioinfo"
+      # accum.keys.should include "cpuinfo"
+    end
+
+    it "should return nil if no ioinfo" do
+      @records.each do |record|
+        record.delete("ioinfo")
+      end
+
+      @summary.make_accumulation(@records).should be_nil
+    end
+
+    it "should return nil if only 1 record given" do
+      @summary.make_accumulation([@records.first]).should be_nil
+    end
+
+    it "should return valid IO data volume accumulation" do
+      @records[0]["time"] = 0.0
+      @records[0]["ioinfo"]["sda"]["r/s"] = 0.0
+      @records[0]["ioinfo"]["sda"]["rsec/s"] = 0.0
+      @records[0]["ioinfo"]["sda"]["avgrq-sz"] = 16.0
+      @records[1]["time"] = 2.0
+      @records[1]["ioinfo"]["sda"]["r/s"] = 2.0
+      @records[1]["ioinfo"]["sda"]["rsec/s"] = 2.0
+      @records[1]["ioinfo"]["sda"]["avgrq-sz"] = 16.0
+      @records[2]["time"] = 4.0
+      @records[2]["ioinfo"]["sda"]["r/s"] = 1.0
+      @records[2]["ioinfo"]["sda"]["rsec/s"] = 4.0
+      @records[2]["ioinfo"]["sda"]["avgrq-sz"] = 16.0
+
+      accum = @summary.make_accumulation(@records)
+
+      accum["ioinfo"]["sda"]["read_requests"].should be_within(0.006).of(6.0)
+      accum["ioinfo"]["sda"]["read_bytes"].should be_within(1.0).of(6144.0)
+    end
+  end
 end

@@ -53,6 +53,46 @@ EOS
     end.compact
   end
 
+  def make_accumulation(records)
+    unless records.all?{|record| record.has_key?("ioinfo")}
+      return nil
+    end
+    unless records.size > 1
+      return nil
+    end
+
+    accum = Hash.new
+
+    devices = records.first["ioinfo"]["devices"]
+    accum["ioinfo"] = Hash.new
+
+    devices.each do |device|
+      read_requests = 0
+      read_bytes = 0
+      write_requests = 0
+      write_bytes = 0
+
+      (1..(records.size - 1)).each do |idx|
+        last_record = records[idx - 1]
+        record = records[idx]
+        dt = record["time"] - last_record["time"]
+
+        read_requests += record["ioinfo"][device]["r/s"] * dt
+        write_requests += record["ioinfo"][device]["w/s"] * dt
+        read_bytes += record["ioinfo"][device]["rsec/s"] * 512 * dt
+        write_bytes += record["ioinfo"][device]["wsec/s"] * 512 * dt
+      end
+
+      accum["ioinfo"][device] = Hash.new
+      accum["ioinfo"][device]["read_requests"] = read_requests
+      accum["ioinfo"][device]["read_bytes"] = read_bytes
+      accum["ioinfo"][device]["write_requests"] = write_requests
+      accum["ioinfo"][device]["write_bytes"] = write_bytes
+    end
+
+    accum
+  end
+
   def make_summary(records)
     if records.empty?
       return nil
@@ -163,9 +203,13 @@ EOS
   def show_summary(logfile, summary_title)
     records = read_logfile(logfile)
     summary = make_summary(records)
+    accum = make_accumulation(records)
 
     puts("")
     puts("== Performance summary of '#{summary_title}' ==")
+    puts("")
+    duration = sprintf("%.2f", records.last["time"] - records.first["time"])
+    puts("record duration: #{duration} sec")
 
     if summary.nil?
       puts("")
@@ -240,6 +284,20 @@ EOS
           end
         end
 
+        total_r_bytes_str, total_w_bytes_str = ["read_bytes", "write_bytes"].map do |key|
+          bytes = accum["ioinfo"][device][key]
+          if bytes > 2**30
+            sprintf("%.2f GB", bytes / 2**30)
+          elsif bytes > 2**20
+            sprintf("%.2f MB", bytes / 2**20)
+          elsif bytes > 2**10
+            sprintf("%.2f KB", bytes / 2**10)
+          else
+            sprintf("%.2f bytes", bytes)
+          end
+        end
+
+
         puts("")
         puts("* Average DEVICE usage: #{device}")
         puts("        read IOPS: #{r_iops_str}")
@@ -248,6 +306,8 @@ EOS
         puts(" write throughput: #{w_sec_str} MB/s")
         puts("     read latency: #{r_await_str}")
         puts("    write latency: #{w_await_str}")
+        puts("      read amount: #{total_r_bytes_str}")
+        puts("     write amount: #{total_w_bytes_str}")
       end
 
       if summary['ioinfo']['devices'].size > 1
