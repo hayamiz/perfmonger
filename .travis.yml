@@ -1,7 +1,7 @@
 
 language: ruby
 install:
-  - apt-get install libglib2.0-dev
+  - sudo apt-get install libglib2.0-dev
 before_script:
   - ./configure
 rvm:
