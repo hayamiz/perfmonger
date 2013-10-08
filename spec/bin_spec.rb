@@ -16,7 +16,12 @@ describe "PerfmongerCommand" do
 
   describe 'stat subcommand' do
     it 'should print "Execution time: XXX.XXX"' do
-      `#{@perfmonger_command} stat -- sleep 1`.should match(/^Execution time: (\d+)\.(\d+)$/)
+      if File.exists?("/proc/diskstats")
+        `#{@perfmonger_command} stat -- sleep 1`.should match(/^Execution time: (\d+)\.(\d+)$/)
+      else
+        # do nothing
+        true.should be_true
+      end
     end
   end
 end
