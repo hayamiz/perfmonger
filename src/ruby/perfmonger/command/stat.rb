@@ -35,10 +35,22 @@ class StatCommand < BaseCommand
     record_cmd = @option.make_command
 
     begin
-      record_pid = Process.spawn(*record_cmd)
+      if RUBY_VERSION >= '1.9'
+        record_pid = Process.spawn(*record_cmd)
+      else
+        record_pid = Process.fork do
+          Process.exec(*record_cmd)
+        end
+      end
 
       @start_time = Time.now
-      command_pid = Process.spawn(*@argv)
+      if RUBY_VERSION >= '1.9'
+        command_pid = Process.spawn(*@argv)
+      else
+        command_pid = Process.fork do
+          system(*@argv)
+        end
+      end
       Process.wait(command_pid)
     ensure
       @end_time = Time.now
