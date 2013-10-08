@@ -13,4 +13,10 @@ describe "PerfmongerCommand" do
   it 'should print version number if --version specified' do
     `#{@perfmonger_command} --version`.should include(PerfMonger::VERSION)
   end
+
+  describe 'stat subcommand' do
+    it 'should print "Execution time: XXX.XXX"' do
+      `#{@perfmonger_command} stat -- sleep 1`.should match(/^Execution time: (\d+)\.(\d+)$/)
+    end
+  end
 end
