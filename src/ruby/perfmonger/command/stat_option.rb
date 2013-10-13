@@ -3,6 +3,8 @@ module PerfMonger
 module Command
 
 class StatOption < RecordOption
+  attr_reader :json
+
   private
   def initialize
     super()
@@ -15,6 +17,11 @@ Options:
 EOS
 
     @logfile = './perfmonger.log'
+    @json = false
+
+    @parser.on('--json', "Output summary in JSON") do
+      @json = true
+    end
   end
 end
 

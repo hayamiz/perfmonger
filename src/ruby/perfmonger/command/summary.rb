@@ -15,6 +15,12 @@ Usage: perfmonger summary [options] LOG_FILE
 
 Options:
 EOS
+
+    @json = false
+
+    @parser.on('--json', "Output summary in JSON") do
+      @json = true
+    end
   end
 
   def parse_args(argv)
@@ -214,43 +220,61 @@ EOS
     summary = make_summary(records)
     accum = make_accumulation(records)
 
-    puts("")
-    puts("== Performance summary of '#{summary_title}' ==")
-    puts("")
-    duration = sprintf("%.2f", records.last["time"] - records.first["time"])
-    puts("record duration: #{duration} sec")
+    duration = records.last["time"] - records.first["time"]
 
-    if summary.nil?
-      puts("")
-      puts("No performance info was collected.")
-      puts("This is because command execution time was too short, or something went wrong.")
-    end
+    if @json
+      output = Hash.new
 
-    if summary && summary["cpuinfo"]
-      nr_cpu = records.first["cpuinfo"]["nr_cpu"]
+      output["duration"] = duration
+      if summary
+        if summary["cpuinfo"]
+          output["cpuinfo"] = summary["cpuinfo"]
+        end
 
-      usr, sys, iowait, irq, soft, idle =
-        [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
-         summary['cpuinfo']['all']['%sys'],
-         summary['cpuinfo']['all']['%iowait'],
-         summary['cpuinfo']['all']['%irq'],
-         summary['cpuinfo']['all']['%soft'],
-         summary['cpuinfo']['all']['%idle']].map do |val|
-        val * nr_cpu
+        if summary['ioinfo']
+          output["ioinfo"] = summary["ioinfo"]
+        end
       end
 
-      other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max * nr_cpu
+      puts output.to_json
+    else
+      puts("")
+      puts("== Performance summary of '#{summary_title}' ==")
+      puts("")
+      duration_str = sprintf("%.2f", duration)
+      puts("record duration: #{duration_str} sec")
 
-      usr_str, sys_str, iowait_str, irq_str, soft_str, other_str, idle_str =
-        [usr, sys, iowait, irq, soft, other, idle].map do |value|
-        sprintf("%.2f", value)
+      if summary.nil?
+        puts("")
+        puts("No performance info was collected.")
+        puts("This is because command execution time was too short, or something went wrong.")
       end
 
-      total_non_idle_str = sprintf("%.2f", usr + sys + irq + soft + other)
-      total_idle_str = sprintf("%.2f", iowait + idle)
+      if summary && summary["cpuinfo"]
+        nr_cpu = records.first["cpuinfo"]["nr_cpu"]
 
-      puts("")
-      puts <<EOS
+        usr, sys, iowait, irq, soft, idle =
+          [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
+           summary['cpuinfo']['all']['%sys'],
+           summary['cpuinfo']['all']['%iowait'],
+           summary['cpuinfo']['all']['%irq'],
+           summary['cpuinfo']['all']['%soft'],
+           summary['cpuinfo']['all']['%idle']].map do |val|
+          val * nr_cpu
+        end
+
+        other = [100.0 - (usr + sys + iowait + irq + soft + idle), 0.0].max * nr_cpu
+
+        usr_str, sys_str, iowait_str, irq_str, soft_str, other_str, idle_str =
+          [usr, sys, iowait, irq, soft, other, idle].map do |value|
+          sprintf("%.2f", value)
+        end
+
+        total_non_idle_str = sprintf("%.2f", usr + sys + irq + soft + other)
+        total_idle_str = sprintf("%.2f", iowait + idle)
+
+        puts("")
+        puts <<EOS
 * Average CPU usage (MAX: #{100 * nr_cpu} %)
   * Non idle portion: #{total_non_idle_str}
        %usr: #{usr_str}
@@ -262,78 +286,79 @@ EOS
     %iowait: #{iowait_str}
       %idle: #{idle_str}
 EOS
-    end
-
-    if summary && summary['ioinfo']
-      total_r_iops, total_w_iops, total_r_sec, total_w_sec = [0.0] * 4
-
-      summary['ioinfo']['devices'].each do |device|
-        r_iops, w_iops, r_sec, w_sec, r_await, w_await =
-          [summary['ioinfo'][device]['r/s'],
-           summary['ioinfo'][device]['w/s'],
-           summary['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
-           summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0,
-           summary['ioinfo'][device]['r_await'],
-           summary['ioinfo'][device]['w_await']]
-
-        total_r_iops += r_iops
-        total_w_iops += w_iops
-        total_r_sec  += r_sec
-        total_w_sec  += w_sec
-
-        r_iops_str, w_iops_str, r_sec_str, w_sec_str = [r_iops, w_iops, r_sec, w_sec].map do |value|
-          sprintf("%.2f", value)
-        end
-
-        r_await_str, w_await_str = [r_await, w_await].map do |await|
-          if await < 1.0
-            sprintf("%.1f usec", await * 1000)
-          else
-            sprintf("%.2f msec", await)
-          end
-        end
-
-        total_r_bytes_str, total_w_bytes_str = ["read_bytes", "write_bytes"].map do |key|
-          bytes = accum["ioinfo"][device][key]
-          if bytes > 2**30
-            sprintf("%.2f GB", bytes / 2**30)
-          elsif bytes > 2**20
-            sprintf("%.2f MB", bytes / 2**20)
-          elsif bytes > 2**10
-            sprintf("%.2f KB", bytes / 2**10)
-          else
-            sprintf("%.2f bytes", bytes)
-          end
-        end
-
-
-        puts("")
-        puts("* Average DEVICE usage: #{device}")
-        puts("        read IOPS: #{r_iops_str}")
-        puts("       write IOPS: #{w_iops_str}")
-        puts("  read throughput: #{r_sec_str} MB/s")
-        puts(" write throughput: #{w_sec_str} MB/s")
-        puts("     read latency: #{r_await_str}")
-        puts("    write latency: #{w_await_str}")
-        puts("      read amount: #{total_r_bytes_str}")
-        puts("     write amount: #{total_w_bytes_str}")
       end
 
-      if summary['ioinfo']['devices'].size > 1
-        total_r_iops_str, total_w_iops_str, total_r_sec_str, total_w_sec_str =
-          [total_r_iops, total_w_iops, total_r_sec, total_w_sec].map do |value|
-          sprintf("%.2f", value)
+      if summary && summary['ioinfo']
+        total_r_iops, total_w_iops, total_r_sec, total_w_sec = [0.0] * 4
+
+        summary['ioinfo']['devices'].each do |device|
+          r_iops, w_iops, r_sec, w_sec, r_await, w_await =
+            [summary['ioinfo'][device]['r/s'],
+             summary['ioinfo'][device]['w/s'],
+             summary['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
+             summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0,
+             summary['ioinfo'][device]['r_await'],
+             summary['ioinfo'][device]['w_await']]
+
+          total_r_iops += r_iops
+          total_w_iops += w_iops
+          total_r_sec  += r_sec
+          total_w_sec  += w_sec
+
+          r_iops_str, w_iops_str, r_sec_str, w_sec_str = [r_iops, w_iops, r_sec, w_sec].map do |value|
+            sprintf("%.2f", value)
+          end
+
+          r_await_str, w_await_str = [r_await, w_await].map do |await|
+            if await < 1.0
+              sprintf("%.1f usec", await * 1000)
+            else
+              sprintf("%.2f msec", await)
+            end
+          end
+
+          total_r_bytes_str, total_w_bytes_str = ["read_bytes", "write_bytes"].map do |key|
+            bytes = accum["ioinfo"][device][key]
+            if bytes > 2**30
+              sprintf("%.2f GB", bytes / 2**30)
+            elsif bytes > 2**20
+              sprintf("%.2f MB", bytes / 2**20)
+            elsif bytes > 2**10
+              sprintf("%.2f KB", bytes / 2**10)
+            else
+              sprintf("%.2f bytes", bytes)
+            end
+          end
+
+
+          puts("")
+          puts("* Average DEVICE usage: #{device}")
+          puts("        read IOPS: #{r_iops_str}")
+          puts("       write IOPS: #{w_iops_str}")
+          puts("  read throughput: #{r_sec_str} MB/s")
+          puts(" write throughput: #{w_sec_str} MB/s")
+          puts("     read latency: #{r_await_str}")
+          puts("    write latency: #{w_await_str}")
+          puts("      read amount: #{total_r_bytes_str}")
+          puts("     write amount: #{total_w_bytes_str}")
+        end
+
+        if summary['ioinfo']['devices'].size > 1
+          total_r_iops_str, total_w_iops_str, total_r_sec_str, total_w_sec_str =
+            [total_r_iops, total_w_iops, total_r_sec, total_w_sec].map do |value|
+            sprintf("%.2f", value)
+          end
+
+          puts("")
+          puts("* TOTAL DEVICE usage: #{summary['ioinfo']['devices'].join(', ')}")
+          puts("        read IOPS: #{total_r_iops_str}")
+          puts("       write IOPS: #{total_w_iops_str}")
+          puts("  read throughput: #{total_r_sec_str} MB/s")
+          puts(" write throughput: #{total_w_sec_str} MB/s")
         end
 
         puts("")
-        puts("* TOTAL DEVICE usage: #{summary['ioinfo']['devices'].join(', ')}")
-        puts("        read IOPS: #{total_r_iops_str}")
-        puts("       write IOPS: #{total_w_iops_str}")
-        puts("  read throughput: #{total_r_sec_str} MB/s")
-        puts(" write throughput: #{total_w_sec_str} MB/s")
       end
-
-      puts("")
     end
   end
 end
