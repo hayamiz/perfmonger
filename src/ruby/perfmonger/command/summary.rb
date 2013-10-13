@@ -192,8 +192,17 @@ EOS
           w_io_count += dev_ioinfo["w/s"] * dt
         end
 
-        avg_record["ioinfo"][device]["r_await"] = accum_r_io_time / r_io_count
-        avg_record["ioinfo"][device]["w_await"] = accum_w_io_time / w_io_count
+        if r_io_count > 0
+          avg_record["ioinfo"][device]["r_await"] = accum_r_io_time / r_io_count
+        else
+          avg_record["ioinfo"][device]["r_await"] = 0.0
+        end
+
+        if w_io_count > 0
+          avg_record["ioinfo"][device]["w_await"] = accum_w_io_time / w_io_count
+        else
+          avg_record["ioinfo"][device]["w_await"] = 0.0
+        end
       end
     end
 

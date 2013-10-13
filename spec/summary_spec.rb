@@ -99,6 +99,16 @@ describe PerfMonger::Command::SummaryCommand do
       summary["ioinfo"]["sda"]["r/s"].should be_within(0.005).of(5.0)
     end
 
+    it 'should return 0.0 for r_await if all values are zero' do
+      @records[0]["ioinfo"]["sda"]["r_await"] = 0.0
+      @records[1]["ioinfo"]["sda"]["r_await"] = 0.0
+      @records[2]["ioinfo"]["sda"]["r_await"] = 0.0
+
+      summary = @summary.make_summary(@records)
+
+      summary["ioinfo"]["sda"]["r_await"].should == 0.0
+    end
+
     it 'should calculate avg. r_await/w_await correctly' do
       @records[0]["ioinfo"]["sda"]["r/s"] = 0.0
       @records[0]["ioinfo"]["sda"]["r_await"] = 0.0
