@@ -71,6 +71,10 @@ EOS
       save_distro_info()
     end
 
+    do_with_message("Saving sysctl info") do
+      save_sysctl_info()
+    end
+
 
     ## Collect vendor specific info
 
@@ -370,6 +374,19 @@ EOS
       if File.exists?("/etc/redhat-release")
         content = read_file("/etc/redhat-release")
         f.puts("## /etc/redhat-release")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_sysctl_info()
+    sysctl_bin = find_executable("sysctl")
+
+    if sysctl_bin
+      File.open("#{@output_dir}/sysctl.log", "w") do |f|
+        content = `#{sysctl_bin} -a`
+        f.puts("## sysctl -a")
         f.puts(content)
         f.puts("")
       end
