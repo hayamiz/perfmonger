@@ -1,7 +1,6 @@
 
 AM_CFLAGS = -g -Wall
-LDFLAGS = -no-undefined $(GLIB_LIBS)
-INCLUDES = $(GLIB_CFLAGS)
+AM_LDFLAGS = -no-undefined
 
 SUBDIRS = sysstat ruby
 

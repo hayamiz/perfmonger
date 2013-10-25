@@ -32,20 +32,6 @@ AC_CONFIG_FILES([src/perfmonger], [chmod +x src/perfmonger])
 
 
 dnl **************************************************************
-dnl Check for GLib
-dnl **************************************************************
-
-PKG_CHECK_MODULES([GLIB],
-                  [glib-2.0 gthread-2.0],
-                  [ac_glib_2_0_available="yes"],
-                  [ac_glib_2_0_available="no"])
-
-if test "$ac_glib_2_0_available" = "no"; then
-  AC_MSG_ERROR([GLib is required.])
-fi
-AM_CONDITIONAL([WITH_GLIB], [test "$ac_glib_2_0_available" = "yes"])
-
-dnl **************************************************************
 dnl Check for Ruby
 dnl **************************************************************
 ruby_available="no"

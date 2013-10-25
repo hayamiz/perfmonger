@@ -4,11 +4,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <pthread.h>
-#include <glib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

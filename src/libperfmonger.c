@@ -1,5 +1,13 @@
+/* -*- indent-tabs-mode: nil -*- */
 
 #include "perfmonger.h"
+
+typedef struct {
+    char *buffer;
+    char *cursor;
+    size_t size;
+    size_t len;
+} strbuf_t;
 
 /*
  * Private functions
@@ -7,9 +15,14 @@
 static void sigint_handler(int signum, siginfo_t *info, void *handler);
 static void sigterm_handler(int signum, siginfo_t *info, void *handler);
 
-static void output_io_stat   (GString *output, int curr);
-static void output_cpu_stat  (GString *output, int curr);
-static void output_ctxsw_stat(GString *output, int curr);
+static strbuf_t *strbuf_new(void);
+static void      strbuf_free(strbuf_t *strbuf);
+static int       strbuf_append(strbuf_t *strbuf, const char *format, ...);
+
+static void output_io_stat   (strbuf_t *output, int curr);
+static void output_cpu_stat  (strbuf_t *output, int curr);
+static void output_ctxsw_stat(strbuf_t *output, int curr);
+
 
 /*
  * Global variables
@@ -61,9 +74,7 @@ int
 parse_args(int argc, char **argv, option_t *opt)
 {
     int optval;
-    GString *errmsg;
 
-    errmsg = g_string_new("");
     optind = 1;
 
     opt->nr_dev       = 0;
@@ -103,8 +114,7 @@ parse_args(int argc, char **argv, option_t *opt)
             opt->output = fopen(optarg, "w");
             if (opt->output == NULL)
             {
-                errmsg = g_string_new("log file open failed");
-                print_help();
+                perror("log file open failed");
                 goto error;
             }
             break;
@@ -119,7 +129,6 @@ parse_args(int argc, char **argv, option_t *opt)
 
     return 0;
 error:
-    fprintf(stderr, "%s", errmsg->str);
     return -1;
 }
 
@@ -284,7 +293,7 @@ collector_loop(option_t *opt)
         wait_interval = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
         if (wait_interval < 0){
             if (opt->verbose)
-                g_print("panic!: %ld\n", wait_interval);
+                fprintf(stderr, "panic!: %ld\n", wait_interval);
         } else {
             usleep(wait_interval);
         }
@@ -294,29 +303,96 @@ collector_loop(option_t *opt)
     fclose(opt->output);
 }
 
+
 void
 output_stat(option_t *opt, int curr)
 {
     struct timeval tv;
-    GString *output;
+    strbuf_t *output;
 
-    output = g_string_new("");
+    output = strbuf_new();
 
     gettimeofday(&tv, NULL);
-    g_string_append_printf(output,
-                           "{\"time\": %.4lf", tv.tv_sec + ((double) tv.tv_usec) / 1000000.0);
+    strbuf_append(output,
+                  "{\"time\": %.4lf", tv.tv_sec + ((double) tv.tv_usec) / 1000000.0);
 
     if (opt->report_cpu)   output_cpu_stat(output, curr);
     if (opt->report_io)    output_io_stat(output, curr);
     if (opt->report_ctxsw) output_ctxsw_stat(output, curr);
 
-    g_string_append(output, "}");
-    fprintf(opt->output, "%s\n",  output->str);
-    g_string_free(output, true);
+    strbuf_append(output, "}");
+    fprintf(opt->output, "%s\n",  output->buffer);
+    strbuf_free(output);
+}
+
+static strbuf_t *
+strbuf_new(void)
+{
+    strbuf_t *strbuf;
+
+    strbuf = malloc(sizeof(strbuf_t));
+    if (strbuf == NULL)
+    {
+        return NULL;
+    }
+
+#define INIT_STRBUF_SIZE 1024
+    strbuf->buffer = malloc(sizeof(char) * INIT_STRBUF_SIZE);
+    bzero(strbuf->buffer, sizeof(char) * INIT_STRBUF_SIZE);
+    strbuf->cursor = strbuf->buffer;
+    strbuf->size = INIT_STRBUF_SIZE;
+    strbuf->len = 0;
+
+    return strbuf;
 }
 
 static void
-output_io_stat (GString *output, int curr)
+strbuf_free(strbuf_t *strbuf)
+{
+    free(strbuf->buffer);
+    free(strbuf);
+}
+
+static int
+strbuf_append(strbuf_t *strbuf, const char *format, ...)
+{
+    va_list ap;
+    int n;
+    size_t size;
+
+    va_start(ap, format);
+
+    for (;;)
+    {
+        size = strbuf->size - strbuf->len;
+        n = vsnprintf(strbuf->cursor, size, format, ap);
+        if (n < 0)
+        {
+            return n;
+        }
+        else if (n < size)
+        {
+            strbuf->cursor += n;
+            strbuf->len += n;
+            break;
+        }
+        else
+        {
+            int cursor_ofst = strbuf->cursor - strbuf->buffer;
+
+            strbuf->size *= 2;
+            strbuf->buffer = realloc(strbuf->buffer, strbuf->size);
+            strbuf->cursor = strbuf->buffer + cursor_ofst;
+        }
+    }
+
+    va_end(ap);
+
+    return n;
+}
+
+static void
+output_io_stat (strbuf_t *output, int curr)
 {
     unsigned long long interval;
     struct io_hdr_stats *shi;
@@ -337,7 +413,7 @@ output_io_stat (GString *output, int curr)
     interval = get_interval(uptime[!curr], uptime[curr]);
     gettimeofday(&tv, NULL);
 
-    g_string_append(output, ", \"ioinfo\": {\"devices\": [");
+    strbuf_append(output, ", \"ioinfo\": {\"devices\": [");
 
     int nr_dev_printed = 0;
     for (i = 0, shi = st_hdr_iodev; i < iodev_nr; i++, shi++) {
@@ -354,13 +430,13 @@ output_io_stat (GString *output, int curr)
         }
 
         if (nr_dev_printed > 0) {
-            g_string_append(output, ", ");
+            strbuf_append(output, ", ");
         }
-        g_string_append_printf(output, "\"%s\"", shi->name);
+        strbuf_append(output, "\"%s\"", shi->name);
 
         nr_dev_printed++;
     }
-    g_string_append(output, "], ");
+    strbuf_append(output, "], ");
 
 
     interval = get_interval(uptime0[!curr], uptime0[curr]);
@@ -423,42 +499,42 @@ output_io_stat (GString *output, int curr)
         reqsz += xds.arqsz;
         nr_dev ++;
 
-        g_string_append_printf(output,
-                               "\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
-                               "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
-                               "\"r_await\": %.4lf, \"w_await\": %.4lf, "
-                               "\"avgrq-sz\": %.4lf, \"avgqu-sz\": %.4lf}, ",
-                               shi->name,
-                               S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
-                               S_VALUE(ioj->wr_ios, ioi->wr_ios, interval),
-                               ll_s_value(ioj->rd_sectors, ioi->rd_sectors, interval),
-                               ll_s_value(ioj->wr_sectors, ioi->wr_sectors, interval),
-                               (ioi->rd_ios - ioj->rd_ios) ?
-                               (ioi->rd_ticks - ioj->rd_ticks) /
-                               ((double) (ioi->rd_ios - ioj->rd_ios)) : 0.0,
-                               (ioi->wr_ios - ioj->wr_ios) ?
-                               (ioi->wr_ticks - ioj->wr_ticks) /
-                               ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0,
-                               (double) xds.arqsz,
-                               (double) S_VALUE(ioj->rq_ticks, ioi->rq_ticks, interval) / 1000.0
+        strbuf_append(output,
+                      "\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
+                      "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
+                      "\"r_await\": %.4lf, \"w_await\": %.4lf, "
+                      "\"avgrq-sz\": %.4lf, \"avgqu-sz\": %.4lf}, ",
+                      shi->name,
+                      S_VALUE(ioj->rd_ios, ioi->rd_ios, interval),
+                      S_VALUE(ioj->wr_ios, ioi->wr_ios, interval),
+                      ll_s_value(ioj->rd_sectors, ioi->rd_sectors, interval),
+                      ll_s_value(ioj->wr_sectors, ioi->wr_sectors, interval),
+                      (ioi->rd_ios - ioj->rd_ios) ?
+                      (ioi->rd_ticks - ioj->rd_ticks) /
+                      ((double) (ioi->rd_ios - ioj->rd_ios)) : 0.0,
+                      (ioi->wr_ios - ioj->wr_ios) ?
+                      (ioi->wr_ticks - ioj->wr_ticks) /
+                      ((double) (ioi->wr_ios - ioj->wr_ios)) : 0.0,
+                      (double) xds.arqsz,
+                      (double) S_VALUE(ioj->rq_ticks, ioi->rq_ticks, interval) / 1000.0
             );
     }
     r_await /= nr_dev;
     w_await /= nr_dev;
     reqsz /= nr_dev;
 
-    g_string_append_printf(output,
-                           "\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
-                           "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
-                           "\"r_await\": %.4lf, \"w_await\": %.4lf}}",
-                           r_iops, w_iops,
-                           r_sectors, w_sectors,
-                           r_await, w_await
+    strbuf_append(output,
+                  "\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
+                  "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
+                  "\"r_await\": %.4lf, \"w_await\": %.4lf}}",
+                  r_iops, w_iops,
+                  r_sectors, w_sectors,
+                  r_await, w_await
         );
 }
 
 static void
-output_cpu_stat(GString *output, int curr)
+output_cpu_stat(strbuf_t *output, int curr)
 {
     struct stats_cpu *scc, *scp;
     unsigned long long pc_itv, g_itv;
@@ -467,46 +543,46 @@ output_cpu_stat(GString *output, int curr)
 
     g_itv = get_interval(uptime[!curr], uptime[curr]);
 
-    g_string_append_printf(output, ", \"cpuinfo\": {\"nr_cpu\": %d", cpu_nr);
-    g_string_append_printf(output, ", \"all\": {\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                           "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                           "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                           "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                           "\"%%idle\": %.2f}",
-                           (st_cpu[curr]->cpu_user - st_cpu[curr]->cpu_guest) <
-                           (st_cpu[!curr]->cpu_user - st_cpu[!curr]->cpu_guest) ?
-                           0.0 :
-                           ll_sp_value(st_cpu[!curr]->cpu_user - st_cpu[!curr]->cpu_guest,
-                                       st_cpu[curr]->cpu_user - st_cpu[curr]->cpu_guest,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_nice,
-                                       st_cpu[curr]->cpu_nice,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_sys,
-                                       st_cpu[curr]->cpu_sys,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_iowait,
-                                       st_cpu[curr]->cpu_iowait,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_hardirq,
-                                       st_cpu[curr]->cpu_hardirq,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_softirq,
-                                       st_cpu[curr]->cpu_softirq,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_steal,
-                                       st_cpu[curr]->cpu_steal,
-                                       g_itv),
-                           ll_sp_value(st_cpu[!curr]->cpu_guest,
-                                       st_cpu[curr]->cpu_guest,
-                                       g_itv),
-                           (st_cpu[curr]->cpu_idle < st_cpu[!curr]->cpu_idle) ?
-                           0.0 :
-                           ll_sp_value(st_cpu[!curr]->cpu_idle,
-                                       st_cpu[curr]->cpu_idle,
-                                       g_itv));
+    strbuf_append(output, ", \"cpuinfo\": {\"nr_cpu\": %d", cpu_nr);
+    strbuf_append(output, ", \"all\": {\"%%usr\": %.2f, \"%%nice\": %.2f, "
+                  "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
+                  "\"%%irq\": %.2f, \"%%soft\": %.2f, "
+                  "\"%%steal\": %.2f, \"%%guest\": %.2f, "
+                  "\"%%idle\": %.2f}",
+                  (st_cpu[curr]->cpu_user - st_cpu[curr]->cpu_guest) <
+                  (st_cpu[!curr]->cpu_user - st_cpu[!curr]->cpu_guest) ?
+                  0.0 :
+                  ll_sp_value(st_cpu[!curr]->cpu_user - st_cpu[!curr]->cpu_guest,
+                              st_cpu[curr]->cpu_user - st_cpu[curr]->cpu_guest,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_nice,
+                              st_cpu[curr]->cpu_nice,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_sys,
+                              st_cpu[curr]->cpu_sys,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_iowait,
+                              st_cpu[curr]->cpu_iowait,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_hardirq,
+                              st_cpu[curr]->cpu_hardirq,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_softirq,
+                              st_cpu[curr]->cpu_softirq,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_steal,
+                              st_cpu[curr]->cpu_steal,
+                              g_itv),
+                  ll_sp_value(st_cpu[!curr]->cpu_guest,
+                              st_cpu[curr]->cpu_guest,
+                              g_itv),
+                  (st_cpu[curr]->cpu_idle < st_cpu[!curr]->cpu_idle) ?
+                  0.0 :
+                  ll_sp_value(st_cpu[!curr]->cpu_idle,
+                              st_cpu[curr]->cpu_idle,
+                              g_itv));
 
-    g_string_append(output, ", \"cpus\": [");
+    strbuf_append(output, ", \"cpus\": [");
     for (cpu = 1; cpu <= cpu_nr; cpu++) {
         scc = st_cpu[curr] + cpu;
         scp = st_cpu[!curr] + cpu;
@@ -514,7 +590,7 @@ output_cpu_stat(GString *output, int curr)
         if (!(*(cpu_bitmap + (cpu >> 3)) & (1 << (cpu & 0x07))))
             continue;
 
-        g_string_append(output, (nr_cpu_printed > 0 ? ", " : ""));
+        strbuf_append(output, (nr_cpu_printed > 0 ? ", " : ""));
 
         nr_cpu_printed++;
 
@@ -525,61 +601,61 @@ output_cpu_stat(GString *output, int curr)
              * If the CPU is tickless then there is no change in CPU values
              * but the sum of values is not zero.
              */
-            g_string_append_printf(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                                   "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                                   "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                                   "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                                   "\"%%idle\": %.2f}",
-                                   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 100.0);
+            strbuf_append(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
+                          "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
+                          "\"%%irq\": %.2f, \"%%soft\": %.2f, "
+                          "\"%%steal\": %.2f, \"%%guest\": %.2f, "
+                          "\"%%idle\": %.2f}",
+                          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 100.0);
         }
         else
         {
-            g_string_append_printf(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                                   "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                                   "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                                   "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                                   "\"%%idle\": %.2f}",
-                                   (scc->cpu_user - scc->cpu_guest) < (scp->cpu_user - scp->cpu_guest) ?
-                                   0.0 :
-                                   ll_sp_value(scp->cpu_user - scp->cpu_guest,
-                                               scc->cpu_user - scc->cpu_guest,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_nice,
-                                               scc->cpu_nice,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_sys,
-                                               scc->cpu_sys,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_iowait,
-                                               scc->cpu_iowait,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_hardirq,
-                                               scc->cpu_hardirq,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_softirq,
-                                               scc->cpu_softirq,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_steal,
-                                               scc->cpu_steal,
-                                               pc_itv),
-                                   ll_sp_value(scp->cpu_guest,
-                                               scc->cpu_guest,
-                                               pc_itv),
-                                   (scc->cpu_idle < scp->cpu_idle) ?
-                                   0.0 :
-                                   ll_sp_value(scp->cpu_idle,
-                                               scc->cpu_idle,
-                                               pc_itv));
+            strbuf_append(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
+                          "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
+                          "\"%%irq\": %.2f, \"%%soft\": %.2f, "
+                          "\"%%steal\": %.2f, \"%%guest\": %.2f, "
+                          "\"%%idle\": %.2f}",
+                          (scc->cpu_user - scc->cpu_guest) < (scp->cpu_user - scp->cpu_guest) ?
+                          0.0 :
+                          ll_sp_value(scp->cpu_user - scp->cpu_guest,
+                                      scc->cpu_user - scc->cpu_guest,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_nice,
+                                      scc->cpu_nice,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_sys,
+                                      scc->cpu_sys,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_iowait,
+                                      scc->cpu_iowait,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_hardirq,
+                                      scc->cpu_hardirq,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_softirq,
+                                      scc->cpu_softirq,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_steal,
+                                      scc->cpu_steal,
+                                      pc_itv),
+                          ll_sp_value(scp->cpu_guest,
+                                      scc->cpu_guest,
+                                      pc_itv),
+                          (scc->cpu_idle < scp->cpu_idle) ?
+                          0.0 :
+                          ll_sp_value(scp->cpu_idle,
+                                      scc->cpu_idle,
+                                      pc_itv));
         }
     }
-    g_string_append(output, "]}");
+    strbuf_append(output, "]}");
 }
 
 static void
-output_ctxsw_stat(GString *output, int curr)
+output_ctxsw_stat(strbuf_t *output, int curr)
 {
     unsigned long long itv;
     itv = get_interval(uptime0[!curr], uptime0[curr]);
-    g_string_append_printf(output, ", \"ctxsw\": %.2f",
-                           ll_s_value(st_pcsw[!curr].context_switch, st_pcsw[curr].context_switch, itv));
+    strbuf_append(output, ", \"ctxsw\": %.2f",
+                  ll_s_value(st_pcsw[!curr].context_switch, st_pcsw[curr].context_switch, itv));
 }

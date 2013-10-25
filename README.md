@@ -8,10 +8,10 @@ speaking JSON.
 
 ## Prerequisites
 
-  * GLib 2
   * sysstat
   * gnuplot
 
+Note: GLib 2 is required for perfmonger 0.4.0 or earlier.
 
 ## How to build
 
