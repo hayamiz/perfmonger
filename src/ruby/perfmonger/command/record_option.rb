@@ -50,9 +50,15 @@ class RecordOption
     cmd << '-S' if @report_ctx_switch
     cmd << '-l' if @logfile != STDOUT
     cmd << @logfile if @logfile != STDOUT
-    @devices.each do |device|
-      cmd << '-d'
-      cmd << device
+    if @report_io
+      if @all_devices
+        cmd << '-D'
+      else
+        @devices.each do |device|
+          cmd << '-d'
+          cmd << device
+        end
+      end
     end
     cmd << '-v' if @verbose
 
@@ -62,6 +68,7 @@ class RecordOption
   private
   def initialize
     @devices           = []
+    @all_devices       = false
     @interval          = 1.0
     @verbose           = false
     @report_cpu        = false
@@ -74,6 +81,12 @@ class RecordOption
     @parser.on('-d', '--device DEVICE',
                'Device name to be monitored (e.g. sda, sdb, md0, dm-1).') do |device|
       @devices.push(device)
+      @report_io = true
+    end
+
+    @parser.on('-D', '--all-devices',
+               'Monitor all block devices.') do
+      @all_devices = true
       @report_io = true
     end
 

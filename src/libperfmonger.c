@@ -79,6 +79,7 @@ parse_args(int argc, char **argv, option_t *opt)
 
     opt->nr_dev       = 0;
     opt->dev_list     = NULL;
+    opt->all_devices  = false;
     opt->interval     = 1.0;
     opt->verbose      = false;
     opt->report_cpu   = false;
@@ -86,13 +87,17 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->report_ctxsw = false;
     opt->output       = stdout;
 
-    while((optval = getopt(argc, argv, "d:i:vhCSl:")) != -1) {
+    while((optval = getopt(argc, argv, "d:Di:vhCSl:")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
             opt->dev_list = realloc(opt->dev_list, opt->nr_dev * sizeof(char *));
             opt->dev_list[opt->nr_dev - 1] = strdup(optarg);
             opt->report_io = true;
+            break;
+        case 'D': // show all devices
+            opt->report_io = true;
+            opt->all_devices = true;
             break;
         case 'i': // interval
             opt->interval = strtod(optarg, NULL);
@@ -172,10 +177,13 @@ init_subsystem(option_t *opt)
     salloc_dev_list(opt->nr_dev);
     io_sys_init();
 
-    for (i = 0; i < opt->nr_dev; i++) {
-        update_dev_list(&dlist_idx, opt->dev_list[i]);
-        st_dev_list_i = st_dev_list + i;
-        st_dev_list_i->disp_part = TRUE;
+    if (! opt->all_devices)
+    {
+        for (i = 0; i < opt->nr_dev; i++) {
+            update_dev_list(&dlist_idx, opt->dev_list[i]);
+            st_dev_list_i = st_dev_list + i;
+            st_dev_list_i->disp_part = TRUE;
+        }
     }
 
     /* ----------------------------------------- */
@@ -420,14 +428,19 @@ output_io_stat (strbuf_t *output, int curr)
         if (! shi->used) {
             continue;
         }
-        for (dev_idx = 0; dev_idx < dlist_idx; dev_idx++) {
-            if (! strcmp(shi->name, st_dev_list[dev_idx].dev_name)) {
-                break;
+        if (dlist_idx) {
+            for (dev_idx = 0; dev_idx < dlist_idx; dev_idx++) {
+                if (! strcmp(shi->name, st_dev_list[dev_idx].dev_name)) {
+                    break;
+                }
+            }
+            if (dev_idx == dlist_idx) {
+                continue;
             }
         }
-        if (dev_idx == dlist_idx) {
-            continue;
-        }
+
+        ioi = st_iodev[curr] + i;
+        if (!ioi->rd_ios && !ioi->wr_ios) continue;
 
         if (nr_dev_printed > 0) {
             strbuf_append(output, ", ");
@@ -455,17 +468,22 @@ output_io_stat (strbuf_t *output, int curr)
             continue;
         }
 
-        for (dev_idx = 0; dev_idx < dlist_idx; dev_idx++) {
-            if (! strcmp(shi->name, st_dev_list[dev_idx].dev_name)) {
-                break;
+        if (dlist_idx) {
+            for (dev_idx = 0; dev_idx < dlist_idx; dev_idx++) {
+                if (! strcmp(shi->name, st_dev_list[dev_idx].dev_name)) {
+                    break;
+                }
             }
-        }
-        if (dev_idx == dlist_idx) {
-            continue;
+            if (dev_idx == dlist_idx) {
+                continue;
+            }
         }
 
         ioi = st_iodev[curr] + i;
         ioj = st_iodev[!curr] + i;
+
+        ioi = st_iodev[curr] + i;
+        if (!ioi->rd_ios && !ioi->wr_ios) continue;
 
         sdc.nr_ios    = ioi->rd_ios + ioi->wr_ios;
         sdp.nr_ios    = ioj->rd_ios + ioj->wr_ios;

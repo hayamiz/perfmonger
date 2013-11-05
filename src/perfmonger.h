@@ -28,6 +28,7 @@ typedef struct {
     // device nr and list
     int nr_dev;
     char **dev_list;
+	bool all_devices;
 
     // OUTPUT FILE
     FILE *output;
