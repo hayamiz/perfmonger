@@ -10,7 +10,6 @@ class RecordOption
   attr_reader :report_io
   attr_reader :report_ctx_switch
   attr_reader :logfile
-  attr_reader :system_device_list
 
   attr_reader :parser
 
@@ -70,18 +69,10 @@ class RecordOption
     @report_ctx_switch = false
     @logfile           = STDOUT
 
-    @system_device_list = File.read("/proc/diskstats").each_line.map do |line|
-      _, _, device = *line.strip.split
-      device
-    end
-
     @parser = OptionParser.new
 
     @parser.on('-d', '--device DEVICE',
                'Device name to be monitored (e.g. sda, sdb, md0, dm-1).') do |device|
-      unless @system_device_list.include?(device)
-        raise OptionParser::InvalidArgument.new("No such device: #{device}")
-      end
       @devices.push(device)
       @report_io = true
     end
