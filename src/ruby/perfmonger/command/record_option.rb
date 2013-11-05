@@ -23,8 +23,10 @@ class RecordOption
   def parse(argv)
     argv = @parser.parse(argv)
 
-    if ! @report_io && ! @report_ctx_switch
+    if ! @report_io && ! @report_ctx_switch && ! @report_cpu
       @report_cpu = true
+      @report_io = true
+      @all_devices = true
     end
 
     argv
