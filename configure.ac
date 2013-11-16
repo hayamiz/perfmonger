@@ -79,12 +79,6 @@ dnl **************************************************************
 dnl Check for path
 dnl **************************************************************
 
-echo
-echo "prefix: $prefix"
-echo "exec_prefix: $exec_prefix"
-echo "libdir: $libdir"
-echo
-
 perfmonger_libdir="$libdir/perfmonger"
 perfmonger_rubylibdir="$perfmonger_libdir/ruby"
 perfmonger_datarootdir="$datarootdir/perfmonger"
