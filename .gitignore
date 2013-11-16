@@ -39,3 +39,5 @@ Makefile
 /src/perfmonger
 /config.log
 /Gemfile.lock
+/package/rpm/*.rpm
+/package/rpm/perfmonger.spec
