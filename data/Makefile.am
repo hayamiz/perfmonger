@@ -2,11 +2,11 @@
 SUBDIRS = assets
 
 EXTRA_DIST =					\
-	README					\
+	NOTICE					\
 	Twitter_Bootstrap_LICENSE.txt		\
 	sysstat.ioconf
 
 dist_perfmonger_dataroot_DATA =			\
-	README					\
+	NOTICE					\
 	Twitter_Bootstrap_LICENSE.txt		\
 	sysstat.ioconf
