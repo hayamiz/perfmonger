@@ -3,5 +3,4 @@
 module PerfMonger
   BINDIR = "@perfmonger_bindir@"
   DATAROOTDIR = "@perfmonger_datarootdir@"
-  BUILD_AUX = "@perfmonger_build_aux@"
 end

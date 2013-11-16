@@ -60,7 +60,7 @@ EOS
     end
 
     parser.on('-v', '--version', 'Show version number') do
-      puts("PerfMonger version " + PerfMonger::VERSION + PerfMonger::BUILD_AUX)
+      puts("PerfMonger version " + PerfMonger::VERSION)
       exit(true)
     end
 
