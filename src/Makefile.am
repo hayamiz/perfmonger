@@ -1,3 +1,4 @@
+include ../common.mk
 
 AM_CFLAGS = -g -Wall
 AM_LDFLAGS = -no-undefined
@@ -14,3 +15,8 @@ libperfmonger_la_LIBADD = ./sysstat/libsysstat.la
 
 perfmonger_record_SOURCES = main.c
 perfmonger_record_LDADD = libperfmonger.la
+
+perfmonger: perfmonger.in Makefile
+	$(edit) $< > $@.tmp
+	chmod +x $@.tmp
+	mv $@.tmp $@

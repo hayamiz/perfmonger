@@ -24,11 +24,12 @@ AC_CONFIG_FILES([Makefile
 	data/assets/js/Makefile
 	data/assets/css/Makefile
 	data/assets/img/Makefile
+	package/Makefile
+	package/rpm/Makefile
 	test/Makefile])
 AC_CONFIG_FILES([src/sysstat/sysconfig.h:src/sysstat/sysconfig.in
 	src/ruby/perfmonger/version.rb
-	src/ruby/perfmonger/config.rb])
-AC_CONFIG_FILES([src/perfmonger], [chmod +x src/perfmonger])
+	package/rpm/perfmonger.spec])
 
 
 dnl **************************************************************
@@ -78,45 +79,16 @@ dnl **************************************************************
 dnl Check for path
 dnl **************************************************************
 
-if test "$exec_prefix" = "NONE"; then
-  if test "$prefix" = "NONE"; then
-    perfmonger_exec_prefix="$ac_default_prefix"
-    perfmonger_prefix="$ac_default_prefix"
-  else
-    perfmonger_exec_prefix="$prefix"
-    perfmonger_prefix="$prefix"
-  fi
-else
-  perfmonger_exec_prefix="$exec_prefix"
-fi
+echo
+echo "prefix: $prefix"
+echo "exec_prefix: $exec_prefix"
+echo "libdir: $libdir"
+echo
 
-
-if echo -- "$bindir" | grep '\$' > /dev/null 2>&1; then
-  perfmonger_bindir="$perfmonger_exec_prefix/bin"
-else
-  perfmonger_bindir="$bindir"
-fi
-
-
-if echo -- "$libdir" | grep '\$' > /dev/null 2>&1; then
-  perfmonger_libdir="$perfmonger_exec_prefix/lib"
-else
-  perfmonger_libdir="$libdir"
-fi
-perfmonger_libdir="$perfmonger_libdir/perfmonger"
-
+perfmonger_libdir="$libdir/perfmonger"
 perfmonger_rubylibdir="$perfmonger_libdir/ruby"
+perfmonger_datarootdir="$datarootdir/perfmonger"
 
-
-if echo -- "$datarootdir" | grep '\$' > /dev/null 2>&1; then
-  perfmonger_datarootdir="$perfmonger_prefix/share"
-else
-  perfmonger_datarootdir="$datarootdir"
-fi
-perfmonger_datarootdir="$perfmonger_datarootdir/perfmonger"
-
-
-AC_SUBST(perfmonger_bindir)
 AC_SUBST(perfmonger_rubylibdir)
 AC_SUBST(perfmonger_datarootdir)
 
