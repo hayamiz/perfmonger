@@ -3,7 +3,12 @@ ACLOCAL_AMFLAGS = $$ACLOCAL_OPTIONS
 SUBDIRS = src data test
 
 EXTRA_DIST = \
+	README.md \
+	README \
 	NEWS
+
+
+dist_doc_DATA = README NEWS
 
 dist: README
 
