@@ -5,6 +5,8 @@ AM_LDFLAGS = -no-undefined
 
 SUBDIRS = sysstat ruby
 
+EXTRA_DIST = perfmonger.in
+
 bin_SCRIPTS = perfmonger
 
 noinst_LTLIBRARIES = libperfmonger.la

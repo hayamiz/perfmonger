@@ -1,14 +1,15 @@
 ACLOCAL_AMFLAGS = $$ACLOCAL_OPTIONS
 
-SUBDIRS = src data test
+SUBDIRS = src data test package
 
-EXTRA_DIST = \
-	README.md \
-	README \
-	NEWS
+EXTRA_DIST =		\
+	README.md	\
+	README		\
+	NEWS		\
+	COPYING
 
 
-dist_doc_DATA = README NEWS
+dist_doc_DATA = README NEWS COPYING
 
 dist: README
 
