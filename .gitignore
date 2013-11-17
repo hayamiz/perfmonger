@@ -41,3 +41,6 @@ Makefile
 /Gemfile.lock
 /package/rpm/*.rpm
 /package/rpm/perfmonger.spec
+/package/yumrepo/centos/*
+/package/yumrepo/*.rpm
+/package/yumrepo/hayamiz-repos.tar.gz
