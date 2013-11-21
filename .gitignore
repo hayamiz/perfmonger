@@ -44,3 +44,4 @@ Makefile
 /package/yumrepo/centos/*
 /package/yumrepo/*.rpm
 /package/yumrepo/hayamiz-repos.tar.gz
+/package/rpm/centos/
