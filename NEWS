@@ -4,7 +4,10 @@
     * Add new subcommands
       * 'perfmonger summary LOG_FILE' ... split summarization part of 'stat' as a individual subcommand
   * Changes
-    * bukko subcommand
+    * [record] subcommand
+      * Show all devices and CPU usage by default
+      * add -D option to show all devices
+    * [bukko] subcommand
       * Save Linux distro info
       * Save kernel module info
       * Save sysctl info
