@@ -6,18 +6,29 @@ speaking JSON.
 
 **CAUTION: PerfMonger is still in early stage, so there may be a drastic change in the future. Do not use it for critical jobs**
 
+## Target platform
+
+  * GNU/Linux
+
 ## Prerequisites
 
-  * sysstat
-  * gnuplot
+  * Ruby 1.8.7 or later
+    * Ruby 1.9.3 or later is recommended
+  * gnuplot (optional)
 
-Note: GLib 2 is required for perfmonger 0.4.0 or earlier.
+Note: You need Cutter unit testing framework for building/running tests.
 
-## How to build
+## How to install
 
-    $ ./configure
-    $ make install
+### RHEL or CentOS
 
+    rpm -Uvh http://package.hayamiz.com/hayamiz-repos-1.0.0-0.noarch.rpm
+    yum install perfmonger
+
+### Build from source
+
+    ./configure
+    sudo make install
 
 ## How to use: case study
 
