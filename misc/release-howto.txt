@@ -1,0 +1,17 @@
+リリース手順
+
+1. make check
+2. rake spec
+3. リリースノート書く
+3. rpm生成
+  * chrootでrpm生成
+  * gpgで署名
+4. tarball生成
+5. タグ付け
+6. ファイル公開
+  * yumにアップロード
+  * tarballアップロード
+7. freecode リリース登録
+8. Webサイト更新
+9. 告知エントリ書く
+
