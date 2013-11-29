@@ -108,7 +108,6 @@ echo
 echo "Configure Result:"
 echo "== Prerequisites =="
 echo "  Ruby : $RUBY"
-echo " GLib2 : $ac_glib_2_0_available"
 echo ""
 echo "== Optional requirements =="
 echo " Cutter(optional) : $CUTTER"
