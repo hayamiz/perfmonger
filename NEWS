@@ -1,11 +1,16 @@
-## XXXX-XX-XX: PerfMonger x.x.x released
-
-
 ## 2012-11-29: PerfMonger 0.5.0 released
+
+This release focuses on improvement of usability. Newly added
+'summary' subcommand is very useful for summarizing recorded
+perfmonger log files. The release also has many other improvements and
+bug fixes, including support of Ruby 1.8.7 (only Ruby 1.9/2.0 were
+supported before).
+
+PerfMonger is available on yum repository from this release.
 
   * New features
     * Add new subcommands
-      * 'perfmonger summary LOG_FILE' ... split summarization part of 'stat' as a individual subcommand
+      * 'perfmonger summary LOG_FILE' ... summarization of perfmonger log file
   * Changes
     * [record] subcommand
       * Show all devices and CPU usage by default
