@@ -368,20 +368,22 @@ strbuf_append(strbuf_t *strbuf, const char *format, ...)
     int n;
     size_t size;
 
-    va_start(ap, format);
-
     for (;;)
     {
+        va_start(ap, format);
+
         size = strbuf->size - strbuf->len;
         n = vsnprintf(strbuf->cursor, size, format, ap);
         if (n < 0)
         {
-            return n;
+            return n; // error
         }
         else if (n < size)
         {
             strbuf->cursor += n;
             strbuf->len += n;
+
+            va_end(ap);
             break;
         }
         else
@@ -392,9 +394,9 @@ strbuf_append(strbuf_t *strbuf, const char *format, ...)
             strbuf->buffer = realloc(strbuf->buffer, strbuf->size);
             strbuf->cursor = strbuf->buffer + cursor_ofst;
         }
-    }
 
-    va_end(ap);
+        va_end(ap);
+    }
 
     return n;
 }

@@ -1,3 +1,11 @@
+## 20XX-XX-XX: PerfMonger 0.5.1 released
+
+This is a bug fix release.
+
+  * Bug fixes
+    * record subcommand
+      * Fix corrupted device name output in case of realloc-ing an output buffer
+
 ## 2012-11-29: PerfMonger 0.5.0 released
 
 This release focuses on improvement of usability. Newly added
