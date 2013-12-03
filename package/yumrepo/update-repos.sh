@@ -6,7 +6,7 @@ set -ev
 
 mkdir -p $this_dir/centos/
 
-rsync -a $this_dir/../rpm/centos/ $this_dir/centos/
+rsync -av --delete $this_dir/../rpm/centos/ $this_dir/centos/
 
 for rpmdir in $(find $this_dir/centos -type f -name '*.rpm' -exec dirname {} \; | sort | uniq); do
     createrepo $rpmdir
