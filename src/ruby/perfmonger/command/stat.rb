@@ -43,6 +43,10 @@ class StatCommand < BaseCommand
         end
       end
 
+      Signal.trap(:INT) do
+        Process.kill("INT", record_pid)
+      end
+
       @start_time = Time.now
       if RUBY_VERSION >= '1.9'
         command_pid = Process.spawn(*@argv)
