@@ -279,7 +279,10 @@ collector_loop(option_t *opt)
     running = true;
     while(running) {
         if (sigint_sent || sigterm_sent) {
-            break;
+            /* Do not break loop here. For capturing execution time
+             * accurate as possible, it is necessary to outputing 1
+             * line just after SIGINT was handled */
+            running = false;
         }
 
         wait_until += opt->interval * 1000000L;
@@ -295,6 +298,8 @@ collector_loop(option_t *opt)
             read_stat_pcsw(&st_pcsw[curr]);
 
         output_stat(opt, curr);
+
+        if (! running) break;
 
         curr ^= 1;
         gettimeofday(&tv, NULL);
