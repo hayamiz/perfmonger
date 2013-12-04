@@ -24,4 +24,14 @@ describe "PerfmongerCommand" do
       end
     end
   end
+
+  describe 'summary subcommand' do
+    it 'should print expected output with 2devices.log' do
+      File.open(data_file('2devices.output'), "w") do |f|
+        f.print(`#{@perfmonger_command} summary #{data_file('2devices.log')}`)
+      end
+
+      system("diff -u #{data_file('2devices.expected')} #{data_file('2devices.output')}").should be_true
+    end
+  end
 end

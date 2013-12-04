@@ -45,3 +45,4 @@ Makefile
 /package/yumrepo/*.rpm
 /package/yumrepo/hayamiz-repos.tar.gz
 /package/rpm/centos/
+/spec/data/*.output
