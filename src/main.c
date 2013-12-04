@@ -3,12 +3,6 @@
 
 int nr_thargs = 0;
 
-static void
-sigint_handler(int signum)
-{
-    running = false;
-}
-
 int
 main(int argc, char **argv)
 {
@@ -17,10 +11,6 @@ main(int argc, char **argv)
         fprintf(stderr, "Argument error. Exit.\n");
         exit(EXIT_FAILURE);
     }
-
-    running = true;
-
-    signal(SIGINT, sigint_handler);
 
     init_subsystem(&opt);
     collector_loop(&opt);

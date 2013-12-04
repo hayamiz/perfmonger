@@ -28,8 +28,6 @@ static void output_ctxsw_stat(strbuf_t *output, int curr);
  * Global variables
  */
 
-volatile bool running = true;
-
 /*
  * Variables in sysstat/iostat.c
  */
@@ -270,6 +268,7 @@ collector_loop(option_t *opt)
     struct timeval tv;
     long wait_until;
     long wait_interval;
+    bool running;
 
     curr = 1;
     setbuf(stdout, NULL);
@@ -277,6 +276,7 @@ collector_loop(option_t *opt)
     gettimeofday(&tv, NULL);
     wait_until = tv.tv_sec * 1000000L + tv.tv_usec;
 
+    running = true;
     while(running) {
         if (sigint_sent || sigterm_sent) {
             break;

@@ -39,8 +39,6 @@ typedef struct {
     bool verbose;
 } option_t;
 
-extern volatile bool running;
-
 int  parse_args(int argc, char **argv, option_t *opt);
 void print_help(void);
 void init_subsystem(option_t *opt);
