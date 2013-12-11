@@ -309,6 +309,7 @@ EOS
         nr_cols = nr_cpu_factors.select do |x|
           x <= Math.sqrt(nr_cpu)
         end.max
+        nr_cols ||= Math.sqrt(nr_cpu).ceil
         nr_rows = nr_cpu / nr_cols
 
         all_gpfile.puts <<EOS
@@ -410,7 +411,7 @@ EOS
 
   private
   def factors(n)
-    (2..(n / 2).to_i).select do |x|
+    (2..([n, n / 2].max).to_i).select do |x|
       n % x == 0
     end.sort
   end
