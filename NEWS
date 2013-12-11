@@ -4,6 +4,14 @@
   * Changes
   * Bug fixes
 
+## 20XX-XX-XX: PerfMonger 0.5.2 released
+
+This is a bug fix release.
+
+  * Bug fixes
+    * plot subcommand
+      * In all-CPU graph, correctly calculate # of columns with small(2-3) # of CPUs
+
 ## 2013-12-03: PerfMonger 0.5.1 released
 
 This is a bug fix release.
