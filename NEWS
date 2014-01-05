@@ -2,6 +2,8 @@
 
   * New features
   * Changes
+    * [bukko] subcommand:
+      * Record information about xvd* devices (Xen virtual blockdev)
   * Bug fixes
 
 ## 20XX-XX-XX: PerfMonger 0.5.2 released

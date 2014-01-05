@@ -198,7 +198,8 @@ EOS
   end
 
   def save_device_info()
-    Dir.glob('/sys/block/sd*').each do |sd_dev|
+    (Dir.glob('/sys/block/sd*') +
+     Dir.glob('/sys/block/xvd*')).each do |sd_dev|
       File.open("#{@output_dir}/block-#{File.basename(sd_dev)}.log", "w") do |f|
         f.puts("## ls -l #{sd_dev}")
         f.puts(`ls -l #{sd_dev}`)
