@@ -124,6 +124,15 @@ EOS
           end
         end
       end
+
+      records.first["ioinfo"]["total"].keys.each do |attr|
+        getters << lambda do |record|
+          record["ioinfo"]["total"][attr]
+        end
+        setters << lambda do |record, value|
+          record["ioinfo"]["total"][attr] = value
+        end
+      end
     end
 
     if records.first.include?("cpuinfo")

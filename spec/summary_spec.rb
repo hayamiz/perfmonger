@@ -5,6 +5,7 @@ describe PerfMonger::Command::SummaryCommand do
   before(:each) do
     @summary = PerfMonger::Command::SummaryCommand.new
     @logfile = data_file('test.log')
+    @logfile_2devices = data_file('2devices.log')
   end
 
   describe 'read_logfile method' do
@@ -120,6 +121,24 @@ describe PerfMonger::Command::SummaryCommand do
       summary = @summary.make_summary(@records)
 
       summary["ioinfo"]["sda"]["r_await"].should be_within(0.003).of(3.0)
+    end
+  end
+
+  describe 'make_summary method with 2 devices' do
+    before(:each) do
+      @records = @summary.read_logfile(@logfile_2devices)
+    end
+
+    it 'should calculate avg. r/s in total' do
+      @records[0]["time"] = 0.0
+      @records[1]["time"] = 0.5
+
+      @records[0]["ioinfo"]["total"]["r/s"] = 0.0
+      @records[1]["ioinfo"]["total"]["r/s"] = 10.0
+
+      summary = @summary.make_summary(@records)
+
+      summary["ioinfo"]["total"]["r/s"].should be_within(0.005).of(10.0)
     end
   end
 
