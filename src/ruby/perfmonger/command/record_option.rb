@@ -48,6 +48,10 @@ class RecordOption
     cmd = [record_bin]
     cmd << '-i'
     cmd << @interval.to_s
+    if @start_delay > 0
+      cmd << '-s'
+      cmd << @start_delay.to_s
+    end
     cmd << '-C' if @report_cpu
     cmd << '-S' if @report_ctx_switch
     cmd << '-l' if @logfile != STDOUT
@@ -71,7 +75,8 @@ class RecordOption
   def initialize
     @devices           = []
     @all_devices       = false
-    @interval          = 1.0
+    @interval          = 1.0 # in second
+    @start_delay       = 0.0 # in second
     @verbose           = false
     @report_cpu        = false
     @report_io         = false
@@ -93,8 +98,13 @@ class RecordOption
     end
 
     @parser.on('-i', '--interval SEC',
-               'Amount of time between each measurement report.') do |interval|
+               'Amount of time between each measurement report. Floating point is o.k.') do |interval|
       @interval = Float(interval)
+    end
+
+    @parser.on('-s', '--start-delay SEC',
+               'Amount of wait time before starting measurement. Floating point is o.k.') do |start_delay|
+      @start_delay = Float(start_delay)
     end
 
     @parser.on('-C', '--cpu', 'Report CPU usage.') do

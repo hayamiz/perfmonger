@@ -79,13 +79,14 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->dev_list     = NULL;
     opt->all_devices  = false;
     opt->interval     = 1.0;
+    opt->start_delay  = 0.0;
     opt->verbose      = false;
     opt->report_cpu   = false;
     opt->report_io    = false;
     opt->report_ctxsw = false;
     opt->output       = stdout;
 
-    while((optval = getopt(argc, argv, "d:Di:vhCSl:")) != -1) {
+    while((optval = getopt(argc, argv, "d:Di:s:vhCSl:")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
@@ -99,6 +100,9 @@ parse_args(int argc, char **argv, option_t *opt)
             break;
         case 'i': // interval
             opt->interval = strtod(optarg, NULL);
+            break;
+        case 's': // start delay
+            opt->start_delay = strtod(optarg, NULL);
             break;
         case 'v': // verbose
             opt->verbose = true;
@@ -269,6 +273,10 @@ collector_loop(option_t *opt)
     long wait_until;
     long wait_interval;
     bool running;
+
+    if (opt->start_delay > 0.0) {
+        usleep(opt->start_delay * 1000000L);
+    }
 
     curr = 1;
     setbuf(stdout, NULL);

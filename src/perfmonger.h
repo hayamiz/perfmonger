@@ -1,3 +1,5 @@
+/* -*- indent-tabs-mode: nil -*- */
+
 #ifndef PERFMONGER_H
 #define PERFMONGER_H
 
@@ -35,6 +37,8 @@ typedef struct {
 
     // data collection interval
     double interval;
+
+    double start_delay;
 
     bool verbose;
 } option_t;
