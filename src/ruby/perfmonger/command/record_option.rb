@@ -52,6 +52,10 @@ class RecordOption
       cmd << '-s'
       cmd << @start_delay.to_s
     end
+    if @timeout
+      cmd << '-t'
+      cmd << @timeout.to_s
+    end
     cmd << '-C' if @report_cpu
     cmd << '-S' if @report_ctx_switch
     cmd << '-l' if @logfile != STDOUT
@@ -77,6 +81,7 @@ class RecordOption
     @all_devices       = false
     @interval          = 1.0 # in second
     @start_delay       = 0.0 # in second
+    @timeout           = nil # in second, or nil (= no timeout)
     @verbose           = false
     @report_cpu        = false
     @report_io         = false
@@ -105,6 +110,11 @@ class RecordOption
     @parser.on('-s', '--start-delay SEC',
                'Amount of wait time before starting measurement. Floating point is o.k.') do |start_delay|
       @start_delay = Float(start_delay)
+    end
+
+    @parser.on('-t', '--timeout SEC',
+               'Amount of measurement time. Floating point is o.k.') do |timeout|
+      @timeout = Float(timeout)
     end
 
     @parser.on('-C', '--cpu', 'Report CPU usage.') do

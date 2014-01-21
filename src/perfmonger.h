@@ -8,7 +8,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <sys/socket.h>
@@ -39,6 +41,8 @@ typedef struct {
     double interval;
 
     double start_delay;
+
+    double timeout;
 
     bool verbose;
 } option_t;

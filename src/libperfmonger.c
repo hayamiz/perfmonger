@@ -80,13 +80,14 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->all_devices  = false;
     opt->interval     = 1.0;
     opt->start_delay  = 0.0;
+    opt->timeout      = -1.0;   /* negative means no timeout */
     opt->verbose      = false;
     opt->report_cpu   = false;
     opt->report_io    = false;
     opt->report_ctxsw = false;
     opt->output       = stdout;
 
-    while((optval = getopt(argc, argv, "d:Di:s:vhCSl:")) != -1) {
+    while((optval = getopt(argc, argv, "d:Di:s:t:vhCSl:")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
@@ -103,6 +104,9 @@ parse_args(int argc, char **argv, option_t *opt)
             break;
         case 's': // start delay
             opt->start_delay = strtod(optarg, NULL);
+            break;
+        case 't': // timeout
+            opt->timeout = strtod(optarg, NULL);
             break;
         case 'v': // verbose
             opt->verbose = true;
@@ -272,6 +276,7 @@ collector_loop(option_t *opt)
     struct timeval tv;
     long wait_until;
     long wait_interval;
+    long timeout_when;
     bool running;
 
     if (opt->start_delay > 0.0) {
@@ -284,12 +289,23 @@ collector_loop(option_t *opt)
     gettimeofday(&tv, NULL);
     wait_until = tv.tv_sec * 1000000L + tv.tv_usec;
 
+    if (opt->timeout > 0) {
+        timeout_when = wait_until + opt->timeout * 1000000L; /* in usec */
+    } else {
+        timeout_when = LONG_MAX;
+    }
+
+
     running = true;
     while(running) {
         if (sigint_sent || sigterm_sent) {
             /* Do not break loop here. For capturing execution time
              * accurate as possible, it is necessary to outputing 1
              * line just after SIGINT was handled */
+            running = false;
+        }
+
+        if (wait_until >= timeout_when) {
             running = false;
         }
 
@@ -309,9 +325,15 @@ collector_loop(option_t *opt)
 
         if (! running) break;
 
+        if (wait_until > timeout_when) {
+            wait_until = timeout_when;
+        }
+
         curr ^= 1;
         gettimeofday(&tv, NULL);
+
         wait_interval = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
+
         if (wait_interval < 0){
             if (opt->verbose)
                 fprintf(stderr, "panic!: %ld\n", wait_interval);

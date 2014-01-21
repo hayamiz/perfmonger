@@ -5,6 +5,8 @@
     * [bukko] subcommand:
       * Record information about xvd* devices (Xen virtual blockdev)
       * Record output of dmidecode(1) if available
+    * [record] subcommand:
+      * Support start delay and timeout of measurement
   * Bug fixes
 
 ## 20XX-XX-XX: PerfMonger 0.5.2 released
