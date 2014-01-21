@@ -7,6 +7,8 @@
       * Record output of dmidecode(1) if available
     * [record] subcommand:
       * Support start delay and timeout of measurement
+    * [summary] subcommand:
+      * Pager support for summary output
   * Bug fixes
 
 ## 20XX-XX-XX: PerfMonger 0.5.2 released

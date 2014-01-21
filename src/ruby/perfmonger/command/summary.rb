@@ -17,9 +17,25 @@ Options:
 EOS
 
     @json = false
+    @pager = nil
 
     @parser.on('--json', "Output summary in JSON") do
       @json = true
+    end
+
+    @parser.on('-p', '--pager [PAGER]', "Use pager to see summary output.") do |pager|
+      if pager.nil?
+        if ENV['PAGER'].nil?
+          puts("ERROR: No pager is available.")
+          puts("ERROR: Please set PAGER or give pager name to --pager option.")
+          puts(@parser.help)
+          exit(false)
+        else
+          @pager = ENV['PAGER']
+        end
+      else
+        @pager = pager
+      end
     end
   end
 
@@ -247,16 +263,22 @@ EOS
 
       puts output.to_json
     else
-      puts("")
-      puts("== Performance summary of '#{summary_title}' ==")
-      puts("")
+      if $stdout.tty? && @pager
+        output_file = IO.popen(@pager, "w")
+      else
+        output_file = $stdout
+      end
+
+      output_file.puts("")
+      output_file.puts("== Performance summary of '#{summary_title}' ==")
+      output_file.puts("")
       duration_str = sprintf("%.2f", duration)
-      puts("record duration: #{duration_str} sec")
+      output_file.puts("record duration: #{duration_str} sec")
 
       if summary.nil?
-        puts("")
-        puts("No performance info was collected.")
-        puts("This is because command execution time was too short, or something went wrong.")
+        output_file.puts("")
+        output_file.puts("No performance info was collected.")
+        output_file.puts("This is because command execution time was too short, or something went wrong.")
       end
 
       if summary && summary["cpuinfo"]
@@ -282,8 +304,8 @@ EOS
         total_non_idle_str = sprintf("%.2f", usr + sys + irq + soft + other)
         total_idle_str = sprintf("%.2f", iowait + idle)
 
-        puts("")
-        puts <<EOS
+        output_file.puts("")
+        output_file.puts <<EOS
 * Average CPU usage (MAX: #{100 * nr_cpu} %)
   * Non idle portion: #{total_non_idle_str}
        %usr: #{usr_str}
@@ -340,16 +362,16 @@ EOS
           end
 
 
-          puts("")
-          puts("* Average DEVICE usage: #{device}")
-          puts("        read IOPS: #{r_iops_str}")
-          puts("       write IOPS: #{w_iops_str}")
-          puts("  read throughput: #{r_sec_str} MB/s")
-          puts(" write throughput: #{w_sec_str} MB/s")
-          puts("     read latency: #{r_await_str}")
-          puts("    write latency: #{w_await_str}")
-          puts("      read amount: #{total_r_bytes_str}")
-          puts("     write amount: #{total_w_bytes_str}")
+          output_file.puts("")
+          output_file.puts("* Average DEVICE usage: #{device}")
+          output_file.puts("        read IOPS: #{r_iops_str}")
+          output_file.puts("       write IOPS: #{w_iops_str}")
+          output_file.puts("  read throughput: #{r_sec_str} MB/s")
+          output_file.puts(" write throughput: #{w_sec_str} MB/s")
+          output_file.puts("     read latency: #{r_await_str}")
+          output_file.puts("    write latency: #{w_await_str}")
+          output_file.puts("      read amount: #{total_r_bytes_str}")
+          output_file.puts("     write amount: #{total_w_bytes_str}")
         end
 
         if summary['ioinfo']['devices'].size > 1
@@ -358,15 +380,19 @@ EOS
             sprintf("%.2f", value)
           end
 
-          puts("")
-          puts("* TOTAL DEVICE usage: #{summary['ioinfo']['devices'].join(', ')}")
-          puts("        read IOPS: #{total_r_iops_str}")
-          puts("       write IOPS: #{total_w_iops_str}")
-          puts("  read throughput: #{total_r_sec_str} MB/s")
-          puts(" write throughput: #{total_w_sec_str} MB/s")
+          output_file.puts("")
+          output_file.puts("* TOTAL DEVICE usage: #{summary['ioinfo']['devices'].join(', ')}")
+          output_file.puts("        read IOPS: #{total_r_iops_str}")
+          output_file.puts("       write IOPS: #{total_w_iops_str}")
+          output_file.puts("  read throughput: #{total_r_sec_str} MB/s")
+          output_file.puts(" write throughput: #{total_w_sec_str} MB/s")
         end
 
-        puts("")
+        output_file.puts("")
+      end
+
+      if output_file != $stdout
+        output_file.close
       end
     end
   end
