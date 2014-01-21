@@ -75,6 +75,10 @@ EOS
       save_sysctl_info()
     end
 
+    do_with_message("Saving dmidecode info") do
+      save_dmidecode_info()
+    end
+
 
     ## Collect vendor specific info
 
@@ -388,6 +392,19 @@ EOS
       File.open("#{@output_dir}/sysctl.log", "w") do |f|
         content = `#{sysctl_bin} -a`
         f.puts("## sysctl -a")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_dmidecode_info()
+    dmidecode_bin = find_executable("dmidecode")
+
+    if dmidecode_bin
+      File.open("#{@output_dir}/dmidecode.log", "w") do |f|
+        content = `#{dmidecode_bin} 2>&1`
+        f.puts("## dmidecode")
         f.puts(content)
         f.puts("")
       end
