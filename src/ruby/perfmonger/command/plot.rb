@@ -193,8 +193,8 @@ EOS
         system("gnuplot #{gpfile.path}")
 
         if @output_type != 'pdf'
-          system("convert -background white #{iops_pdf_filename} #{iops_img_filename}")
-          system("convert -background white #{transfer_pdf_filename} #{transfer_img_filename}")
+          system("convert -density 150 -background white #{iops_pdf_filename} #{iops_img_filename}")
+          system("convert -density 150 -background white #{transfer_pdf_filename} #{transfer_img_filename}")
         end
 
         FileUtils.copy(iops_pdf_filename, @output_dir)
@@ -292,7 +292,7 @@ EOS
         system("gnuplot #{gpfile.path}")
 
         if @output_type != 'pdf'
-          system("convert -background white #{pdf_filename} #{img_filename}")
+          system("convert -density 150 -background white #{pdf_filename} #{img_filename}")
         end
 
         FileUtils.copy(pdf_filename, @output_dir)
@@ -396,7 +396,7 @@ EOS
         system("gnuplot #{all_gpfile.path}")
 
         if @output_type != 'pdf'
-          system("convert -background white #{all_pdf_filename} #{all_img_filename}")
+          system("convert -density 150 -background white #{all_pdf_filename} #{all_img_filename}")
         end
 
         FileUtils.copy(all_pdf_filename, @output_dir)
