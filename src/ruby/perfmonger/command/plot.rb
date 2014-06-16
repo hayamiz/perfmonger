@@ -238,11 +238,9 @@ EOS
         devices = nil
         nr_cpu = nil
 
-        records = File.read(@data_file).split("\n").map do |line|
-          JSON.parse(line)
-        end
+        File.open(@data_file).each_line do |line|
+          record = JSON.parse(line)
 
-        records.each do |record|
           time = record["time"]
           cpuinfo = record["cpuinfo"]
           return unless cpuinfo
@@ -326,16 +324,17 @@ EOS
         legend_height = 0.04
         nr_cpu.times do |cpu_idx|
           all_datafile.puts("# cpu #{cpu_idx}")
-          records.each do |record|
+          File.open(@data_file).each_line do |line|
+            record = JSON.parse(line)
             time = record["time"]
             cpurec = record["cpuinfo"]["cpus"][cpu_idx]
             all_datafile.puts([time - start_time,
-                              cpurec["%usr"] + cpurec["%nice"],
-                              cpurec["%sys"],
-                              cpurec["%irq"],
-                              cpurec["%soft"],
-                              cpurec["%steal"] + cpurec["%guest"],
-                              cpurec["%iowait"]].map(&:to_s).join("\t"))
+                               cpurec["%usr"] + cpurec["%nice"],
+                               cpurec["%sys"],
+                               cpurec["%irq"],
+                               cpurec["%soft"],
+                               cpurec["%steal"] + cpurec["%guest"],
+                               cpurec["%iowait"]].map(&:to_s).join("\t"))
           end
           all_datafile.puts("")
           all_datafile.puts("")

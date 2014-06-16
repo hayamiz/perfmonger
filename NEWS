@@ -9,6 +9,8 @@
       * Support start delay and timeout of measurement
     * [summary] subcommand:
       * Pager support for summary output
+    * [plot] subcommand:
+      * Reduced memory usage
   * Bug fixes
 
 ## 20XX-XX-XX: PerfMonger 0.5.2 released
