@@ -257,9 +257,9 @@ function add_record(record) {
 
 <% if report_cpu %>
   var cpu_record = record['cpuinfo']['all'];
-  var cpu_usr = cpu_record['%usr'] + cpu_record['%nice'];
-  var cpu_sys = cpu_record['%sys'];
-  var cpu_other = 100.0 - cpu_record['%idle'] - cpu_usr - cpu_sys;
+  var cpu_usr = cpu_record['usr'] + cpu_record['nice'];
+  var cpu_sys = cpu_record['sys'];
+  var cpu_other = 100.0 - cpu_record['idle'] - cpu_usr - cpu_sys;
   if (cpu_other < 0.0) cpu_other = 0.0;
 
   cpu_usr_data.push({x: t, y: cpu_usr});
@@ -269,11 +269,11 @@ function add_record(record) {
 
 <% devices.each do |dev| %>
 <% edev = escape_device_name(dev) %>
-  <%= edev %>_riops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['r/s']});
-  <%= edev %>_wiops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['w/s']});
+  <%= edev %>_riops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['riops']});
+  <%= edev %>_wiops_data.push({x: t, y: record['ioinfo']['<%= dev %>']['wiops']});
 
-  <%= edev %>_rthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['rsec/s'] * sector2mb});
-  <%= edev %>_wthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['wsec/s'] * sector2mb});
+  <%= edev %>_rthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['rsecps'] * sector2mb});
+  <%= edev %>_wthroughput_data.push({x: t, y: record['ioinfo']['<%= dev %>']['wsecps'] * sector2mb});
 <% end %>
 
   last_record = records[records.length - 1];
