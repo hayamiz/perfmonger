@@ -2,6 +2,15 @@
 
   * New features
   * Changes
+    * [record] subcommand:
+      * Output JSON format change:
+        * "r/s" => "riops"
+        * "rsec/s" => "rsecps"
+        * "w/s" => "wiops"
+        * "wsec/s" => "wsecps"
+        * "%idle" => "idle"
+        * "%usr" => "usr"
+        * (...)
     * [bukko] subcommand:
       * Record information about xvd* devices (Xen virtual blockdev)
       * Record output of dmidecode(1) if available

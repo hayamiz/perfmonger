@@ -99,10 +99,10 @@ EOS
         record = records[idx]
         dt = record["time"] - last_record["time"]
 
-        read_requests += record["ioinfo"][device]["r/s"] * dt
-        write_requests += record["ioinfo"][device]["w/s"] * dt
-        read_bytes += record["ioinfo"][device]["rsec/s"] * 512 * dt
-        write_bytes += record["ioinfo"][device]["wsec/s"] * 512 * dt
+        read_requests += record["ioinfo"][device]["riops"] * dt
+        write_requests += record["ioinfo"][device]["wiops"] * dt
+        read_bytes += record["ioinfo"][device]["rsecps"] * 512 * dt
+        write_bytes += record["ioinfo"][device]["wsecps"] * 512 * dt
       end
 
       accum["ioinfo"][device] = Hash.new
@@ -217,10 +217,10 @@ EOS
           dev_ioinfo = rec1["ioinfo"][device]
           dt = rec1["time"] - rec0["time"]
 
-          accum_r_io_time += dev_ioinfo["r_await"] * dev_ioinfo["r/s"] * dt
-          accum_w_io_time += dev_ioinfo["w_await"] * dev_ioinfo["w/s"] * dt
-          r_io_count += dev_ioinfo["r/s"] * dt
-          w_io_count += dev_ioinfo["w/s"] * dt
+          accum_r_io_time += dev_ioinfo["r_await"] * dev_ioinfo["riops"] * dt
+          accum_w_io_time += dev_ioinfo["w_await"] * dev_ioinfo["wiops"] * dt
+          r_io_count += dev_ioinfo["riops"] * dt
+          w_io_count += dev_ioinfo["wiops"] * dt
         end
 
         if r_io_count > 0
@@ -285,12 +285,12 @@ EOS
         nr_cpu = records.first["cpuinfo"]["nr_cpu"]
 
         usr, sys, iowait, irq, soft, idle =
-          [summary['cpuinfo']['all']['%usr'] + summary['cpuinfo']['all']['%nice'],
-           summary['cpuinfo']['all']['%sys'],
-           summary['cpuinfo']['all']['%iowait'],
-           summary['cpuinfo']['all']['%irq'],
-           summary['cpuinfo']['all']['%soft'],
-           summary['cpuinfo']['all']['%idle']].map do |val|
+          [summary['cpuinfo']['all']['usr'] + summary['cpuinfo']['all']['nice'],
+           summary['cpuinfo']['all']['sys'],
+           summary['cpuinfo']['all']['iowait'],
+           summary['cpuinfo']['all']['irq'],
+           summary['cpuinfo']['all']['soft'],
+           summary['cpuinfo']['all']['idle']].map do |val|
           val * nr_cpu
         end
 
@@ -324,10 +324,10 @@ EOS
 
         summary['ioinfo']['devices'].each do |device|
           r_iops, w_iops, r_sec, w_sec, r_await, w_await =
-            [summary['ioinfo'][device]['r/s'],
-             summary['ioinfo'][device]['w/s'],
-             summary['ioinfo'][device]['rsec/s'] * 512 / 1024.0 / 1024.0,
-             summary['ioinfo'][device]['wsec/s'] * 512 / 1024.0 / 1024.0,
+            [summary['ioinfo'][device]['riops'],
+             summary['ioinfo'][device]['wiops'],
+             summary['ioinfo'][device]['rsecps'] * 512 / 1024.0 / 1024.0,
+             summary['ioinfo'][device]['wsecps'] * 512 / 1024.0 / 1024.0,
              summary['ioinfo'][device]['r_await'],
              summary['ioinfo'][device]['w_await']]
 

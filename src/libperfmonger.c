@@ -555,8 +555,8 @@ output_io_stat (strbuf_t *output, int curr)
         nr_dev ++;
 
         strbuf_append(output,
-                      "\"%s\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
-                      "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
+                      "\"%s\": {\"riops\": %.4lf, \"wiops\": %.4lf, "
+                      "\"rsecps\": %.4lf, \"wsecps\": %.4lf, "
                       "\"r_await\": %.4lf, \"w_await\": %.4lf, "
                       "\"avgrq-sz\": %.4lf, \"avgqu-sz\": %.4lf}, ",
                       shi->name,
@@ -579,8 +579,8 @@ output_io_stat (strbuf_t *output, int curr)
     reqsz /= nr_dev;
 
     strbuf_append(output,
-                  "\"total\": {\"r/s\": %.4lf, \"w/s\": %.4lf, "
-                  "\"rsec/s\": %.4lf, \"wsec/s\": %.4lf, "
+                  "\"total\": {\"riops\": %.4lf, \"wiops\": %.4lf, "
+                  "\"rsecps\": %.4lf, \"wsecps\": %.4lf, "
                   "\"r_await\": %.4lf, \"w_await\": %.4lf}}",
                   r_iops, w_iops,
                   r_sectors, w_sectors,
@@ -599,11 +599,11 @@ output_cpu_stat(strbuf_t *output, int curr)
     g_itv = get_interval(uptime[!curr], uptime[curr]);
 
     strbuf_append(output, ", \"cpuinfo\": {\"nr_cpu\": %d", cpu_nr);
-    strbuf_append(output, ", \"all\": {\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                  "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                  "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                  "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                  "\"%%idle\": %.2f}",
+    strbuf_append(output, ", \"all\": {\"usr\": %.2f, \"nice\": %.2f, "
+                  "\"sys\": %.2f, \"iowait\": %.2f, "
+                  "\"irq\": %.2f, \"soft\": %.2f, "
+                  "\"steal\": %.2f, \"guest\": %.2f, "
+                  "\"idle\": %.2f}",
                   (st_cpu[curr]->cpu_user - st_cpu[curr]->cpu_guest) <
                   (st_cpu[!curr]->cpu_user - st_cpu[!curr]->cpu_guest) ?
                   0.0 :
@@ -656,20 +656,20 @@ output_cpu_stat(strbuf_t *output, int curr)
              * If the CPU is tickless then there is no change in CPU values
              * but the sum of values is not zero.
              */
-            strbuf_append(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                          "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                          "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                          "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                          "\"%%idle\": %.2f}",
+            strbuf_append(output, "{\"usr\": %.2f, \"nice\": %.2f, "
+                          "\"sys\": %.2f, \"iowait\": %.2f, "
+                          "\"irq\": %.2f, \"soft\": %.2f, "
+                          "\"steal\": %.2f, \"guest\": %.2f, "
+                          "\"idle\": %.2f}",
                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 100.0);
         }
         else
         {
-            strbuf_append(output, "{\"%%usr\": %.2f, \"%%nice\": %.2f, "
-                          "\"%%sys\": %.2f, \"%%iowait\": %.2f, "
-                          "\"%%irq\": %.2f, \"%%soft\": %.2f, "
-                          "\"%%steal\": %.2f, \"%%guest\": %.2f, "
-                          "\"%%idle\": %.2f}",
+            strbuf_append(output, "{\"usr\": %.2f, \"nice\": %.2f, "
+                          "\"sys\": %.2f, \"iowait\": %.2f, "
+                          "\"irq\": %.2f, \"soft\": %.2f, "
+                          "\"steal\": %.2f, \"guest\": %.2f, "
+                          "\"idle\": %.2f}",
                           (scc->cpu_user - scc->cpu_guest) < (scp->cpu_user - scp->cpu_guest) ?
                           0.0 :
                           ll_sp_value(scp->cpu_user - scp->cpu_guest,
