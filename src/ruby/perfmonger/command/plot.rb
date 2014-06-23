@@ -137,9 +137,9 @@ EOS
 
           datafile.puts([time - start_time,
                          devices.map{|device|
-                           [ioinfo[device]["r/s"], ioinfo[device]["w/s"],
-                            ioinfo[device]["rsec/s"] * 512 / 1024 / 1024, # in MB/s
-                            ioinfo[device]["wsec/s"] * 512 / 1024 / 1024, # in MB/s
+                           [ioinfo[device]["riops"], ioinfo[device]["wiops"],
+                            ioinfo[device]["rsecps"] * 512 / 1024 / 1024, # in MB/s
+                            ioinfo[device]["wsecps"] * 512 / 1024 / 1024, # in MB/s
                            ]
                          }].flatten.map(&:to_s).join("\t"))
         end
@@ -252,7 +252,7 @@ EOS
           end_time = [end_time, time].max
 
           datafile.puts([time - start_time,
-                         %w|%usr %nice %sys %iowait %irq %soft %steal %guest %idle|.map do |key|
+                         %w|usr nice sys iowait irq soft steal guest idle|.map do |key|
                            cores.map{|core| core[key]}.inject(&:+)
                          end].flatten.map(&:to_s).join("\t"))
         end
@@ -329,12 +329,12 @@ EOS
             time = record["time"]
             cpurec = record["cpuinfo"]["cpus"][cpu_idx]
             all_datafile.puts([time - start_time,
-                               cpurec["%usr"] + cpurec["%nice"],
-                               cpurec["%sys"],
-                               cpurec["%irq"],
-                               cpurec["%soft"],
-                               cpurec["%steal"] + cpurec["%guest"],
-                               cpurec["%iowait"]].map(&:to_s).join("\t"))
+                               cpurec["usr"] + cpurec["nice"],
+                               cpurec["sys"],
+                               cpurec["irq"],
+                               cpurec["soft"],
+                               cpurec["steal"] + cpurec["guest"],
+                               cpurec["iowait"]].map(&:to_s).join("\t"))
           end
           all_datafile.puts("")
           all_datafile.puts("")
