@@ -97,7 +97,7 @@ describe PerfMonger::Command::SummaryCommand do
       # avg. riops should be ((3.0 * 1.0 + 6.0 * 3.0) / 3.0) == 5.0
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["sda"]["riops"].should be_within(0.005).of(5.0)
+      summary["ioinfo"]["sda"]["riops"].should be_within(5.0e-6).of(5.0)
     end
 
     it 'should return 0.0 for r_await if all values are zero' do
@@ -120,7 +120,7 @@ describe PerfMonger::Command::SummaryCommand do
 
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["sda"]["r_await"].should be_within(0.003).of(3.0)
+      summary["ioinfo"]["sda"]["r_await"].should be_within(3.0e-6).of(3.0)
     end
   end
 
@@ -138,7 +138,7 @@ describe PerfMonger::Command::SummaryCommand do
 
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["total"]["riops"].should be_within(0.005).of(10.0)
+      summary["ioinfo"]["total"]["riops"].should be_within(10.0e-6).of(10.0)
     end
   end
 
@@ -186,8 +186,8 @@ describe PerfMonger::Command::SummaryCommand do
 
       accum = @summary.make_accumulation(@records)
 
-      accum["ioinfo"]["sda"]["read_requests"].should be_within(0.006).of(6.0)
-      accum["ioinfo"]["sda"]["read_bytes"].should be_within(1.0).of(6144.0)
+      accum["ioinfo"]["sda"]["read_requests"].should be_within(6.0e-6).of(6.0)
+      accum["ioinfo"]["sda"]["read_bytes"].should be_within(1e-6).of(6144.0)
     end
   end
 end
