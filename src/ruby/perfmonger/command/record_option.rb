@@ -48,6 +48,9 @@ class RecordOption
     cmd = [record_bin]
     cmd << '-i'
     cmd << @interval.to_s
+    if @interval_backoff
+      cmd << '-b'
+    end
     if @start_delay > 0
       cmd << '-s'
       cmd << @start_delay.to_s
@@ -80,6 +83,7 @@ class RecordOption
     @devices           = []
     @all_devices       = false
     @interval          = 1.0 # in second
+    @interval_backoff  = true
     @start_delay       = 0.0 # in second
     @timeout           = nil # in second, or nil (= no timeout)
     @verbose           = false
@@ -105,6 +109,11 @@ class RecordOption
     @parser.on('-i', '--interval SEC',
                'Amount of time between each measurement report. Floating point is o.k.') do |interval|
       @interval = Float(interval)
+    end
+
+    @parser.on('-B', '--no-interval-backoff',
+               'Prevent interval to be set longer every after 100 records.') do
+      @interval_backoff = false
     end
 
     @parser.on('-s', '--start-delay SEC',

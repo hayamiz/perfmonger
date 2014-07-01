@@ -79,6 +79,7 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->dev_list     = NULL;
     opt->all_devices  = false;
     opt->interval     = 1.0;
+    opt->interval_backoff = false;
     opt->start_delay  = 0.0;
     opt->timeout      = -1.0;   /* negative means no timeout */
     opt->verbose      = false;
@@ -87,7 +88,7 @@ parse_args(int argc, char **argv, option_t *opt)
     opt->report_ctxsw = false;
     opt->output       = stdout;
 
-    while((optval = getopt(argc, argv, "d:Di:s:t:vhCSl:")) != -1) {
+    while((optval = getopt(argc, argv, "d:Di:bs:t:vhCSl:")) != -1) {
         switch(optval) {
         case 'd': // device
             opt->nr_dev ++;
@@ -101,6 +102,9 @@ parse_args(int argc, char **argv, option_t *opt)
             break;
         case 'i': // interval
             opt->interval = strtod(optarg, NULL);
+            break;
+        case 'b': // interval backoff
+            opt->interval_backoff = true;
             break;
         case 's': // start delay
             opt->start_delay = strtod(optarg, NULL);
@@ -274,9 +278,11 @@ collector_loop(option_t *opt)
 {
     int curr;
     struct timeval tv;
+    double interval;
     long wait_until;
-    long wait_interval;
+    long sleeptime;
     long timeout_when;
+    int backoff_counter;
     bool running;
 
     if (opt->start_delay > 0.0) {
@@ -295,6 +301,9 @@ collector_loop(option_t *opt)
         timeout_when = LONG_MAX;
     }
 
+    interval = opt->interval;
+
+    backoff_counter = 0;
 
     running = true;
     while(running) {
@@ -309,7 +318,18 @@ collector_loop(option_t *opt)
             running = false;
         }
 
-        wait_until += opt->interval * 1000000L;
+#define BACKOFF_THRESH (2000)
+#define BACKOFF_RATIO (2.0)
+        /* Minimum resolution: BACKOFF_RATIO / BACKOFF_THRESH */
+        if (opt->interval_backoff && backoff_counter++ >= BACKOFF_THRESH) {
+            backoff_counter -= BACKOFF_THRESH;
+            interval *= BACKOFF_RATIO;
+            if (interval > 3600.0) {
+                interval = 3600.0;
+            }
+        }
+
+        wait_until += interval * 1000000L;
 
         uptime0[curr] = 0;
         read_uptime(&(uptime0[curr]));
@@ -332,13 +352,13 @@ collector_loop(option_t *opt)
         curr ^= 1;
         gettimeofday(&tv, NULL);
 
-        wait_interval = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
+        sleeptime = wait_until - (tv.tv_sec * 1000000L + tv.tv_usec);
 
-        if (wait_interval < 0){
+        if (sleeptime < 0){
             if (opt->verbose)
-                fprintf(stderr, "panic!: %ld\n", wait_interval);
+                fprintf(stderr, "panic!: %ld\n", sleeptime);
         } else {
-            usleep(wait_interval);
+            usleep(sleeptime);
         }
     }
 

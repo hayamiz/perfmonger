@@ -39,6 +39,7 @@ typedef struct {
 
     // data collection interval
     double interval;
+    bool interval_backoff;
 
     double start_delay;
 

@@ -11,6 +11,9 @@
         * "%idle" => "idle"
         * "%usr" => "usr"
         * (...)
+      * Exponential interval backoff.
+        * Recording interval gets longer every after 2000 records.
+        * Enable by default (disabled by --no-interval-backoff option)
     * [bukko] subcommand:
       * Record information about xvd* devices (Xen virtual blockdev)
       * Record output of dmidecode(1) if available
