@@ -4,18 +4,18 @@ require 'fileutils'
 module PerfMonger
 module Command
 
-class BukkoCommand < BaseCommand
-  register_command 'bukko', 'Gather all possible system config information'
+class FingerprintCommand < BaseCommand
+  register_command 'fingerprint', 'Gather all possible system config information'
 
   def initialize
     @parser = OptionParser.new
     @parser.banner = <<EOS
-Usage: perfmonger bukko [options] OUTPUT_DIR
+Usage: perfmonger fingerprint [options] OUTPUT_DIR
 
 Options:
 EOS
 
-    @output_dir = './bukko'
+    @output_dir = './fingerprint'
   end
 
   def parse_args(argv)

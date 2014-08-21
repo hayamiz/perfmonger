@@ -12,4 +12,4 @@ dist_perfmonger_rubylib_perfmonger_command_DATA =	\
 	stat.rb					\
 	stat_option.rb					\
 	summary.rb					\
-	bukko.rb
+	fingerprint.rb
