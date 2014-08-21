@@ -6,6 +6,8 @@ module Command
 
 class FingerprintCommand < BaseCommand
   register_command 'fingerprint', 'Gather all possible system config information'
+  register_alias   'bukko'
+  register_alias   'fp'
 
   def initialize
     @parser = OptionParser.new

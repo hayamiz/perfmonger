@@ -7,7 +7,21 @@ module CLI
 class Runner
   def self.register_command(command_name, klass)
     @@commands ||= Hash.new
+    @@aliases ||= Hash.new
+
     @@commands[command_name] = klass
+  end
+
+  def self.register_alias(alias_name, command_name)
+    if @@commands.nil?
+      raise RuntimeError.new("No command is registered yet.")
+    end
+
+    if ! @@commands.has_key?(command_name)
+      raise RuntimeError.new("Command '#{command_name}' is not registered.")
+    end
+
+    @@aliases[alias_name] = command_name
   end
 
   def initialize
@@ -42,7 +56,15 @@ EOS
       # pad command names
       command_name = command.command_name
       command_name = command_name + (" " * (max_len - command_name.size))
-      "    " + command_name + "   " + command.description
+
+      str = "    " + command_name + "   " + command.description
+
+      if command.aliases && command.aliases.size > 0
+        str += "\n" + "    " + (" " * max_len) + "   " +
+          "Aliases: " + command.aliases.join(", ")
+      end
+
+      str
     end.join("\n")
 
     subcommand_list = <<EOS
@@ -73,6 +95,10 @@ EOS
     end
 
     command_name = argv.shift
+
+    if @@aliases[command_name]
+      command_name = @@aliases[command_name]
+    end
     command_class = @@commands[command_name]
 
     unless command_class
