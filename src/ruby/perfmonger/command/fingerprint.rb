@@ -1,5 +1,7 @@
 
 require 'fileutils'
+require 'tmpdir'
+require 'tempfile'
 
 module PerfMonger
 module Command
@@ -12,12 +14,13 @@ class FingerprintCommand < BaseCommand
   def initialize
     @parser = OptionParser.new
     @parser.banner = <<EOS
-Usage: perfmonger fingerprint [options] OUTPUT_DIR
+Usage: perfmonger fingerprint [options] OUTPUT_TARBALL
 
 Options:
 EOS
 
-    @output_dir = './fingerprint'
+    hostname = `hostname`.strip
+    @output_tarball = "./fingerprint.#{hostname}.tar.gz"
   end
 
   def parse_args(argv)
@@ -29,10 +32,10 @@ EOS
       exit(false)
     end
 
-    @output_dir = argv.shift
+    @output_tarball = argv.shift
 
-    if ! File.directory?(@output_dir)
-      FileUtils.mkdir_p(@output_dir)
+    if ! @output_tarball =~ /\.(tar\.gz|tgz)$/
+      @output_tarball += ".tar.gz"
     end
   end
 
@@ -41,55 +44,71 @@ EOS
 
     ENV['LANG'] = 'C'
 
-    $stderr.puts("System information is gathered into #{@output_dir}")
+    $stderr.puts("System information is gathered into #{@output_tarball}")
 
-    ## Collect generic info.
+    Dir.mktmpdir do |tmpdir|
+      output_basename = File.basename(@output_tarball.gsub(/\.(tar\.gz|tgz)$/, ''))
 
-    do_with_message("Saving /proc info") do
-      save_proc_info()
-    end
+      @output_dir = File.join(tmpdir, output_basename)
+      FileUtils.mkdir(@output_dir)
 
-    do_with_message("Saving IRQ info") do
-      save_irq_info()
-    end
-
-    do_with_message("Saving block device info") do
-      save_device_info()
-    end
-
-    do_with_message("Saving /dev/disk info") do
-      save_disk_info()
-    end
-
-    do_with_message("Saving PCI/PCIe info") do
-      save_pci_info()
-    end
-
-    do_with_message("Saving kernel module info") do
-      save_module_info()
-    end
-
-    do_with_message("Saving distro info") do
-      save_distro_info()
-    end
-
-    do_with_message("Saving sysctl info") do
-      save_sysctl_info()
-    end
-
-    do_with_message("Saving dmidecode info") do
-      save_dmidecode_info()
-    end
-
-
-    ## Collect vendor specific info
-
-    # LSI MegaRAID
-    megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
-    if File.executable?(megacli_bin) && Process::UID.rid == 0
-      do_with_message("Saving MegaRAID settings") do
-        save_megaraid_info(megacli_bin)
+      ## Collect generic info.
+      do_with_message("Saving /proc info") do
+        save_proc_info()
       end
+
+      do_with_message("Saving IRQ info") do
+        save_irq_info()
+      end
+
+      do_with_message("Saving block device info") do
+        save_device_info()
+      end
+
+      do_with_message("Saving /dev/disk info") do
+        save_disk_info()
+      end
+
+      do_with_message("Saving PCI/PCIe info") do
+        save_pci_info()
+      end
+
+      do_with_message("Saving kernel module info") do
+        save_module_info()
+      end
+
+      do_with_message("Saving distro info") do
+        save_distro_info()
+      end
+
+      do_with_message("Saving sysctl info") do
+        save_sysctl_info()
+      end
+
+      do_with_message("Saving dmidecode info") do
+        save_dmidecode_info()
+      end
+
+
+      ## Collect vendor specific info
+
+      # LSI MegaRAID
+      megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
+      if File.executable?(megacli_bin) && Process::UID.rid == 0
+        do_with_message("Saving MegaRAID settings") do
+          save_megaraid_info(megacli_bin)
+        end
+      end
+
+      tmptar_path = Tempfile.new("fingerprint").path
+
+      Dir.chdir(tmpdir) do
+        if ! system("tar czf '#{tmptar_path}' #{output_basename}")
+          raise RuntimeError.new("Failed to execute tar(1)")
+        end
+      end
+
+      FileUtils.mv(tmptar_path, @output_tarball)
     end
   end
 

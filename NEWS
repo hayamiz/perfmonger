@@ -19,6 +19,7 @@
       * Rename formaer 'bukko' to 'fingerprint'
       * Record information about xvd* devices (Xen virtual blockdev)
       * Record output of dmidecode(1) if available
+      * Create a tarball instead of creating files under output directory
     * [record] subcommand:
       * Support start delay and timeout of measurement
     * [summary] subcommand:
