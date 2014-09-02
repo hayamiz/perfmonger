@@ -2,6 +2,7 @@
 
   * New features
   * Changes
+    * Add subcommand alias mechanism
     * [record] subcommand:
       * Output JSON format change:
         * "r/s" => "riops"
@@ -24,12 +25,6 @@
       * Pager support for summary output
     * [plot] subcommand:
       * Reduced memory usage
-  * Bug fixes
-
-## 20XX-XX-XX: PerfMonger 0.5.2 released
-
-This is a bug fix release.
-
   * Bug fixes
     * plot subcommand
       * In all-CPU graph, correctly calculate # of columns with small(2-3) # of CPUs
