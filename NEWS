@@ -1,9 +1,17 @@
 ## 20XX-XX-XX: PerfMonger 0.6.0 released
 
   * New features
-  * Changes
     * Add subcommand alias mechanism
     * [record] subcommand:
+      * Exponential interval backoff.
+        * Recording interval gets longer every after 2000 records.
+        * Enable by default (disabled by --no-interval-backoff option)
+    * [fingerprint] subcommand:
+      * Record output of dmidecode(1) if available
+  * Changes
+    * [record] subcommand:
+      * Record information about xvd* devices (Xen virtual blockdev)
+      * Support start delay and timeout of measurement
       * Output JSON format change:
         * "r/s" => "riops"
         * "rsec/s" => "rsecps"
@@ -12,16 +20,9 @@
         * "%idle" => "idle"
         * "%usr" => "usr"
         * (...)
-      * Exponential interval backoff.
-        * Recording interval gets longer every after 2000 records.
-        * Enable by default (disabled by --no-interval-backoff option)
     * [fingerprint] subcommand:
-      * Rename formaer 'bukko' to 'fingerprint'
-      * Record information about xvd* devices (Xen virtual blockdev)
-      * Record output of dmidecode(1) if available
+      * Rename former 'bukko' to 'fingerprint'
       * Create a tarball instead of creating files under output directory
-    * [record] subcommand:
-      * Support start delay and timeout of measurement
     * [summary] subcommand:
       * Pager support for summary output
     * [plot] subcommand:
