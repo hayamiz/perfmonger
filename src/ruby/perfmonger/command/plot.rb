@@ -197,17 +197,22 @@ EOS
           system("convert -density 150 -background white #{transfer_pdf_filename} #{transfer_img_filename}")
         end
 
-        FileUtils.copy(iops_pdf_filename, @output_dir)
-        FileUtils.copy(transfer_pdf_filename, @output_dir)
-        FileUtils.copy(iops_img_filename, @output_dir) if iops_img_filename
-        FileUtils.copy(transfer_img_filename, @output_dir) if transfer_img_filename
-        if @save_gpfiles
-          FileUtils.copy(gp_filename , @output_dir)
-          FileUtils.copy(dat_filename, @output_dir)
-        end
+      end # chdir
+
+      copy_targets = [iops_pdf_filename, transfer_pdf_filename]
+      copy_targets.push(iops_img_filename) if iops_img_filename
+      copy_targets.push(transfer_img_filename) if transfer_img_filename
+
+      if @save_gpfiles
+        copy_targets.push(dat_filename)
+        copy_targets.push(gp_filename)
       end
-    end
-  end
+
+      copy_targets.each do |target|
+        FileUtils.copy(File.join(working_dir, target), @output_dir)
+      end
+    end # mktempdir
+  end # def
 
   def plot_cpuinfo()
     pdf_filename = @output_prefix + 'cpu.pdf'
@@ -292,14 +297,6 @@ EOS
         if @output_type != 'pdf'
           system("convert -density 150 -background white #{pdf_filename} #{img_filename}")
         end
-
-        FileUtils.copy(pdf_filename, @output_dir)
-        FileUtils.copy(img_filename, @output_dir) if img_filename
-        if @save_gpfiles
-          FileUtils.copy(gp_filename , @output_dir)
-          FileUtils.copy(dat_filename, @output_dir)
-        end
-
 
         ## Plot all CPUs in a single file
 
@@ -398,15 +395,27 @@ EOS
           system("convert -density 150 -background white #{all_pdf_filename} #{all_img_filename}")
         end
 
-        FileUtils.copy(all_pdf_filename, @output_dir)
-        FileUtils.copy(all_img_filename, @output_dir) if all_img_filename
-        if @save_gpfiles
-          FileUtils.copy(all_gp_filename , @output_dir)
-          FileUtils.copy(all_dat_filename, @output_dir)
-        end
+      end # chdir
+
+      copy_targets = []
+
+      copy_targets << pdf_filename
+      copy_targets << img_filename if img_filename
+      copy_targets << all_pdf_filename
+      copy_targets << all_img_filename if all_img_filename
+
+      if @save_gpfiles
+        copy_targets << gp_filename
+        copy_targets << dat_filename
+        copy_targets << all_gp_filename
+        copy_targets << all_dat_filename
       end
-    end
-  end
+
+      copy_targets.each do |target|
+        FileUtils.copy(File.join(working_dir, target), @output_dir)
+      end
+    end # mktempdir
+  end # def
 
   private
   def factors(n)
