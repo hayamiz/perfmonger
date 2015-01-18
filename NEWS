@@ -1,6 +1,7 @@
-## 20XX-XX-XX: PerfMonger 0.6.0 released
+## 2015-01-18: PerfMonger 0.6.0 released
 
   * New features
+    * Add gem packaging support
     * Add subcommand alias mechanism
     * [record] subcommand:
       * Exponential interval backoff.
