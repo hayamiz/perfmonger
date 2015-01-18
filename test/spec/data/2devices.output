@@ -1,0 +1,42 @@
+
+== Performance summary of 'spec/data/2devices.log' ==
+
+record duration: 1.00 sec
+
+* Average CPU usage (MAX: 200 %)
+  * Non idle portion: 200.00
+       %usr: 0.00
+       %sys: 200.00
+       %irq: 0.00
+      %soft: 0.00
+     %other: 0.00
+  * Idle portion: 0.00
+    %iowait: 0.00
+      %idle: 0.00
+
+* Average DEVICE usage: sda
+        read IOPS: 1.00
+       write IOPS: 0.00
+  read throughput: 0.00 MB/s
+ write throughput: 0.00 MB/s
+     read latency: 53.00 msec
+    write latency: 0.0 usec
+      read amount: 512.00 bytes
+     write amount: 0.00 bytes
+
+* Average DEVICE usage: sdb
+        read IOPS: 0.00
+       write IOPS: 0.00
+  read throughput: 0.00 MB/s
+ write throughput: 0.00 MB/s
+     read latency: 0.0 usec
+    write latency: 0.0 usec
+      read amount: 0.00 bytes
+     write amount: 0.00 bytes
+
+* TOTAL DEVICE usage: sda, sdb
+        read IOPS: 1.00
+       write IOPS: 0.00
+  read throughput: 0.00 MB/s
+ write throughput: 0.00 MB/s
+
