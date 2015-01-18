@@ -12,23 +12,18 @@ speaking JSON.
 
 ## Prerequisites
 
-  * Ruby 1.8.7 or later
-    * Ruby 1.9.3 or later is recommended
-  * gnuplot (optional)
+  * Ruby 1.9.3 or later
+  * gnuplot 4.6.0 or later (optional)
 
 Note: You need Cutter unit testing framework for building/running tests.
 
 ## How to install
 
-### RHEL or CentOS
-
-    rpm -Uvh http://package.hayamiz.com/hayamiz-repos-1.0.0-0.noarch.rpm
-    yum install perfmonger
+    gem install perfmonger
 
 ### Build from source
 
-    ./configure
-    sudo make install
+    rake build
 
 ## How to use: case study
 

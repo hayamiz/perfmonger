@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://github.com/hayamiz/perfmonger/'
   s.license     = 'GPL-2'
 
-  s.required_ruby_version = '>= 1.9.0'
+  s.required_ruby_version = '>= 1.9.3'
 
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec"
