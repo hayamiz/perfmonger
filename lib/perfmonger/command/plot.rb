@@ -93,7 +93,7 @@ EOS
       exit(false)
     end
 
-    unless system('gnuplot -e "set terminal"|grep pdfcairo >/dev/null 2>&1')
+    unless system('gnuplot -e "set terminal" < /dev/null 2>&1 | grep pdfcairo >/dev/null 2>&1')
       puts("ERROR: pdfcairo is not supported by installed gnuplot")
       puts("ERROR: PerfMonger requires pdfcairo-supported gnuplot")
       puts(@parser.help)
