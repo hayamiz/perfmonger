@@ -70,18 +70,23 @@ EOS
       @hostname = hostname
     end
 
-    @parser.on('--http-hostname NAME',
+    @parser.on('--http-host NAME',
                "Host name for HTTP server URL. If not specified, value of '--hostname' option is used.") do |hostname|
       @http_hostname = hostname
     end
 
-    @parser.on('--http-port PORT', 'HTTP server port to listen.') do |port|
+    @parser.on('--port PORT', 'HTTP server port to listen.') do |port|
       if ! port =~ /\A\d+\Z/
         puts("ERROR: invalid port number value: #{port}")
         puts(@parser.help)
         exit(false)
       end
       @http_port = port.to_i
+    end
+
+    @parser.on('-h', '--help', 'Show this help.') do
+      puts @parser.help
+      exit(false)
     end
 
     # @parser.on('--tcp-port PORT', 'TCP data server port to listen.') do |port|

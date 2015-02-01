@@ -3,6 +3,8 @@
   * Bug fixes
     * [plot] subcommand:
       * Correctly find supported terminal
+    * [server] subcommand:
+      * Disambiguate command line options
 
 ## 2015-01-18: PerfMonger 0.6.0 released
 
