@@ -1,5 +1,7 @@
 ## XXXX-XX-XX: PerfMonger 0.6.2 released
 
+  * New features
+    * Bash completion support
   * Bug fixes
     * [plot] subcommand:
       * Correctly find supported terminal
