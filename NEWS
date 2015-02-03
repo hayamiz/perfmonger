@@ -2,6 +2,7 @@
 
   * New features
     * Bash completion support
+    * Zsh completion support
   * Bug fixes
     * [plot] subcommand:
       * Correctly find supported terminal
