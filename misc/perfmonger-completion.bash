@@ -8,6 +8,7 @@ _perfmonger() {
 
     subcmds="record stat plot fingerprint server summary"
 
+    # contextual completion
     case $prev in
         perfmonger)
             COMPREPLY=( $(compgen -W "$subcmds" $cur) )
@@ -19,6 +20,10 @@ _perfmonger() {
             ;;
         -l|--logfile)
             COMPREPLY=( $(compgen -o default) )
+            return 0
+            ;;
+        -i|--interval|-s|--start-delay|-t|--timeout)
+            COMPREPLY=()
             return 0
             ;;
     esac
