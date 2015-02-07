@@ -112,7 +112,7 @@ _perfmonger() {
             ;;
     esac
 
-    return ret
+    return $ret
 }
 
 _perfmonger_commands() {
