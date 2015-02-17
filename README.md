@@ -1,6 +1,8 @@
  PerfMonger
 ============
 
+[![Build Status](https://travis-ci.org/hayamiz/perfmonger.svg?branch=master)](https://travis-ci.org/hayamiz/perfmonger)
+
 PerfMonger is an yet anothor performance measurement/monitoring tool
 speaking JSON.
 
