@@ -3,10 +3,6 @@ language: ruby
 install:
   - sudo apt-get install libglib2.0-dev autotools-dev
   - bundle install
-before_script:
-  - ./autogen.sh
-  - ./configure
-  - make
 rvm:
   - 1.8.7
   - 1.9.3

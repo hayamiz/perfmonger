@@ -11,29 +11,29 @@ describe PerfMonger::Command::SummaryCommand do
   describe 'read_logfile method' do
     it 'should return 3 valid records' do
       records = @summary.read_logfile(@logfile)
-      records.size.should == 3
+      expect(records.size).to eq 3
       records.each do |record|
-        record.should be_a Hash
-        record.should include "time"
+        expect(record).to be_a Hash
+        expect(record).to include "time"
 
-        record.should include "ioinfo"
-        record["ioinfo"].should include "devices"
-        record["ioinfo"]["devices"].should be_a Array
-        record["ioinfo"]["devices"].should include "sda"
-        record["ioinfo"].should include "sda"
-        record["ioinfo"]["sda"].should be_a Hash
-        record["ioinfo"]["sda"].should include "riops"
-        record["ioinfo"]["sda"].should include "wiops"
-        record["ioinfo"]["sda"].should include "rsecps"
-        record["ioinfo"]["sda"].should include "wsecps"
-        record["ioinfo"]["sda"].should include "r_await"
-        record["ioinfo"]["sda"].should include "w_await"
+        expect(record).to include "ioinfo"
+        expect(record["ioinfo"]).to include "devices"
+        expect(record["ioinfo"]["devices"]).to be_a Array
+        expect(record["ioinfo"]["devices"]).to include "sda"
+        expect(record["ioinfo"]).to include "sda"
+        expect(record["ioinfo"]["sda"]).to be_a Hash
+        expect(record["ioinfo"]["sda"]).to include "riops"
+        expect(record["ioinfo"]["sda"]).to include "wiops"
+        expect(record["ioinfo"]["sda"]).to include "rsecps"
+        expect(record["ioinfo"]["sda"]).to include "wsecps"
+        expect(record["ioinfo"]["sda"]).to include "r_await"
+        expect(record["ioinfo"]["sda"]).to include "w_await"
 
-        record.should include "cpuinfo"
-        record["cpuinfo"].should be_a Hash
-        record["cpuinfo"].should include "nr_cpu"
-        record["cpuinfo"].should include "cpus"
-        record["cpuinfo"].should include "all"
+        expect(record).to include "cpuinfo"
+        expect(record["cpuinfo"]).to be_a Hash
+        expect(record["cpuinfo"]).to include "nr_cpu"
+        expect(record["cpuinfo"]).to include "cpus"
+        expect(record["cpuinfo"]).to include "all"
       end
     end
   end
@@ -44,44 +44,44 @@ describe PerfMonger::Command::SummaryCommand do
     end
 
     it 'should return nil for empty records' do
-      @summary.make_summary([]).should be_nil
+      expect(@summary.make_summary([])).to eq nil
     end
 
     it 'should return valid format result' do
       summary = @summary.make_summary(@records)
 
-      summary.should be_a Hash
-      summary.should include "time"
+      expect(summary).to be_a Hash
+      expect(summary).to include "time"
 
-      summary.should include "ioinfo"
-      summary["ioinfo"].should include "devices"
-      summary["ioinfo"]["devices"].should be_a Array
-      summary["ioinfo"]["devices"].should include "sda"
-      summary["ioinfo"].should include "sda"
-      summary["ioinfo"]["sda"].should be_a Hash
-      summary["ioinfo"]["sda"].should include "riops"
-      summary["ioinfo"]["sda"].should include "wiops"
-      summary["ioinfo"]["sda"].should include "rsecps"
-      summary["ioinfo"]["sda"].should include "wsecps"
-      summary["ioinfo"]["sda"].should include "r_await"
-      summary["ioinfo"]["sda"].should include "w_await"
+      expect(summary).to include "ioinfo"
+      expect(summary["ioinfo"]).to include "devices"
+      expect(summary["ioinfo"]["devices"]).to be_a Array
+      expect(summary["ioinfo"]["devices"]).to include "sda"
+      expect(summary["ioinfo"]).to include "sda"
+      expect(summary["ioinfo"]["sda"]).to be_a Hash
+      expect(summary["ioinfo"]["sda"]).to include "riops"
+      expect(summary["ioinfo"]["sda"]).to include "wiops"
+      expect(summary["ioinfo"]["sda"]).to include "rsecps"
+      expect(summary["ioinfo"]["sda"]).to include "wsecps"
+      expect(summary["ioinfo"]["sda"]).to include "r_await"
+      expect(summary["ioinfo"]["sda"]).to include "w_await"
 
-      summary.should include "cpuinfo"
-      summary["cpuinfo"].should include "nr_cpu"
-      summary["cpuinfo"].should include "cpus"
-      summary["cpuinfo"].should include "all"
+      expect(summary).to include "cpuinfo"
+      expect(summary["cpuinfo"]).to include "nr_cpu"
+      expect(summary["cpuinfo"]).to include "cpus"
+      expect(summary["cpuinfo"]).to include "all"
       cpu_entries = [summary["cpuinfo"]["all"], *summary["cpuinfo"]["cpus"]]
       cpu_entries.each do |entry|
-        entry.should be_a Hash
-        entry.should include "usr"
-        entry.should include "nice"
-        entry.should include "sys"
-        entry.should include "iowait"
-        entry.should include "irq"
-        entry.should include "soft"
-        entry.should include "steal"
-        entry.should include "guest"
-        entry.should include "idle"
+        expect(entry).to be_a Hash
+        expect(entry).to include "usr"
+        expect(entry).to include "nice"
+        expect(entry).to include "sys"
+        expect(entry).to include "iowait"
+        expect(entry).to include "irq"
+        expect(entry).to include "soft"
+        expect(entry).to include "steal"
+        expect(entry).to include "guest"
+        expect(entry).to include "idle"
       end
     end
 
@@ -97,7 +97,7 @@ describe PerfMonger::Command::SummaryCommand do
       # avg. riops should be ((3.0 * 1.0 + 6.0 * 3.0) / 3.0) == 5.0
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["sda"]["riops"].should be_within(5.0e-6).of(5.0)
+      expect(summary["ioinfo"]["sda"]["riops"]).to be_within(5.0e-6).of(5.0)
     end
 
     it 'should return 0.0 for r_await if all values are zero' do
@@ -107,7 +107,7 @@ describe PerfMonger::Command::SummaryCommand do
 
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["sda"]["r_await"].should == 0.0
+      expect(summary["ioinfo"]["sda"]["r_await"]).to eq 0.0
     end
 
     it 'should calculate avg. r_await/w_await correctly' do
@@ -120,7 +120,7 @@ describe PerfMonger::Command::SummaryCommand do
 
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["sda"]["r_await"].should be_within(3.0e-6).of(3.0)
+      expect(summary["ioinfo"]["sda"]["r_await"]).to be_within(3.0e-6).of(3.0)
     end
   end
 
@@ -138,12 +138,12 @@ describe PerfMonger::Command::SummaryCommand do
 
       summary = @summary.make_summary(@records)
 
-      summary["ioinfo"]["total"]["riops"].should be_within(10.0e-6).of(10.0)
+      expect(summary["ioinfo"]["total"]["riops"]).to be_within(10.0e-6).of(10.0)
     end
   end
 
   it "should respond to make_accumulation" do
-    @summary.should respond_to(:make_accumulation)
+    expect(@summary).to respond_to(:make_accumulation)
   end
 
   describe "make_accumulation" do
@@ -153,9 +153,8 @@ describe PerfMonger::Command::SummaryCommand do
 
     it "should return valid format" do
       accum = @summary.make_accumulation(@records)
-      accum.should be_a Hash
-      accum.keys.should include "ioinfo"
-      # accum.keys.should include "cpuinfo"
+      expect(accum).to be_a Hash
+      expect(accum.keys).to include "ioinfo"
     end
 
     it "should return nil if no ioinfo" do
@@ -163,11 +162,11 @@ describe PerfMonger::Command::SummaryCommand do
         record.delete("ioinfo")
       end
 
-      @summary.make_accumulation(@records).should be_nil
+      expect(@summary.make_accumulation(@records)).to be_nil
     end
 
     it "should return nil if only 1 record given" do
-      @summary.make_accumulation([@records.first]).should be_nil
+      expect(@summary.make_accumulation([@records.first])).to be_nil
     end
 
     it "should return valid IO data volume accumulation" do
@@ -186,8 +185,8 @@ describe PerfMonger::Command::SummaryCommand do
 
       accum = @summary.make_accumulation(@records)
 
-      accum["ioinfo"]["sda"]["read_requests"].should be_within(6.0e-6).of(6.0)
-      accum["ioinfo"]["sda"]["read_bytes"].should be_within(1e-6).of(6144.0)
+      expect(accum["ioinfo"]["sda"]["read_requests"]).to be_within(6.0e-6).of(6.0)
+      expect(accum["ioinfo"]["sda"]["read_bytes"]).to be_within(1e-6).of(6144.0)
     end
   end
 end

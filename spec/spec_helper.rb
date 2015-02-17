@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-$LOAD_PATH << File.expand_path('../../src/ruby', __FILE__)
+$LOAD_PATH << File.expand_path('../../lib', __FILE__)
 
 TEST_DATA_DIR = File.expand_path('../data', __FILE__)
 
