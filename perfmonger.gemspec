@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 
 $:.push File.expand_path("../lib", __FILE__)
-require 'perfmonger'
+require 'perfmonger/version'
 
 Gem::Specification.new do |s|
   s.name        = 'perfmonger'
@@ -14,8 +14,11 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://github.com/hayamiz/perfmonger/'
   s.license     = 'GPL-2'
 
-  s.required_ruby_version = '>= 1.9.3'
+  s.required_ruby_version = '>= 1.8.7'
 
+  if RUBY_VERSION <= '1.8.7'
+    s.add_dependency "json"
+  end
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec"
   s.add_development_dependency "rake-compiler"

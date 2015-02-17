@@ -2,3 +2,4 @@
 /perfmonger-*.gem
 /pkg
 /tmp
+/Gemfile.lock
