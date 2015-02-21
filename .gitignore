@@ -3,3 +3,5 @@
 /pkg
 /tmp
 /Gemfile.lock
+/core/perfmonger-player
+/core/perfmonger-recorder
