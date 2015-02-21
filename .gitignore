@@ -5,3 +5,4 @@
 /Gemfile.lock
 /core/perfmonger-player
 /core/perfmonger-recorder
+/lib/exec/
