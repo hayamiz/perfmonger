@@ -11,6 +11,8 @@ import (
 	"os/signal"
 	"time"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
@@ -164,6 +166,11 @@ func parseArgs() {
 		false, "List devices and exits")
 
 	flag.Parse()
+
+	if terminal.IsTerminal(int(os.Stdout.Fd())) && option.output == "-" {
+		fmt.Fprintf(os.Stderr, "[recording to data.pgr]\n")
+		option.output = "data.pgr"
+	}
 
 	if option.debug {
 		os.Stderr.WriteString(
