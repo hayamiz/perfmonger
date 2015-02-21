@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -20,6 +21,8 @@ type RecorderOption struct {
 	interval    time.Duration
 	devsParts   []string
 	output      string
+	no_cpu      bool
+	no_disk     bool
 	debug       bool
 	listDevices bool
 }
@@ -33,9 +36,17 @@ func readStat(record *ss.StatRecord) error {
 	}
 	defer f.Close()
 
-	// 0-fill StatRecord
-	record.Cpu.Clear()
-	record.Proc.Clear()
+	if record.Cpu == nil {
+		record.Cpu = ss.NewCpuStat(runtime.NumCPU())
+	} else {
+		record.Cpu.Clear()
+	}
+
+	if record.Proc == nil {
+		record.Proc = ss.NewProcStat()
+	} else {
+		record.Proc.Clear()
+	}
 
 	scan := bufio.NewScanner(f)
 	for scan.Scan() {
@@ -108,7 +119,11 @@ func readDiskStats(record *ss.StatRecord) error {
 	}
 	defer f.Close()
 
-	record.Disk.Clear()
+	if record.Disk == nil {
+		record.Disk = ss.NewDiskStat()
+	} else {
+		record.Disk.Clear()
+	}
 
 	scan := bufio.NewScanner(f)
 
@@ -160,6 +175,10 @@ func parseArgs() {
 		time.Second, "Measurement interval")
 	flag.StringVar(&option.output, "output",
 		"-", "Output file name")
+	flag.BoolVar(&option.no_cpu, "no-cpu",
+		false, "Do not record CPU usage")
+	flag.BoolVar(&option.no_disk, "no-disk",
+		false, "Do not record disk usage")
 	flag.BoolVar(&option.debug, "debug",
 		false, "Enable debug mode")
 	flag.BoolVar(&option.listDevices, "list-devices",
@@ -242,8 +261,13 @@ func main() {
 
 	for {
 		record.Time = time.Now()
-		readStat(record)
-		readDiskStats(record)
+
+		if !option.no_cpu {
+			readStat(record)
+		}
+		if !option.no_disk {
+			readDiskStats(record)
+		}
 
 		err = enc.Encode(record)
 		out.Flush()

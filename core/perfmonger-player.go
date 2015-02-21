@@ -31,8 +31,12 @@ func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 
 func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) {
 	buffer.WriteString(fmt.Sprintf(`{"time":%.3f`, float64(cur_rec.Time.UnixNano())/1e9))
-	showDiskStat(buffer, prev_rec, cur_rec)
-	showCpuStat(buffer, prev_rec, cur_rec)
+	if cur_rec.Cpu != nil {
+		showCpuStat(buffer, prev_rec, cur_rec)
+	}
+	if cur_rec.Disk != nil {
+		showDiskStat(buffer, prev_rec, cur_rec)
+	}
 	buffer.WriteString("}\n")
 }
 

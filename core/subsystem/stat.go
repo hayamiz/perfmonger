@@ -1,9 +1,6 @@
 package subsystem
 
-import (
-	"runtime"
-	"time"
-)
+import "time"
 
 //
 // Record
@@ -153,9 +150,9 @@ func (sirq_stat *SoftIrqStat) Clear() {
 func NewStatRecord() *StatRecord {
 	return &StatRecord{
 		time.Now(),
-		NewCpuStat(runtime.NumCPU()),
-		NewProcStat(),
-		NewDiskStat(),
+		nil,
+		nil,
+		nil,
 		nil,
 	}
 }
