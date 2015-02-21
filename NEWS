@@ -1,8 +1,12 @@
-## XXXX-XX-XX: PerfMonger 0.6.2 released
+## XXXX-XX-XX: PerfMonger 0.7.0 released
 
   * New features
     * Bash completion support
     * Zsh completion support
+  * Changes
+    * [record] subcommand:
+      * Its core was completely rewritten in Go
+      * Output JSON format change
   * Bug fixes
     * [plot] subcommand:
       * Correctly find supported terminal
