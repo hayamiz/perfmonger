@@ -19,6 +19,8 @@ import (
 
 type RecorderOption struct {
 	interval    time.Duration
+	timeout     time.Duration
+	start_delay time.Duration
 	devsParts   []string
 	output      string
 	no_cpu      bool
@@ -173,6 +175,10 @@ func parseArgs() {
 	// set options
 	flag.DurationVar(&option.interval, "interval",
 		time.Second, "Measurement interval")
+	flag.DurationVar(&option.timeout, "timeout",
+		time.Second*0, "Measurement timeout")
+	flag.DurationVar(&option.start_delay, "start-delay",
+		time.Second*0, "Wait time before measurement")
 	flag.StringVar(&option.output, "output",
 		"-", "Output file name")
 	flag.BoolVar(&option.no_cpu, "no-cpu",
@@ -250,6 +256,20 @@ func main() {
 		panic(err)
 	}
 
+	// start delay
+	time.Sleep(option.start_delay)
+
+	var timeout_ch <-chan time.Time
+	var timeout_time time.Time
+	if option.timeout == time.Second*0 {
+		// dummy channel
+		timeout_ch = make(<-chan time.Time)
+		timeout_time = time.Now()
+	} else {
+		timeout_ch = time.After(option.timeout)
+		timeout_time = time.Now().Add(option.timeout)
+	}
+
 	// Loops
 	sigint_ch := make(chan os.Signal, 1)
 	running := true
@@ -280,13 +300,24 @@ func main() {
 		}
 
 		next_time = next_time.Add(option.interval)
+
 		// wait for next iteration
 		select {
 		case <-sigint_ch:
 			running = false
 			break
+		case <-timeout_ch:
+			running = false
+			break
 		case <-time.After(next_time.Sub(time.Now())):
 			break
+		}
+
+		// If next_time and timeout_time is very close,
+		// avoid recording twice in a very short time
+		if option.timeout != time.Second*0 &&
+			timeout_time.Sub(next_time).Seconds() < 0.01 {
+			running = false
 		}
 	}
 
