@@ -18,18 +18,26 @@ import (
 )
 
 type RecorderOption struct {
-	interval    time.Duration
-	timeout     time.Duration
-	start_delay time.Duration
-	devsParts   []string
-	output      string
-	no_cpu      bool
-	no_disk     bool
-	debug       bool
-	listDevices bool
+	interval            time.Duration
+	no_interval_backoff bool
+	timeout             time.Duration
+	start_delay         time.Duration
+	devsParts           []string
+	output              string
+	no_cpu              bool
+	no_disk             bool
+	debug               bool
+	listDevices         bool
 }
 
 var option RecorderOption
+
+// By default, measurement interval backoff is enabled.
+// Minimum resoluton guaranteed: BACKOFF_RATIO / BACKOFF_THRESH
+const (
+	BACKOFF_THRESH = 1000.0
+	BACKOFF_RATIO  = 2.0
+)
 
 func readStat(record *ss.StatRecord) error {
 	f, ferr := os.Open("/proc/stat")
@@ -175,6 +183,8 @@ func parseArgs() {
 	// set options
 	flag.DurationVar(&option.interval, "interval",
 		time.Second, "Measurement interval")
+	flag.BoolVar(&option.no_interval_backoff, "no-interval-backoff",
+		false, "Disable interval backoff")
 	flag.DurationVar(&option.timeout, "timeout",
 		time.Second*0, "Measurement timeout")
 	flag.DurationVar(&option.start_delay, "start-delay",
@@ -275,6 +285,7 @@ func main() {
 	running := true
 	next_time := time.Now()
 	record := ss.NewStatRecord()
+	backoff_counter := 0
 
 	// cause SIGINT to break loop
 	signal.Notify(sigint_ch, os.Interrupt)
@@ -297,6 +308,19 @@ func main() {
 
 		if !running {
 			break
+		}
+
+		if !option.no_interval_backoff {
+			backoff_counter++
+			if backoff_counter >= BACKOFF_THRESH {
+				backoff_counter -= BACKOFF_THRESH
+
+				option.interval *= BACKOFF_RATIO
+				fmt.Fprintln(os.Stderr, "changed interval to :", option.interval)
+				if option.interval.Seconds() > 3600.0 {
+					option.interval = time.Hour
+				}
+			}
 		}
 
 		next_time = next_time.Add(option.interval)
