@@ -123,7 +123,6 @@ func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
 
 func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	var devices []string
-	var total DiskUsageEntry
 
 	buf.WriteString(`{`)
 	for device, usage := range *dusage {
@@ -132,10 +131,11 @@ func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 		}
 		fmt.Fprintf(buf, `"%s":`, device)
 		usage.WriteJsonTo(buf)
-		devices = append(devices, device)
+
+		if device != "total" {
+			devices = append(devices, device)
+		}
 	}
-	buf.WriteString(`,"total":`)
-	total.WriteJsonTo(buf)
 	bytes, err := json.Marshal(devices)
 	if err != nil {
 		panic(err)
