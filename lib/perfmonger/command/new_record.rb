@@ -7,15 +7,15 @@ require 'tmpdir'
 module PerfMonger
 module Command
 
-class RecordCommand < BaseCommand
-  register_command 'record', 'Record system performance information (deprecated)'
+class NewRecordCommand < BaseCommand
+  register_command 'new_record', 'Record system performance information'
 
   def initialize
     super
   end
 
   def run(argv)
-    @argv, @option = PerfMonger::Command::RecordOption.parse(argv)
+    @argv, @option = PerfMonger::Command::NewRecordOption.parse(argv)
 
     exec_record_cmd()
   end
