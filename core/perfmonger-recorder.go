@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"runtime"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -41,146 +40,6 @@ const (
 	BACKOFF_THRESH = 1000.0
 	BACKOFF_RATIO  = 2.0
 )
-
-func readStat(record *ss.StatRecord) error {
-	f, ferr := os.Open("/proc/stat")
-	if ferr != nil {
-		return ferr
-	}
-	defer f.Close()
-
-	if record.Cpu == nil {
-		record.Cpu = ss.NewCpuStat(runtime.NumCPU())
-	} else {
-		record.Cpu.Clear()
-	}
-
-	if record.Proc == nil {
-		record.Proc = ss.NewProcStat()
-	} else {
-		record.Proc.Clear()
-	}
-
-	scan := bufio.NewScanner(f)
-	for scan.Scan() {
-		var err error
-		var cpu string
-		line := scan.Text()
-		if line[0:4] == "cpu " {
-			_, err = fmt.Sscanf(line,
-				"%s %d %d %d %d %d %d %d %d %d %d",
-				&cpu,
-				&record.Cpu.All.User,
-				&record.Cpu.All.Nice,
-				&record.Cpu.All.Sys,
-				&record.Cpu.All.Idle,
-				&record.Cpu.All.Iowait,
-				&record.Cpu.All.Hardirq,
-				&record.Cpu.All.Softirq,
-				&record.Cpu.All.Steal,
-				&record.Cpu.All.Guest,
-				&record.Cpu.All.GuestNice)
-			if err != nil {
-				return err
-			}
-		} else if line[0:3] == "cpu" {
-			var n_core int
-			var core_stat *ss.CpuCoreStat
-			// assume n_core < 10000
-			_, err = fmt.Sscanf(line[3:7], "%d", &n_core)
-			if err != nil {
-				return err
-			}
-
-			core_stat = &record.Cpu.CoreStats[n_core]
-			_, err = fmt.Sscanf(line,
-				"%s %d %d %d %d %d %d %d %d %d %d",
-				&cpu,
-				&core_stat.User,
-				&core_stat.Nice,
-				&core_stat.Sys,
-				&core_stat.Idle,
-				&core_stat.Iowait,
-				&core_stat.Hardirq,
-				&core_stat.Softirq,
-				&core_stat.Steal,
-				&core_stat.Guest,
-				&core_stat.GuestNice)
-			if err != nil {
-				return err
-			}
-		} else if line[0:5] == "ctxt " {
-			_, err = fmt.Sscanf(line[4:], "%d", &record.Proc.ContextSwitch)
-			if err != nil {
-				return err
-			}
-		} else if line[0:10] == "processes " {
-			_, err = fmt.Sscanf(line[10:], "%d", &record.Proc.Fork)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func readDiskStats(record *ss.StatRecord) error {
-	f, ferr := os.Open("/proc/diskstats")
-	if ferr != nil {
-		panic(ferr)
-	}
-	defer f.Close()
-
-	if record.Disk == nil {
-		record.Disk = ss.NewDiskStat()
-	} else {
-		record.Disk.Clear()
-	}
-
-	scan := bufio.NewScanner(f)
-
-	var num_items int
-	var err error
-	for scan.Scan() {
-		var rdmerge_or_rdsec int64
-		var rdsec_or_wrios int64
-		var rdticks_or_wrsec int64
-
-		line := scan.Text()
-		entry := ss.NewDiskStatEntry()
-
-		num_items, err = fmt.Sscanf(line,
-			"%d %d %s %d %d %d %d %d %d %d %d %d %d %d",
-			&entry.Major, &entry.Minor, &entry.Name,
-			&entry.RdIos, &rdmerge_or_rdsec, &rdsec_or_wrios, &rdticks_or_wrsec,
-			&entry.WrIos, &entry.WrMerges, &entry.WrSectors, &entry.WrTicks,
-			&entry.IosPgr, &entry.TotalTicks, &entry.ReqTicks)
-		if err != nil {
-			return err
-		}
-
-		if num_items == 14 {
-			entry.RdMerges = rdmerge_or_rdsec
-			entry.RdSectors = rdsec_or_wrios
-			entry.RdTicks = rdticks_or_wrsec
-		} else if num_items == 7 {
-			entry.RdSectors = rdmerge_or_rdsec
-			entry.WrIos = rdsec_or_wrios
-			entry.WrSectors = rdticks_or_wrsec
-		} else {
-			continue
-		}
-
-		if entry.RdIos == 0 && entry.WrIos == 0 {
-			continue
-		}
-
-		record.Disk.Entries = append(record.Disk.Entries, entry)
-	}
-
-	return nil
-}
 
 func parseArgs() {
 	// set options
@@ -355,10 +214,10 @@ func main() {
 		record.Time = time.Now()
 
 		if !option.no_cpu {
-			readStat(record)
+			ss.ReadCpuStat(record)
 		}
 		if !option.no_disk {
-			readDiskStats(record)
+			ss.ReadDiskStats(record)
 		}
 
 		err = enc.Encode(record)
