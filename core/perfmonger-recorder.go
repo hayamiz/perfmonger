@@ -7,7 +7,9 @@ import (
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"time"
@@ -28,6 +30,7 @@ type RecorderOption struct {
 	no_disk             bool
 	debug               bool
 	listDevices         bool
+	player_bin          string
 }
 
 var option RecorderOption
@@ -199,10 +202,13 @@ func parseArgs() {
 		false, "Enable debug mode")
 	flag.BoolVar(&option.listDevices, "list-devices",
 		false, "List devices and exits")
+	flag.StringVar(&option.player_bin, "player-bin",
+		"", "Run perfmonger-player to show JSON output")
 
 	flag.Parse()
 
-	if terminal.IsTerminal(int(os.Stdout.Fd())) && option.output == "-" {
+	if option.player_bin == "" && terminal.IsTerminal(int(os.Stdout.Fd())) &&
+		option.output == "-" {
 		fmt.Fprintf(os.Stderr, "[recording to data.pgr]\n")
 		option.output = "data.pgr"
 	}
@@ -242,15 +248,70 @@ func main() {
 		return
 	}
 
+	var player_cmd *exec.Cmd = nil
+	var player_stdin io.WriteCloser = nil
+	var player_stdout io.ReadCloser = nil
+
+	if option.player_bin != "" {
+		player_cmd = exec.Command(option.player_bin)
+		player_stdin, err = player_cmd.StdinPipe()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s", option.player_bin)
+			player_cmd = nil
+			player_stdin = nil
+		}
+		player_stdout, err = player_cmd.StdoutPipe()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get stdout of %s", option.player_bin)
+			player_cmd = nil
+			player_stdin = nil
+			player_stdout = nil
+		}
+
+		err = player_cmd.Start()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to start %s", option.player_bin)
+			player_cmd = nil
+			player_stdin = nil
+			player_stdout = nil
+		}
+
+		// read stdout of player and write to stdout
+		go func() {
+			var buf = make([]byte, 4096)
+			for {
+				n, err := player_stdout.Read(buf)
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					panic(err)
+				}
+
+				if n == 0 {
+					continue
+				}
+				os.Stdout.Write(buf[0:n])
+			}
+		}()
+	}
+
 	if option.output == "-" {
 		out = bufio.NewWriter(os.Stdout)
+		if player_stdin != nil {
+			out = bufio.NewWriter(player_stdin)
+		}
 	} else {
 		file, err := os.Create(option.output)
 		if err != nil {
 			panic(err)
 		}
 		defer file.Close()
-		out = bufio.NewWriter(file)
+
+		if player_stdin != nil {
+			out = bufio.NewWriter(io.MultiWriter(file, player_stdin))
+		} else {
+			out = bufio.NewWriter(file)
+		}
 	}
 
 	enc = gob.NewEncoder(out)
@@ -301,10 +362,10 @@ func main() {
 		}
 
 		err = enc.Encode(record)
-		out.Flush()
 		if err != nil {
 			break
 		}
+		out.Flush()
 
 		if !running {
 			break
@@ -316,7 +377,6 @@ func main() {
 				backoff_counter -= BACKOFF_THRESH
 
 				option.interval *= BACKOFF_RATIO
-				fmt.Fprintln(os.Stderr, "changed interval to :", option.interval)
 				if option.interval.Seconds() > 3600.0 {
 					option.interval = time.Hour
 				}
@@ -345,5 +405,12 @@ func main() {
 		}
 	}
 
-	os.Exit(0)
+	out.Flush()
+
+	if player_stdin != nil {
+		player_stdin.Close()
+		_ = player_cmd.Wait()
+	}
+
+	return
 }
