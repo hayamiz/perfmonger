@@ -125,10 +125,12 @@ func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	var devices []string
 
 	buf.WriteString(`{`)
+	cnt := 0
 	for device, usage := range *dusage {
-		if len(devices) > 0 {
+		if cnt > 0 {
 			buf.WriteString(`,`)
 		}
+		cnt++
 		fmt.Fprintf(buf, `"%s":`, device)
 		usage.WriteJsonTo(buf)
 
