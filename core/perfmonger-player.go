@@ -117,5 +117,5 @@ func main() {
 		curr ^= 1
 	}
 
-	os.Exit(0)
+	return
 }
