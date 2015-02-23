@@ -114,12 +114,6 @@ func main() {
 
 		buffer.Reset()
 
-		// fmt.Println("time: ", cur_rec.Time)
-		// fmt.Println("cpu: ", cur_rec.Cpu)
-		// fmt.Println("proc: ", cur_rec.Proc)
-		// fmt.Println("disk: ", cur_rec.Disk)
-		// fmt.Println("softirq: ", cur_rec.Softirq)
-
 		curr ^= 1
 	}
 
