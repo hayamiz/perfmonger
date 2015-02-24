@@ -98,6 +98,10 @@ func (core_stat *CpuCoreStat) Uptime() int64 {
 }
 
 func NewCpuStat(num_core int) *CpuStat {
+	if num_core < 1 {
+		return nil
+	}
+
 	cpu_stat := new(CpuStat)
 
 	cpu_stat.NumCore = num_core
