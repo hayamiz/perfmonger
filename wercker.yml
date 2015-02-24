@@ -11,6 +11,7 @@ build:
         - script:
             name: run rspec
             code: |
+              bundle exec rake clean
               bundle exec rake spec
 
         - rvm-use:
@@ -19,6 +20,7 @@ build:
         - script:
             name: run rspec
             code: |
+              bundle exec rake clean
               bundle exec rake spec
 
         - rvm-use:
@@ -27,6 +29,7 @@ build:
         - script:
             name: run rspec
             code: |
+              bundle exec rake clean
               bundle exec rake spec
 
         - rvm-use:
@@ -35,6 +38,7 @@ build:
         - script:
             name: run rspec
             code: |
+              bundle exec rake clean
               bundle exec rake spec
 
         - rvm-use:
@@ -43,6 +47,7 @@ build:
         - script:
             name: run rspec
             code: |
+              bundle exec rake clean
               bundle exec rake spec
 
         - script:
