@@ -4,6 +4,7 @@ require 'spec_helper'
 describe "PerfmongerCommand" do
   before(:each) do
     @perfmonger_command = File.expand_path('../../bin/perfmonger', __FILE__)
+    p ENV['RUBYLIB']
     ENV['RUBYLIB'] = File.expand_path('../../lib', __FILE__)
   end
 
