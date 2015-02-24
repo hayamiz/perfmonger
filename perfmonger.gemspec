@@ -6,7 +6,6 @@ require 'perfmonger/version'
 Gem::Specification.new do |s|
   s.name        = 'perfmonger'
   s.version     = PerfMonger::VERSION
-  s.date        = '2015-01-19'
   s.summary     = "yet anothor performance measurement/monitoring tool"
   s.description = "yet anothor performance measurement/monitoring tool"
   s.authors     = ["Yuto HAYAMIZU"]
