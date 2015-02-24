@@ -33,3 +33,13 @@ task :test_core do
     sh "go test"
   end
 end
+
+desc "Removed generated files"
+task :clean do
+  sh "rm -f ext/perfmonger/perfmonger_record"
+  if File.exists?("ext/perfmonger/Makefile")
+    sh "make -C ext/perfmonger clean"
+  end
+  sh "make -C core clean"
+end
+
