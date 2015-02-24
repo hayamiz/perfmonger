@@ -7,6 +7,16 @@ task :default => [:spec]
 desc "Run all specs in spec directory"
 RSpec::Core::RakeTask.new(:spec)
 
+desc "Build ext"
+task :build_ext do
+  Dir.chdir("ext/perfmonger") do
+    sh "ruby extconf.rb"
+    sh "make"
+  end
+end
+
+task :spec => [:build_ext]
+
 desc "Build core recorder/player"
 task :build_core do
   puts "Buildling binaries for each platform"
