@@ -3,6 +3,8 @@
 
 [![Build Status](https://travis-ci.org/hayamiz/perfmonger.svg?branch=master)](https://travis-ci.org/hayamiz/perfmonger)
 
+[![wercker status](https://app.wercker.com/status/44c3ade6a2406d337df6d93097a52fdf/m "wercker status")](https://app.wercker.com/project/bykey/44c3ade6a2406d337df6d93097a52fdf)
+
 PerfMonger is an yet anothor performance measurement/monitoring tool
 speaking JSON.
 
