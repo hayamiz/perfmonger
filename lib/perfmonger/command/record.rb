@@ -1,6 +1,9 @@
 
+if RUBY_VERSION <= '1.8.7'
+  require 'rubygems'
+end
+
 require 'optparse'
-require 'rubygems' # for ruby 1.8
 require 'json'
 require 'tempfile'
 require 'tmpdir'
