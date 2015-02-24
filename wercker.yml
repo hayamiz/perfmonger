@@ -15,9 +15,9 @@ build:
         - script:
             name: run rspec
             code: |
-              bundle exec rake spec
+              rake spec
 
         - script:
             name: run go tesst
             code: |
-              bundle exec rake test_core
+              rake test_core
