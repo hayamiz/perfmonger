@@ -19,7 +19,7 @@
 #include <sys/time.h>
 #include <signal.h>
 
-#include "sysstat/libsysstat.h"
+#include "libsysstat.h"
 
 
 typedef struct {

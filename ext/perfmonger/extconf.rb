@@ -3,9 +3,9 @@
 
 require 'mkmf'
 
-$objs = ["perfmonger_record.o", "sysstat/common.o", "sysstat/ioconf.o", "sysstat/iostat.o", "sysstat/mpstat.o", "sysstat/rd_stats.o"]
+$objs = ["perfmonger_record.o", "common.o", "ioconf.o", "iostat.o", "mpstat.o", "rd_stats.o"]
 
-$cleanfiles += ["perfmonger_record.o", "sysstat/common.o", "sysstat/ioconf.o", "sysstat/iostat.o", "sysstat/mpstat.o", "sysstat/rd_stats.o"]
+$cleanfiles += ["perfmonger_record.o", "common.o", "ioconf.o", "iostat.o", "mpstat.o", "rd_stats.o"]
 
 create_makefile 'perfmonger/perfmonger_record'
 
