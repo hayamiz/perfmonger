@@ -6,7 +6,7 @@ build:
     # http://devcenter.wercker.com/articles/languages/ruby.html
     steps:
         - rvm-use:
-            version: 1.8.7-p375
+            version: 1.8.7-p374
         - bundle-install
         - script:
             name: run rspec
