@@ -1,5 +1,6 @@
 
 require 'optparse'
+require 'rubygems' # for ruby 1.8
 require 'json'
 require 'tempfile'
 require 'tmpdir'
