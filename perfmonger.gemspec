@@ -18,6 +18,7 @@ Gem::Specification.new do |s|
   if RUBY_VERSION <= '1.8.7'
     s.add_dependency "json"
   end
+  s.add_development_dependency "bundler"
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec"
   s.add_development_dependency "rake-compiler"
