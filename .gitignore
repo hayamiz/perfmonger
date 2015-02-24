@@ -6,3 +6,4 @@
 /core/perfmonger-player
 /core/perfmonger-recorder
 /lib/exec/
+/ext/perfmonger/Makefile
