@@ -30,7 +30,7 @@ task :build => :build_core
 desc "Run tests of core recorder/player"
 task :test_core do
   Dir.chdir("./core/subsystem") do
-    sh "go test"
+    sh "go test -v -cover"
   end
 end
 
