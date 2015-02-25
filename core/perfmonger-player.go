@@ -24,7 +24,10 @@ func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Sta
 }
 
 func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) {
-	cusage := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
+	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
+	if err != nil {
+		return
+	}
 	buffer.WriteString(`,"cpu":`)
 	cusage.WriteJsonTo(buffer)
 }

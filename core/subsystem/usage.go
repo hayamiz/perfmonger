@@ -3,6 +3,7 @@ package subsystem
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -61,9 +62,15 @@ func (cusage *CpuUsage) WriteJsonTo(buf *bytes.Buffer) {
 	buf.WriteString(`]}`)
 }
 
-func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) *CpuCoreUsage {
+func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) (*CpuCoreUsage, error) {
 	usage := new(CpuCoreUsage)
 	itv := c2.Uptime() - c1.Uptime()
+
+	if itv == 0 {
+		return nil, errors.New("uptime difference is zero")
+	} else if itv < 0 {
+		return nil, errors.New("uptime difference is negative")
+	}
 
 	user := usageItem(c1.User-c1.Guest, c2.User-c2.Guest, itv)
 	if user < 0.0 {
@@ -85,18 +92,26 @@ func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) *CpuCoreUsage {
 	usage.Guest = usageItem(c1.Guest, c2.Guest, itv)
 	usage.GuestNice = usageItem(c1.GuestNice, c2.GuestNice, itv)
 
-	return usage
+	return usage, nil
 }
 
-func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) *CpuUsage {
+func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) (*CpuUsage, error) {
+	var err error
+
 	usage := new(CpuUsage)
 	usage.NumCore = c1.NumCore
 
 	usage.CoreUsages = make([]*CpuCoreUsage, usage.NumCore)
 	for idx, _ := range usage.CoreUsages {
-		usage.CoreUsages[idx] = GetCpuCoreUsage(&c1.CoreStats[idx], &c2.CoreStats[idx])
+		usage.CoreUsages[idx], err = GetCpuCoreUsage(&c1.CoreStats[idx], &c2.CoreStats[idx])
+		if err != nil {
+			return nil, err
+		}
 	}
-	usage.All = GetCpuCoreUsage(&c1.All, &c2.All)
+	usage.All, err = GetCpuCoreUsage(&c1.All, &c2.All)
+	if err != nil {
+		return nil, err
+	}
 
 	// scale: NumCore * 100% as maximum
 	usage.All.User *= float64(usage.NumCore)
@@ -110,7 +125,7 @@ func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) *CpuUsage {
 	usage.All.Guest *= float64(usage.NumCore)
 	usage.All.GuestNice *= float64(usage.NumCore)
 
-	return usage
+	return usage, nil
 }
 
 func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
