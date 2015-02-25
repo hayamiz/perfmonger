@@ -112,8 +112,8 @@ func NewCpuStat(num_core int) *CpuStat {
 
 func (cpu_stat *CpuStat) Clear() {
 	cpu_stat.All.Clear()
-	for _, core_stat := range cpu_stat.CoreStats {
-		core_stat.Clear()
+	for idx, _ := range cpu_stat.CoreStats {
+		cpu_stat.CoreStats[idx].Clear()
 	}
 }
 
