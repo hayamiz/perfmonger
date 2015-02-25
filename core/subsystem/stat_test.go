@@ -1,9 +1,6 @@
 package subsystem
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
 func TestCpuCoreStatUptime(t *testing.T) {
 	var corestat *CpuCoreStat
@@ -182,11 +179,7 @@ func TestCpuStatClear(t *testing.T) {
 		}
 	}
 
-	fmt.Println(cpustat)
-
 	cpustat.Clear()
-
-	fmt.Println(cpustat)
 
 	for _, corestat := range cores {
 		if corestat.User != 0 ||
