@@ -180,7 +180,9 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 	(*usage) = make(DiskUsage)
 	total := new(DiskUsageEntry)
 
-	cnt := 0
+	var total_rd_ios int64 = 0
+	var total_wr_ios int64 = 0
+
 	for _, entry1 := range d1.Entries {
 		name := entry1.Name
 		var entry2 *DiskStatEntry = nil
@@ -194,7 +196,6 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 			continue
 		}
 
-		cnt++
 		rd_latency := 0.0
 		wr_latency := 0.0
 		avg_rd_sz := 0.0
@@ -225,17 +226,20 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		total.WrIops += entry.WrIops
 		total.RdSecps += entry.RdSecps
 		total.WrSecps += entry.WrSecps
-		total.RdLatency += entry.RdLatency
-		total.WrLatency += entry.WrLatency
-		total.AvgRdSize += entry.AvgRdSize
-		total.AvgWrSize += entry.AvgWrSize
+		total.RdLatency += entry.RdLatency * float64(entry2.RdIos-entry1.RdIos)
+		total.WrLatency += entry.WrLatency * float64(entry2.WrIos-entry1.WrIos)
+		total.AvgRdSize += entry.AvgRdSize * float64(entry2.RdIos-entry1.RdIos)
+		total.AvgWrSize += entry.AvgWrSize * float64(entry2.WrIos-entry1.WrIos)
 		total.ReqQlen += entry.ReqQlen
+
+		total_rd_ios += entry2.RdIos - entry1.RdIos
+		total_wr_ios += entry2.WrIos - entry1.WrIos
 	}
 
-	total.RdLatency /= float64(cnt)
-	total.WrLatency /= float64(cnt)
-	total.AvgRdSize /= float64(cnt)
-	total.AvgWrSize /= float64(cnt)
+	total.RdLatency /= float64(total_rd_ios)
+	total.WrLatency /= float64(total_wr_ios)
+	total.AvgRdSize /= float64(total_rd_ios)
+	total.AvgWrSize /= float64(total_wr_ios)
 
 	(*usage)["total"] = total
 
