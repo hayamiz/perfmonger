@@ -28,24 +28,34 @@ func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Sta
 	return nil
 }
 
-func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) {
+func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
 	if err != nil {
-		return
+		return err
 	}
 	buffer.WriteString(`,"cpu":`)
 	cusage.WriteJsonTo(buffer)
+
+	return nil
 }
 
-func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) {
+func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	buffer.WriteString(fmt.Sprintf(`{"time":%.3f`, float64(cur_rec.Time.UnixNano())/1e9))
 	if cur_rec.Cpu != nil {
-		showCpuStat(buffer, prev_rec, cur_rec)
+		err := showCpuStat(buffer, prev_rec, cur_rec)
+		if err != nil {
+			return err
+		}
 	}
 	if cur_rec.Disk != nil {
-		showDiskStat(buffer, prev_rec, cur_rec)
+		err := showDiskStat(buffer, prev_rec, cur_rec)
+		if err != nil {
+			return err
+		}
 	}
 	buffer.WriteString("}\n")
+
+	return nil
 }
 
 func main() {
@@ -111,7 +121,12 @@ func main() {
 			panic(err)
 		}
 
-		showStat(buffer, prev_rec, cur_rec)
+		err = showStat(buffer, prev_rec, cur_rec)
+		if err != nil {
+			buffer.Reset()
+			fmt.Fprintln(os.Stderr, "skip by err")
+			continue
+		}
 
 		_, err = out.WriteString(buffer.String())
 		err = out.Flush()
