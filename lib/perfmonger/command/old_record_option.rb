@@ -2,16 +2,16 @@
 module PerfMonger
 module Command
 
-class NewRecordOption
+class OldRecordOption
   attr_reader :devices
   attr_reader :interval
   attr_reader :verbose
   attr_reader :report_cpu
-  attr_reader :no_disk
+  attr_reader :report_io
+  attr_reader :report_ctx_switch
   attr_reader :logfile
 
   attr_reader :parser
-  attr_accessor :record_bin
 
   def self.parse(argv)
     option = self.new
@@ -23,9 +23,11 @@ class NewRecordOption
   def parse(argv)
     argv = @parser.parse(argv)
 
-    @no_cpu = false
-    @no_disk = false
-    @all_devices = true
+    if ! @report_io && ! @report_ctx_switch && ! @report_cpu
+      @report_cpu = true
+      @report_io = true
+      @all_devices = true
+    end
 
     argv
   end
@@ -33,92 +35,76 @@ class NewRecordOption
   def make_command
     # try to search perfmonger-record in build environment
     # then search installed directory
-
-    # check os
-    case RUBY_PLATFORM
-    when /linux/
-      os = "linux"
-    else
-      os = nil
+    record_bin = [File.expand_path("../../perfmonger_record", __FILE__),
+                  File.expand_path("lib/perfmonger/perfmonger_record", PerfMonger::ROOTDIR),
+                  File.expand_path("ext/perfmonger/perfmonger_record", PerfMonger::ROOTDIR)].find do |bin|
+      File.executable?(bin)
     end
 
-    # check arch
-    case RUBY_PLATFORM
-    when /x86_64|amd64/
-      arch = "amd64"
-    when /i\d86/
-      arch = "386"
-    else
-      arch = nil
-    end
-
-    if !os || !arch
-      puts("[ERROR] unsupported platform: " + RUBY_PLATFORM)
+    if record_bin == nil || ! File.executable?(record_bin)
+      puts("ERROR: perfmonger-record(1) not found!")
       exit(false)
     end
 
-    suffix = "_" + os + "_" + arch
-
-    @recorder_bin = File.expand_path("../../../exec/perfmonger-recorder#{suffix}", __FILE__)
-    @player_bin = File.expand_path("../../../exec/perfmonger-player#{suffix}", __FILE__)
-
-    if ! File.executable?(@recorder_bin) || ! File.executable?(@player_bin)
-      puts("ERROR: no executable binaries")
-      exit(false)
-    end
-
-    cmd = sprintf("%s -interval=%.1fms",
-                  @recorder_bin,
-                  @interval * 1000)
-    if ! @interval_backoff
-      cmd += " -no-interval-backoff "
+    cmd = [record_bin]
+    cmd << '-i'
+    cmd << @interval.to_s
+    if @interval_backoff
+      cmd << '-b'
     end
     if @start_delay > 0
-      cmd += " -start-delay #{@start_delay*1000}ms "
+      cmd << '-s'
+      cmd << @start_delay.to_s
     end
     if @timeout
-      cmd += " -timeout #{@timeout*1000}ms "
+      cmd << '-t'
+      cmd << @timeout.to_s
     end
-    if @no_cpu
-      cmd += " -no-cpu "
+    cmd << '-C' if @report_cpu
+    cmd << '-S' if @report_ctx_switch
+    cmd << '-l' if @logfile != STDOUT
+    cmd << @logfile if @logfile != STDOUT
+    if @report_io
+      if @all_devices
+        cmd << '-D'
+      else
+        @devices.each do |device|
+          cmd << '-d'
+          cmd << device
+        end
+      end
     end
-    if @no_disk
-      cmd += " -no-disk "
-    end
-
-    if @logfile
-      cmd += sprintf(" -output \"%s\" ", @logfile)
-    end
-
-    raise NotImplementedError if @verbose
-
-    if ! @logfile
-      # output JSON to stdout via player
-      cmd += " | " + @player_bin
-    end
+    cmd << '-v' if @verbose
 
     cmd
   end
 
   private
   def initialize
+    @devices           = []
+    @all_devices       = false
     @interval          = 1.0 # in second
     @interval_backoff  = true
     @start_delay       = 0.0 # in second
     @timeout           = nil # in second, or nil (= no timeout)
     @verbose           = false
-    @no_cpu            = false
-    @no_disk           = false
-    @all_devices       = true
-    @devices           = []
-    @logfile           = nil
+    @report_cpu        = false
+    @report_io         = false
+    @report_ctx_switch = false
+    @logfile           = STDOUT
 
     @parser = OptionParser.new
 
     @parser.on('-d', '--device DEVICE',
                'Device name to be monitored (e.g. sda, sdb, md0, dm-1).') do |device|
       @devices.push(device)
-      @no_disk = false
+      @report_io = true
+    end
+
+    @parser.on('-D', '--all-devices',
+               'Monitor all block devices.') do
+      @all_devices = true
+      @report_io = true
     end
 
     @parser.on('-i', '--interval SEC',
@@ -141,8 +127,12 @@ class NewRecordOption
       @timeout = Float(timeout)
     end
 
-    @parser.on('--no-cpu', 'Suppress recording CPU usage.') do
-      @no_cpu = true
+    @parser.on('-C', '--cpu', 'Report CPU usage.') do
+      @report_cpu = true
+    end
+
+    @parser.on('-S', '--context-switch', 'Report context switches per sec.') do
+      @report_ctx_switch = true
     end
 
     @parser.on('-l', '--logfile FILE') do |file|

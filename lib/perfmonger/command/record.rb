@@ -1,8 +1,4 @@
 
-if RUBY_VERSION <= '1.8.7'
-  require 'rubygems'
-end
-
 require 'optparse'
 require 'json'
 require 'tempfile'
@@ -12,7 +8,7 @@ module PerfMonger
 module Command
 
 class RecordCommand < BaseCommand
-  register_command 'record', 'Record system performance information (deprecated)'
+  register_command 'record', 'Record system performance information'
 
   def initialize
     super
