@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -139,25 +140,32 @@ func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
 func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	var devices []string
 
-	buf.WriteString(`{`)
-	cnt := 0
-	for device, usage := range *dusage {
-		if cnt > 0 {
-			buf.WriteString(`,`)
-		}
-		cnt++
-		fmt.Fprintf(buf, `"%s":`, device)
-		usage.WriteJsonTo(buf)
-
+	for device, _ := range *dusage {
 		if device != "total" {
 			devices = append(devices, device)
 		}
 	}
+	sort.Strings(devices)
+
 	bytes, err := json.Marshal(devices)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(buf, `,"devices":%s}`, string(bytes))
+	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
+
+	if len(devices) > 1 {
+		devices = append(devices, "total")
+	}
+
+	for _, device := range devices {
+		usage := (*dusage)[device]
+		buf.WriteString(`,"`)
+		buf.WriteString(device)
+		buf.WriteString(`":`)
+		usage.WriteJsonTo(buf)
+	}
+
+	buf.WriteByte('}')
 }
 
 func avgDelta(v int64, w int64, interval float64) float64 {
@@ -182,6 +190,7 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 
 	var total_rd_ios int64 = 0
 	var total_wr_ios int64 = 0
+	cnt := 0
 
 	for _, entry1 := range d1.Entries {
 		name := entry1.Name
@@ -222,6 +231,8 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		}
 		(*usage)[name] = entry
 
+		cnt++
+
 		total.RdIops += entry.RdIops
 		total.WrIops += entry.WrIops
 		total.RdSecps += entry.RdSecps
@@ -245,7 +256,9 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		total.AvgWrSize /= float64(total_wr_ios)
 	}
 
-	(*usage)["total"] = total
+	if cnt > 1 {
+		(*usage)["total"] = total
+	}
 
 	return usage, nil
 }

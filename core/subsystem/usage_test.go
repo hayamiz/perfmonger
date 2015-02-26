@@ -196,24 +196,14 @@ func TestDiskUsage(t *testing.T) {
 		t.Error("Error should be returned.")
 	}
 	_, sda_ok := (*usage)["sda"]
-	_, total_ok := (*usage)["total"]
-	if len(*usage) != 2 || !sda_ok || !total_ok {
-		t.Errorf("DiskUsage = %v, want 2 entries 'sda' and 'total'.")
+	if len(*usage) != 1 || !sda_ok {
+		t.Errorf("DiskUsage = %v, want 1 entry 'sda'", *usage)
 	}
 	if !floatEqWithin((*usage)["sda"].RdIops, 200.0/interval, 0.001) {
 		t.Errorf("sda.RdIops = %v, want %v", (*usage)["sda"].RdIops, 200.0/interval)
 	}
 	if !floatEqWithin((*usage)["sda"].RdLatency, 1000.0/200.0, 0.001) {
 		t.Errorf("sda.RdLatency = %v, want %v", (*usage)["sda"].RdLatency, 1000.0/200.0)
-	}
-
-	if !floatEqWithin((*usage)["sda"].RdIops, (*usage)["total"].RdIops, 0.001) {
-		t.Errorf("sda.RdIops = %v, total.RdIops = %v, want %v",
-			(*usage)["sda"].RdIops, (*usage)["total"].RdIops, 200.0/interval)
-	}
-	if !floatEqWithin((*usage)["sda"].RdLatency, (*usage)["total"].RdLatency, 0.001) {
-		t.Errorf("sda.RdLatency = %v, total.RdLatency = %v, want %v",
-			(*usage)["sda"].RdLatency, (*usage)["total"].RdLatency, 1000.0/200.0)
 	}
 
 	buf := bytes.NewBuffer([]byte{})
@@ -238,9 +228,10 @@ func TestDiskUsage(t *testing.T) {
 	}
 	_, sda_ok = (*usage)["sda"]
 	_, sdb_ok := (*usage)["sda"]
-	_, total_ok = (*usage)["total"]
+	_, total_ok := (*usage)["total"]
 	if len(*usage) != 3 || !sda_ok || !sdb_ok || !total_ok {
-		t.Errorf("DiskUsage = %v, want 3 entries 'sda', 'sdb' and 'total'.")
+		t.Errorf("DiskUsage = %v, want 3 entries 'sda', 'sdb' and 'total'.",
+			*usage)
 	}
 	if !floatEqWithin((*usage)["sdb"].RdIops, 300.0/interval, 0.001) {
 		t.Errorf("sdb.RdIops = %v, want %v", (*usage)["sdb"].RdIops, 300.0/interval)
