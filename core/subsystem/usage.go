@@ -29,14 +29,18 @@ type CpuUsage struct {
 }
 
 type DiskUsageEntry struct {
+	Interval time.Duration
+
 	RdIops    float64
 	WrIops    float64
-	RdSecps   float64
-	WrSecps   float64
-	RdLatency float64
-	WrLatency float64
-	AvgRdSize float64
-	AvgWrSize float64
+	RdSectors int64
+	WrSectors int64
+	RdSecps   float64 // sectors per second
+	WrSecps   float64 // sectors per second
+	RdLatency float64 // msec
+	WrLatency float64 // msec
+	AvgRdSize float64 // sectors
+	AvgWrSize float64 // sectors
 	ReqQlen   float64
 }
 
@@ -174,9 +178,10 @@ func avgDelta(v int64, w int64, interval float64) float64 {
 }
 
 func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*DiskUsage, error) {
-	interval := float64(t2.Sub(t1).Seconds())
+	interval := t2.Sub(t1)
+	itv := interval.Seconds()
 
-	if interval <= 0.0 {
+	if itv <= 0.0 {
 		return nil, errors.New("negative interval")
 	}
 
@@ -219,22 +224,28 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		}
 
 		entry := &DiskUsageEntry{
-			avgDelta(entry1.RdIos, entry2.RdIos, interval),
-			avgDelta(entry1.WrIos, entry2.WrIos, interval),
-			avgDelta(entry1.RdSectors, entry2.RdSectors, interval),
-			avgDelta(entry1.WrSectors, entry2.WrSectors, interval),
+			interval,
+			avgDelta(entry1.RdIos, entry2.RdIos, itv),
+			avgDelta(entry1.WrIos, entry2.WrIos, itv),
+			entry2.RdSectors - entry1.RdSectors,
+			entry2.WrSectors - entry1.WrSectors,
+			avgDelta(entry1.RdSectors, entry2.RdSectors, itv),
+			avgDelta(entry1.WrSectors, entry2.WrSectors, itv),
 			rd_latency,
 			wr_latency,
 			avg_rd_sz,
 			avg_wr_sz,
-			float64(entry2.ReqTicks-entry1.ReqTicks) / interval / 1.0e3,
+			float64(entry2.ReqTicks-entry1.ReqTicks) / itv / 1.0e3,
 		}
+
 		(*usage)[name] = entry
 
 		cnt++
 
 		total.RdIops += entry.RdIops
 		total.WrIops += entry.WrIops
+		total.RdSectors += entry.RdSectors
+		total.WrSectors += entry.WrSectors
 		total.RdSecps += entry.RdSecps
 		total.WrSecps += entry.WrSecps
 		total.RdLatency += entry.RdLatency * float64(entry2.RdIos-entry1.RdIos)

@@ -183,11 +183,13 @@ func TestDiskUsage(t *testing.T) {
 	d1.Entries = append(d1.Entries, NewDiskStatEntry())
 	d1.Entries[0].Name = "sda"
 	d1.Entries[0].RdIos = 100
+	d1.Entries[0].RdSectors = 200
 	d1.Entries[0].RdTicks = 500
 
 	d2.Entries = append(d2.Entries, NewDiskStatEntry())
 	d2.Entries[0].Name = "sda"
 	d2.Entries[0].RdIos = d1.Entries[0].RdIos + 200
+	d2.Entries[0].RdSectors = d1.Entries[0].RdSectors + 150
 	d2.Entries[0].RdTicks = d1.Entries[0].RdTicks + 1000
 
 	var usage *DiskUsage
@@ -205,6 +207,9 @@ func TestDiskUsage(t *testing.T) {
 	if !floatEqWithin((*usage)["sda"].RdLatency, 1000.0/200.0, 0.001) {
 		t.Errorf("sda.RdLatency = %v, want %v", (*usage)["sda"].RdLatency, 1000.0/200.0)
 	}
+	if (*usage)["sda"].RdSectors != 150 {
+		t.Errorf("sda.RdSectors = %v, want %v", (*usage)["sda"].RdSectors, 350)
+	}
 
 	buf := bytes.NewBuffer([]byte{})
 	usage.WriteJsonTo(buf)
@@ -215,16 +220,18 @@ func TestDiskUsage(t *testing.T) {
 	d1.Entries = append(d1.Entries, NewDiskStatEntry())
 	d1.Entries[1].Name = "sdb"
 	d1.Entries[1].RdIos = 200
+	d1.Entries[1].RdSectors = 400
 	d1.Entries[1].RdTicks = 10000
 
 	d2.Entries = append(d2.Entries, NewDiskStatEntry())
 	d2.Entries[1].Name = "sdb"
 	d2.Entries[1].RdIos = d1.Entries[1].RdIos + 300
+	d2.Entries[1].RdSectors = d1.Entries[1].RdSectors + 200
 	d2.Entries[1].RdTicks = d1.Entries[1].RdTicks + 1000
 
 	usage, err = GetDiskUsage(t1, d1, t2, d2)
 	if err != nil {
-		t.Error("Error should be returned.")
+		t.Error("Error should not be returned.")
 	}
 	_, sda_ok = (*usage)["sda"]
 	_, sdb_ok := (*usage)["sda"]
@@ -239,6 +246,9 @@ func TestDiskUsage(t *testing.T) {
 	if !floatEqWithin((*usage)["sdb"].RdLatency, 1000.0/300.0, 0.001) {
 		t.Errorf("sdb.RdLatency = %v, want %v", (*usage)["sdb"].RdLatency, 1000.0/300.0)
 	}
+	if (*usage)["sdb"].RdSectors != 200.0 {
+		t.Errorf("sdb.RdSectors = %v, want %v", (*usage)["sdb"].RdSectors, 200)
+	}
 
 	if !floatEqWithin(
 		(*usage)["sda"].RdIops+(*usage)["sdb"].RdIops,
@@ -252,6 +262,9 @@ func TestDiskUsage(t *testing.T) {
 		t.Errorf("weighted avg latency(sda+sdb) = %v, total.RdLatency = %v, want %v",
 			weighted_latency, (*usage)["total"].RdLatency,
 			(2.0/5.0)*1000.0/200.0+(3.0/5.0)*1000.0/300.0)
+	}
+	if (*usage)["total"].RdSectors != 350 {
+		t.Errorf("total.RdSectors = %v, want %v", (*usage)["total"].RdSectors, 350)
 	}
 
 	buf = bytes.NewBuffer([]byte{})
