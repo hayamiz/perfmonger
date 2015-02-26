@@ -171,7 +171,9 @@ func TestDiskUsage(t *testing.T) {
 		t.Error("Error should be returned because timestamps are the same")
 	}
 
-	t2 = t1.Add(time.Second * 2.0)
+	interval_duration := time.Second * 2
+	interval := interval_duration.Seconds()
+	t2 = t1.Add(interval_duration)
 
 	_, err = GetDiskUsage(t1, d1, t2, d2)
 	if err == nil {
@@ -181,10 +183,12 @@ func TestDiskUsage(t *testing.T) {
 	d1.Entries = append(d1.Entries, NewDiskStatEntry())
 	d1.Entries[0].Name = "sda"
 	d1.Entries[0].RdIos = 100
+	d1.Entries[0].RdTicks = 500
 
 	d2.Entries = append(d2.Entries, NewDiskStatEntry())
 	d2.Entries[0].Name = "sda"
-	d2.Entries[0].RdIos = 200
+	d2.Entries[0].RdIos = d1.Entries[0].RdIos + 200
+	d2.Entries[0].RdTicks = d1.Entries[0].RdTicks + 1000
 
 	var usage *DiskUsage
 	usage, err = GetDiskUsage(t1, d1, t2, d2)
@@ -196,4 +200,61 @@ func TestDiskUsage(t *testing.T) {
 	if len(*usage) != 2 || !sda_ok || !total_ok {
 		t.Errorf("DiskUsage = %v, want 2 entries 'sda' and 'total'.")
 	}
+	if !floatEqWithin((*usage)["sda"].RdIops, 200.0/interval, 0.001) {
+		t.Errorf("sda.RdIops = %v, want %v", (*usage)["sda"].RdIops, 200.0/interval)
+	}
+	if !floatEqWithin((*usage)["sda"].RdLatency, 1000.0/200.0, 0.001) {
+		t.Errorf("sda.RdLatency = %v, want %v", (*usage)["sda"].RdLatency, 1000.0/200.0)
+	}
+
+	if !floatEqWithin((*usage)["sda"].RdIops, (*usage)["total"].RdIops, 0.001) {
+		t.Errorf("sda.RdIops = %v, total.RdIops = %v, want %v",
+			(*usage)["sda"].RdIops, (*usage)["total"].RdIops, 200.0/interval)
+	}
+	if !floatEqWithin((*usage)["sda"].RdLatency, (*usage)["total"].RdLatency, 0.001) {
+		t.Errorf("sda.RdLatency = %v, total.RdLatency = %v, want %v",
+			(*usage)["sda"].RdLatency, (*usage)["total"].RdLatency, 1000.0/200.0)
+	}
+
+	d1.Entries = append(d1.Entries, NewDiskStatEntry())
+	d1.Entries[1].Name = "sdb"
+	d1.Entries[1].RdIos = 200
+	d1.Entries[1].RdTicks = 10000
+
+	d2.Entries = append(d2.Entries, NewDiskStatEntry())
+	d2.Entries[1].Name = "sdb"
+	d2.Entries[1].RdIos = d1.Entries[1].RdIos + 300
+	d2.Entries[1].RdTicks = d1.Entries[1].RdTicks + 1000
+
+	usage, err = GetDiskUsage(t1, d1, t2, d2)
+	if err != nil {
+		t.Error("Error should be returned.")
+	}
+	_, sda_ok = (*usage)["sda"]
+	_, sdb_ok := (*usage)["sda"]
+	_, total_ok = (*usage)["total"]
+	if len(*usage) != 3 || !sda_ok || !sdb_ok || !total_ok {
+		t.Errorf("DiskUsage = %v, want 3 entries 'sda', 'sdb' and 'total'.")
+	}
+	if !floatEqWithin((*usage)["sdb"].RdIops, 300.0/interval, 0.001) {
+		t.Errorf("sdb.RdIops = %v, want %v", (*usage)["sdb"].RdIops, 300.0/interval)
+	}
+	if !floatEqWithin((*usage)["sdb"].RdLatency, 1000.0/300.0, 0.001) {
+		t.Errorf("sdb.RdLatency = %v, want %v", (*usage)["sdb"].RdLatency, 1000.0/300.0)
+	}
+
+	if !floatEqWithin(
+		(*usage)["sda"].RdIops+(*usage)["sdb"].RdIops,
+		(*usage)["total"].RdIops, 0.001) {
+		t.Errorf("sda.RdIops+sdb.RdIops = %v, total.RdIops = %v, want %v",
+			(*usage)["sda"].RdIops+(*usage)["sdb"].RdIops, (*usage)["total"].RdIops,
+			(200.0+300.0)/interval)
+	}
+	weighted_latency := (*usage)["sda"].RdLatency*(200.0/(200.0+300.0)) + (*usage)["sdb"].RdLatency*(300.0/(200.0+300.0))
+	if !floatEqWithin(weighted_latency, (*usage)["total"].RdLatency, 0.001) {
+		t.Errorf("weighted avg latency(sda+sdb) = %v, total.RdLatency = %v, want %v",
+			weighted_latency, (*usage)["total"].RdLatency,
+			(2.0/5.0)*1000.0/200.0+(3.0/5.0)*1000.0/300.0)
+	}
+
 }
