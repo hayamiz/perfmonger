@@ -236,10 +236,14 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		total_wr_ios += entry2.WrIos - entry1.WrIos
 	}
 
-	total.RdLatency /= float64(total_rd_ios)
-	total.WrLatency /= float64(total_wr_ios)
-	total.AvgRdSize /= float64(total_rd_ios)
-	total.AvgWrSize /= float64(total_wr_ios)
+	if total_rd_ios > 0 {
+		total.RdLatency /= float64(total_rd_ios)
+		total.AvgRdSize /= float64(total_rd_ios)
+	}
+	if total_wr_ios > 0 {
+		total.WrLatency /= float64(total_wr_ios)
+		total.AvgWrSize /= float64(total_wr_ios)
+	}
 
 	(*usage)["total"] = total
 
