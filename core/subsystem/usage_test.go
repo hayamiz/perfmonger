@@ -216,6 +216,12 @@ func TestDiskUsage(t *testing.T) {
 			(*usage)["sda"].RdLatency, (*usage)["total"].RdLatency, 1000.0/200.0)
 	}
 
+	buf := bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("invalid json: %s", buf.String())
+	}
+
 	d1.Entries = append(d1.Entries, NewDiskStatEntry())
 	d1.Entries[1].Name = "sdb"
 	d1.Entries[1].RdIos = 200
@@ -257,4 +263,9 @@ func TestDiskUsage(t *testing.T) {
 			(2.0/5.0)*1000.0/200.0+(3.0/5.0)*1000.0/300.0)
 	}
 
+	buf = bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("invalid json: %s", buf.String())
+	}
 }
