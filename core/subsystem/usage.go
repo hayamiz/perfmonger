@@ -165,12 +165,20 @@ func avgDelta(v int64, w int64, interval float64) float64 {
 	return ret
 }
 
-func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) *DiskUsage {
+func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*DiskUsage, error) {
+	interval := float64(t2.Sub(t1).Seconds())
+
+	if interval <= 0.0 {
+		return nil, errors.New("negative interval")
+	}
+
+	if len(d1.Entries) == 0 || len(d2.Entries) == 0 {
+		return nil, errors.New("no DiskEntry")
+	}
+
 	usage := new(DiskUsage)
 	(*usage) = make(DiskUsage)
 	total := new(DiskUsageEntry)
-
-	interval := float64(t2.Sub(t1).Seconds())
 
 	cnt := 0
 	for _, entry1 := range d1.Entries {
@@ -231,7 +239,7 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) *DiskU
 
 	(*usage)["total"] = total
 
-	return usage
+	return usage, nil
 }
 
 func usageItem(v1 int64, v2 int64, itv int64) float64 {
