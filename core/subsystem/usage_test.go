@@ -1,9 +1,22 @@
 package subsystem
 
 import (
+	"bytes"
+	"encoding/json"
 	"math"
 	"testing"
+	"time"
 )
+
+func isValidJson(byt []byte) bool {
+	var val interface{}
+	err := json.Unmarshal(byt, &val)
+	return err == nil
+}
+
+func floatEqWithin(val1, val2, epsilon float64) bool {
+	return math.Abs(val1-val2) < epsilon
+}
 
 func TestGetCoreUsage(t *testing.T) {
 	var err error
@@ -43,11 +56,17 @@ func TestGetCoreUsage(t *testing.T) {
 	if usage == nil {
 		t.Error("usage == nil, want non-nil")
 	}
-	if math.Abs(usage.User-75.0) > 0.01 {
+	if !floatEqWithin(usage.User, 75.0, 0.01) {
 		t.Errorf("usage.User = %v, want 75.0", usage.User)
 	}
-	if math.Abs(usage.Sys-25.0) > 0.01 {
+	if !floatEqWithin(usage.Sys, 25.0, 0.01) {
 		t.Errorf("usage.Sys = %v, want 25.0", usage.User)
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("Invalid JSON: %s", buf.String())
 	}
 }
 
@@ -112,22 +131,69 @@ func TestGetCpuUsage(t *testing.T) {
 	if usage == nil {
 		t.Error("usage == nil, want non-nil")
 	}
-	if math.Abs(usage.All.User-150.0) > 0.01 {
+	if !floatEqWithin(usage.All.User, 150.0, 0.01) {
 		t.Errorf("usage.User = %v, want 150.0", usage.All.User)
 	}
-	if math.Abs(usage.All.Sys-50.0) > 0.01 {
+	if !floatEqWithin(usage.All.Sys, 50.0, 0.01) {
 		t.Errorf("usage.Sys = %v, want 50.0", usage.All.User)
 	}
-	if math.Abs(usage.CoreUsages[0].User-75.0) > 0.01 {
+	if !floatEqWithin(usage.CoreUsages[0].User, 75.0, 0.01) {
 		t.Errorf("usage.User = %v, want 75.0", usage.CoreUsages[0].User)
 	}
-	if math.Abs(usage.CoreUsages[0].Sys-25.0) > 0.01 {
+	if !floatEqWithin(usage.CoreUsages[0].Sys, 25.0, 0.01) {
 		t.Errorf("usage.Sys = %v, want 25.0", usage.CoreUsages[0].User)
 	}
-	if math.Abs(usage.CoreUsages[1].User-75.0) > 0.01 {
+	if !floatEqWithin(usage.CoreUsages[1].User, 75.0, 0.01) {
 		t.Errorf("usage.User = %v, want 75.0", usage.CoreUsages[1].User)
 	}
-	if math.Abs(usage.CoreUsages[1].Sys-25.0) > 0.01 {
+	if !floatEqWithin(usage.CoreUsages[1].Sys, 25.0, 0.01) {
 		t.Errorf("usage.Sys = %v, want 25.0", usage.CoreUsages[1].User)
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("Invalid JSON: %s", buf.String())
+	}
+}
+
+func TestDiskUsage(t *testing.T) {
+	d1 := NewDiskStat()
+	d2 := NewDiskStat()
+	t1, perr := time.Parse(time.RFC3339, "2012-01-23T01:23:45+09:00")
+	t2 := t1
+	if perr != nil {
+		t.Error("Timestamp parse error")
+	}
+
+	_, err := GetDiskUsage(t1, d1, t2, d2)
+	if err == nil {
+		t.Error("Error should be returned because timestamps are the same")
+	}
+
+	t2 = t1.Add(time.Second * 2.0)
+
+	_, err = GetDiskUsage(t1, d1, t2, d2)
+	if err == nil {
+		t.Error("Error should be returned because no entries in DiskStat")
+	}
+
+	d1.Entries = append(d1.Entries, NewDiskStatEntry())
+	d1.Entries[0].Name = "sda"
+	d1.Entries[0].RdIos = 100
+
+	d2.Entries = append(d2.Entries, NewDiskStatEntry())
+	d2.Entries[0].Name = "sda"
+	d2.Entries[0].RdIos = 200
+
+	var usage *DiskUsage
+	usage, err = GetDiskUsage(t1, d1, t2, d2)
+	if err != nil {
+		t.Error("Error should be returned.")
+	}
+	_, sda_ok := (*usage)["sda"]
+	_, total_ok := (*usage)["total"]
+	if len(*usage) != 2 || !sda_ok || !total_ok {
+		t.Errorf("DiskUsage = %v, want 2 entries 'sda' and 'total'.")
 	}
 }
