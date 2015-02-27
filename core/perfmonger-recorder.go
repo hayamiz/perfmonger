@@ -27,6 +27,7 @@ type RecorderOption struct {
 	output              string
 	no_cpu              bool
 	no_disk             bool
+	no_net              bool
 	debug               bool
 	listDevices         bool
 	player_bin          string
@@ -57,6 +58,8 @@ func parseArgs() {
 		false, "Do not record CPU usage")
 	flag.BoolVar(&option.no_disk, "no-disk",
 		false, "Do not record disk usage")
+	flag.BoolVar(&option.no_net, "no-net",
+		false, "Do not record net usage")
 	flag.BoolVar(&option.debug, "debug",
 		false, "Enable debug mode")
 	flag.BoolVar(&option.listDevices, "list-devices",
@@ -218,6 +221,9 @@ func main() {
 		}
 		if !option.no_disk {
 			ss.ReadDiskStats(record)
+		}
+		if !option.no_net {
+			ss.ReadNetStat(record)
 		}
 
 		err = enc.Encode(record)

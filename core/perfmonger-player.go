@@ -13,6 +13,17 @@ import (
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
+func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
+	if err != nil {
+		return err
+	}
+	buffer.WriteString(`,"cpu":`)
+	cusage.WriteJsonTo(buffer)
+
+	return nil
+}
+
 func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	dusage, err := ss.GetDiskUsage(
 		prev_rec.Time, prev_rec.Disk,
@@ -28,13 +39,17 @@ func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Sta
 	return nil
 }
 
-func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
-	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
+func showNetStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+	dusage, err := ss.GetNetUsage(
+		prev_rec.Time, prev_rec.Net,
+		cur_rec.Time, cur_rec.Net,
+	)
 	if err != nil {
 		return err
 	}
-	buffer.WriteString(`,"cpu":`)
-	cusage.WriteJsonTo(buffer)
+
+	buffer.WriteString(`,"net":`)
+	dusage.WriteJsonTo(buffer)
 
 	return nil
 }
@@ -49,6 +64,12 @@ func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRec
 	}
 	if cur_rec.Disk != nil {
 		err := showDiskStat(buffer, prev_rec, cur_rec)
+		if err != nil {
+			return err
+		}
+	}
+	if cur_rec.Net != nil {
+		err := showNetStat(buffer, prev_rec, cur_rec)
 		if err != nil {
 			return err
 		}
