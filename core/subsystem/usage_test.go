@@ -201,6 +201,9 @@ func TestDiskUsage(t *testing.T) {
 	if len(*usage) != 1 || !sda_ok {
 		t.Errorf("DiskUsage = %v, want 1 entry 'sda'", *usage)
 	}
+	if (*usage)["sda"].Interval != interval_duration {
+		t.Errorf("sda.Interval = %v, want %v", (*usage)["sda"].Interval, interval_duration)
+	}
 	if !floatEqWithin((*usage)["sda"].RdIops, 200.0/interval, 0.001) {
 		t.Errorf("sda.RdIops = %v, want %v", (*usage)["sda"].RdIops, 200.0/interval)
 	}
@@ -271,5 +274,115 @@ func TestDiskUsage(t *testing.T) {
 	usage.WriteJsonTo(buf)
 	if !isValidJson(buf.Bytes()) {
 		t.Errorf("invalid json: %s", buf.String())
+	}
+}
+
+func TestGetNetUsage(t *testing.T) {
+	n1 := NewNetStat()
+	n2 := NewNetStat()
+
+	t1, perr := time.Parse(time.RFC3339, "2012-01-23T01:23:45+09:00")
+	t2 := t1
+	if perr != nil {
+		t.Error("Timestamp parse error")
+	}
+
+	_, err := GetNetUsage(t1, n1, t2, n2)
+	if err == nil {
+		t.Error("Error should be returned because timestamps are the same")
+	}
+
+	interval_duration := time.Second * 2
+	interval := interval_duration.Seconds()
+	t2 = t1.Add(interval_duration)
+
+	_, err = GetNetUsage(t1, n1, t2, n2)
+	if err == nil {
+		t.Error("Error should be returned because no entries in NetStat")
+	}
+
+	n1.Entries = append(n1.Entries, NewNetStatEntry())
+	n1.Entries[0].Name = "lo"
+	n1.Entries[0].RxBytes = 12345
+	n1.Entries[0].RxPackets = 12345
+
+	n2.Entries = append(n2.Entries, NewNetStatEntry())
+	n2.Entries[0].Name = "lo"
+	n2.Entries[0].RxBytes = n1.Entries[0].RxBytes + 8000
+	n2.Entries[0].RxPackets = n1.Entries[0].RxPackets + 100
+
+	var usage *NetUsage
+	usage, err = GetNetUsage(t1, n1, t2, n2)
+	if err != nil {
+		t.Errorf("Error should not be returned with:\n  n1 = %v\n  n2 = %v",
+			n1, n2)
+	}
+	_, lo_ok := (*usage)["lo"]
+	if len(*usage) != 1 || !lo_ok {
+		t.Errorf("NetUsage = %v, want 1 entry \"lo\"", usage)
+	}
+
+	if (*usage)["lo"].Interval != interval_duration {
+		t.Errorf("lo.Interval = %v, want %v", (*usage)["lo"].Interval, interval_duration)
+	}
+	if !floatEqWithin((*usage)["lo"].RxBytesPerSec, 8000.0/interval, 0.001) {
+		t.Errorf("lo.RxBytesPerSec = %v, want %v", (*usage)["lo"].RxBytesPerSec, 8000.0/interval)
+	}
+	if !floatEqWithin((*usage)["lo"].RxPacketsPerSec, 100.0/interval, 0.001) {
+		t.Errorf("lo.RxPacketsPerSec = %v, want %v", (*usage)["lo"].RxPacketsPerSec, 100.0/interval)
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("invalid json: %s", buf.String())
+	}
+
+	n1.Entries = append(n1.Entries, NewNetStatEntry())
+	n1.Entries[1].Name = "eth0"
+	n1.Entries[1].RxBytes = 45678
+	n1.Entries[1].RxPackets = 123
+
+	usage, err = GetNetUsage(t1, n1, t2, n2)
+	if err != nil {
+		t.Errorf("Error should not be returned with:\n  n1 = %v\n  n2 = %v",
+			n1, n2)
+	}
+	_, lo_ok = (*usage)["lo"]
+	if len(*usage) != 1 || !lo_ok {
+		t.Errorf(`NetUsage = %v, want 1 entry "lo".`, usage)
+	}
+
+	n2.Entries = append(n2.Entries, NewNetStatEntry())
+	n2.Entries[1].Name = "eth0"
+	n2.Entries[1].RxBytes = n1.Entries[1].RxBytes + 7000
+	n2.Entries[1].RxPackets = n1.Entries[1].RxPackets + 150
+
+	usage, err = GetNetUsage(t1, n1, t2, n2)
+	if err != nil {
+		t.Errorf("Error should not be returned with:\n  n1 = %v\n  n2 = %v",
+			n1, n2)
+	}
+	_, lo_ok = (*usage)["lo"]
+	_, eth0_ok := (*usage)["eth0"]
+	_, total_ok := (*usage)["total"]
+	if len(*usage) != 3 || !lo_ok || !eth0_ok || !total_ok {
+		t.Errorf(`NetUsage = %v, want 3 entry "lo", "eth0" and "total".`, usage)
+	}
+
+	if !floatEqWithin((*usage)["eth0"].RxBytesPerSec, 7000.0/interval, 0.001) {
+		t.Errorf("eth0.RxBytesPerSec = %v, want %v", (*usage)["eth0"].RxBytesPerSec, 7000.0/interval)
+	}
+	if !floatEqWithin((*usage)["eth0"].RxPacketsPerSec, 150.0/interval, 0.001) {
+		t.Errorf("eth0.RxPacketsPerSec = %v, want %v", (*usage)["eth0"].RxPacketsPerSec, 150.0/interval)
+	}
+
+	if !floatEqWithin((*usage)["total"].RxBytesPerSec, (8000.0+7000.0)/interval, 0.001) {
+		t.Errorf("total.RxBytesPerSec = %v, want %v", (*usage)["total"].RxBytesPerSec,
+			(8000.0+7000.0)/interval)
+	}
+	if !floatEqWithin((*usage)["total"].RxPacketsPerSec, (100.0+150.0)/interval, 0.001) {
+		t.Errorf("total.RxPacketsPerSec = %v, want %v", (*usage)["total"].RxPacketsPerSec,
+			(100.0+150.0)/interval)
 	}
 }

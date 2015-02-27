@@ -46,6 +46,29 @@ type DiskUsageEntry struct {
 
 type DiskUsage map[string]*DiskUsageEntry
 
+type NetUsageEntry struct {
+	Interval time.Duration
+
+	RxBytesPerSec      float64
+	RxPacketsPerSec    float64
+	RxErrorsPerSec     float64
+	RxDropsPerSec      float64
+	RxFifoPerSec       float64
+	RxFramePerSec      float64
+	RxCompressedPerSec float64
+	RxMulticastPerSec  float64
+	TxBytesPerSec      float64
+	TxPacketsPerSec    float64
+	TxErrorsPerSec     float64
+	TxDropsPerSec      float64
+	TxFifoPerSec       float64
+	TxFramePerSec      float64
+	TxCompressedPerSec float64
+	TxMulticastPerSec  float64
+}
+
+type NetUsage map[string]*NetUsageEntry
+
 func (ccusage *CpuCoreUsage) WriteJsonTo(buf *bytes.Buffer) {
 	buf.WriteString(
 		fmt.Sprintf(`{"usr":%.2f,"nice":%.2f,"sys":%.2f,"idle":%.2f,"iowait":%.2f,"hardirq":%.2f,"softirq":%.2f,"steal":%.2f,"guest":%.2f,"guestnice":%.2f}`,
@@ -276,4 +299,125 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 
 func usageItem(v1 int64, v2 int64, itv int64) float64 {
 	return float64(v2-v1) / float64(itv) * 100.0
+}
+
+func GetNetUsage(t1 time.Time, d1 *NetStat, t2 time.Time, d2 *NetStat) (*NetUsage, error) {
+	if len(d1.Entries) == 0 && len(d2.Entries) == 0 {
+		return nil, errors.New("no entries")
+	}
+
+	interval := t2.Sub(t1)
+	itv := interval.Seconds()
+
+	if itv <= 0 {
+		return nil, errors.New("Non-positive interval")
+	}
+
+	net_usage := new(NetUsage)
+	(*net_usage) = make(NetUsage)
+	total := new(NetUsageEntry)
+
+	cnt := 0
+
+	for _, d1_entry := range d1.Entries {
+		devname := d1_entry.Name
+
+		// find devname in d2
+		var d2_entry *NetStatEntry = nil
+		for _, e := range d2.Entries {
+			if e.Name == devname {
+				d2_entry = e
+				break
+			}
+		}
+
+		if d2_entry == nil {
+			continue
+		}
+
+		ue := new(NetUsageEntry)
+
+		ue.Interval = interval
+		ue.RxBytesPerSec = avgDelta(d1_entry.RxBytes, d2_entry.RxBytes, itv)
+		ue.RxPacketsPerSec = avgDelta(d1_entry.RxPackets, d2_entry.RxPackets, itv)
+		ue.RxErrorsPerSec = avgDelta(d1_entry.RxErrors, d2_entry.RxErrors, itv)
+		ue.RxDropsPerSec = avgDelta(d1_entry.RxDrops, d2_entry.RxDrops, itv)
+		ue.RxFifoPerSec = avgDelta(d1_entry.RxFifo, d2_entry.RxFifo, itv)
+		ue.RxFramePerSec = avgDelta(d1_entry.RxFrame, d2_entry.RxFrame, itv)
+		ue.RxCompressedPerSec = avgDelta(d1_entry.RxCompressed, d2_entry.RxCompressed, itv)
+		ue.RxMulticastPerSec = avgDelta(d1_entry.RxMulticast, d2_entry.RxMulticast, itv)
+		ue.TxBytesPerSec = avgDelta(d1_entry.TxBytes, d2_entry.TxBytes, itv)
+		ue.TxPacketsPerSec = avgDelta(d1_entry.TxPackets, d2_entry.TxPackets, itv)
+		ue.TxErrorsPerSec = avgDelta(d1_entry.TxErrors, d2_entry.TxErrors, itv)
+		ue.TxDropsPerSec = avgDelta(d1_entry.TxDrops, d2_entry.TxDrops, itv)
+		ue.TxFifoPerSec = avgDelta(d1_entry.TxFifo, d2_entry.TxFifo, itv)
+		ue.TxFramePerSec = avgDelta(d1_entry.TxFrame, d2_entry.TxFrame, itv)
+		ue.TxCompressedPerSec = avgDelta(d1_entry.TxCompressed, d2_entry.TxCompressed, itv)
+		ue.TxMulticastPerSec = avgDelta(d1_entry.TxMulticast, d2_entry.TxMulticast, itv)
+
+		(*net_usage)[devname] = ue
+
+		total.RxBytesPerSec += ue.RxBytesPerSec
+		total.RxPacketsPerSec += ue.RxPacketsPerSec
+		total.RxErrorsPerSec += ue.RxErrorsPerSec
+		total.RxDropsPerSec += ue.RxDropsPerSec
+		total.RxFifoPerSec += ue.RxFifoPerSec
+		total.RxFramePerSec += ue.RxFramePerSec
+		total.RxCompressedPerSec += ue.RxCompressedPerSec
+		total.RxMulticastPerSec += ue.RxMulticastPerSec
+		total.TxBytesPerSec += ue.TxBytesPerSec
+		total.TxPacketsPerSec += ue.TxPacketsPerSec
+		total.TxErrorsPerSec += ue.TxErrorsPerSec
+		total.TxDropsPerSec += ue.TxDropsPerSec
+		total.TxFifoPerSec += ue.TxFifoPerSec
+		total.TxFramePerSec += ue.TxFramePerSec
+		total.TxCompressedPerSec += ue.TxCompressedPerSec
+		total.TxMulticastPerSec += ue.TxMulticastPerSec
+
+		cnt++
+	}
+
+	if cnt > 1 {
+		(*net_usage)["total"] = total
+	}
+
+	return net_usage, nil
+}
+
+func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
+	var devices []string
+
+	for device, _ := range *nusage {
+		if device != "total" {
+			devices = append(devices, device)
+		}
+	}
+	sort.Strings(devices)
+
+	bytes, err := json.Marshal(devices)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
+
+	if len(devices) > 1 {
+		devices = append(devices, "total")
+	}
+
+	for _, device := range devices {
+		usage := (*nusage)[device]
+		buf.WriteString(`,"`)
+		buf.WriteString(device)
+		buf.WriteString(`":`)
+		usage.WriteJsonTo(buf)
+	}
+
+	buf.WriteByte('}')
+}
+
+func (entry *NetUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
+	buf.WriteString(
+		fmt.Sprintf(`{"rxkbyteps":%.2f,"rxpktps":%.2f,"rxerrps":%.2f,"rxdropps":%.2f,"txkbyteps":%.2f,"txpktps":%.2f,"txerrps":%.2f,"txdropps":%.2f}`,
+			entry.RxBytesPerSec, entry.RxPacketsPerSec, entry.RxErrorsPerSec, entry.RxDropsPerSec,
+			entry.TxBytesPerSec, entry.TxPacketsPerSec, entry.TxErrorsPerSec, entry.TxDropsPerSec))
 }
