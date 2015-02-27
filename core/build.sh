@@ -3,7 +3,30 @@
 READLINK=$(type -p greadlink readlink | head -1)
 cd $(dirname $($READLINK -f $0))
 
-TARGET=("linux 386" "linux amd64")
+if [ $1 = "-" ]; then
+    # do self build
+    case `uname -s` in
+        (Linux)
+            os="linux"
+            ;;
+        (*)
+            os=""
+            ;;
+    esac
+    case `uname -m` in
+        (x86_64|amd64)
+            arch="amd64"
+            ;;
+        (*)
+            arch=""
+            ;;
+    esac
+
+    TARGET=("${os} ${arch}")
+else
+    # cross build
+    TARGET=("linux 386" "linux amd64")
+fi
 
 set -xe
 

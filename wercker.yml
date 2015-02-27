@@ -10,7 +10,7 @@ build:
         - bundle-install
 
         - script:
-            name: install perfmonger go package
+            name: install go packages
             code: |
               go get -u golang.org/x/crypto/ssh/terminal
               go get -u github.com/hayamiz/perfmonger/core/subsystem
