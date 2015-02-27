@@ -7,3 +7,4 @@
 /core/perfmonger-recorder
 /lib/exec/
 /ext/perfmonger/Makefile
+/core/perfmonger-summarizer

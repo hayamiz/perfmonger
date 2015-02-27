@@ -7,7 +7,7 @@ GOSRC :=                                        \
 
 .PHONY: all clean
 
-all: perfmonger-recorder perfmonger-player
+all: perfmonger-recorder perfmonger-player perfmonger-summarizer
 
 clean:
 	rm -f perfmonger-recorder perfmonger-player
@@ -16,5 +16,8 @@ perfmonger-recorder: perfmonger-recorder.go $(GOSRC)
 	go build $<
 
 perfmonger-player: perfmonger-player.go $(GOSRC)
+	go build $<
+
+perfmonger-summarizer: perfmonger-summarizer.go $(GOSRC)
 	go build $<
 

@@ -16,5 +16,7 @@ for idx in $(seq 0 $((${#TARGET[@]}-1))); do
         perfmonger-recorder.go
     go build -o ../lib/exec/perfmonger-player_${GOOS}_${GOARCH} \
         perfmonger-player.go
+    go build -o ../lib/exec/perfmonger-summarizer_${GOOS}_${GOARCH} \
+        perfmonger-summarizer.go
 done
 
