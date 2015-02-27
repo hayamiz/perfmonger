@@ -8,6 +8,13 @@ build:
         - rvm-use:
             version: 1.8.7-p374
         - bundle-install
+
+        - script:
+            name: install perfmonger go package
+            code: |
+              go get -u golang.org/x/crypto/ssh/terminal
+              go get -u github.com/hayamiz/perfmonger/core/subsystem
+
         - script:
             name: run rspec
             code: |
