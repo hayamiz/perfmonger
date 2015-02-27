@@ -15,7 +15,7 @@ task :build_ext do
   end
 end
 
-task :spec => [:build_ext]
+task :spec => [:build_ext, :build_core]
 
 desc "Build core recorder/player"
 task :build_core do
