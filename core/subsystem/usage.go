@@ -418,6 +418,8 @@ func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
 func (entry *NetUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
 	buf.WriteString(
 		fmt.Sprintf(`{"rxkbyteps":%.2f,"rxpktps":%.2f,"rxerrps":%.2f,"rxdropps":%.2f,"txkbyteps":%.2f,"txpktps":%.2f,"txerrps":%.2f,"txdropps":%.2f}`,
-			entry.RxBytesPerSec, entry.RxPacketsPerSec, entry.RxErrorsPerSec, entry.RxDropsPerSec,
-			entry.TxBytesPerSec, entry.TxPacketsPerSec, entry.TxErrorsPerSec, entry.TxDropsPerSec))
+			entry.RxBytesPerSec/1024.0, entry.RxPacketsPerSec,
+			entry.RxErrorsPerSec, entry.RxDropsPerSec,
+			entry.TxBytesPerSec/1024.0, entry.TxPacketsPerSec,
+			entry.TxErrorsPerSec, entry.TxDropsPerSec))
 }
