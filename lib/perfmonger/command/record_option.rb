@@ -39,35 +39,37 @@ class RecordOption
       exit(false)
     end
 
-    cmd = sprintf("%s -interval=%.1fms",
-                  @recorder_bin,
-                  @interval * 1000)
+    cmd = [@recorder_bin]
+    cmd << sprintf("-interval=%.1fms", @interval * 1000)
     if ! @interval_backoff
-      cmd += " -no-interval-backoff "
+      cmd << "-no-interval-backoff"
     end
     if @start_delay > 0
-      cmd += " -start-delay #{@start_delay*1000}ms "
+      cmd << "-start-delay"
+      cmd << "#{@start_delay*1000}ms"
     end
     if @timeout
-      cmd += " -timeout #{@timeout*1000}ms "
+      cmd << "-timeout"
+      cmd << "#{@timeout*1000}ms"
     end
     if @no_cpu
-      cmd += " -no-cpu "
+      cmd << "-no-cpu"
     end
     if @no_disk
-      cmd += " -no-disk "
+      cmd << "-no-disk"
     end
 
     if @logfile
-      cmd += sprintf(" -output \"%s\" ", @logfile)
+      cmd << "-output"
+      cmd << @logfile
+    end
+
+    if !@logfile && $stdout.tty?
+      cmd << "-player-bin"
+      cmd << @player_bin
     end
 
     raise NotImplementedError if @verbose
-
-    if ! @logfile
-      # output JSON to stdout via player
-      cmd += " | " + @player_bin
-    end
 
     cmd
   end
