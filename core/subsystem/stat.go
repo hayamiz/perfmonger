@@ -64,12 +64,37 @@ type DiskStat struct {
 	Entries []*DiskStatEntry
 }
 
+type NetStatEntry struct {
+	Name         string
+	RxBytes      int64
+	RxPackets    int64
+	RxErrors     int64
+	RxDrops      int64
+	RxFifo       int64
+	RxFrame      int64
+	RxCompressed int64
+	RxMulticast  int64
+	TxBytes      int64
+	TxPackets    int64
+	TxErrors     int64
+	TxDrops      int64
+	TxFifo       int64
+	TxFrame      int64
+	TxCompressed int64
+	TxMulticast  int64
+}
+
+type NetStat struct {
+	Entries []*NetStatEntry
+}
+
 type StatRecord struct {
 	Time    time.Time
 	Cpu     *CpuStat
 	Proc    *ProcStat
 	Disk    *DiskStat
 	Softirq *SoftIrqStat
+	Net     *NetStat
 }
 
 func (core_stat *CpuCoreStat) Clear() {
@@ -151,9 +176,30 @@ func (sirq_stat *SoftIrqStat) Clear() {
 	sirq_stat.Rcu = 0
 }
 
+func NewNetStatEntry() *NetStatEntry {
+	return new(NetStatEntry)
+}
+
+func (entry *NetStatEntry) Clear() {
+	entry.Name = ""
+	entry.RxBytes = 0
+	entry.RxPackets = 0
+	entry.RxErrors = 0
+	entry.RxDrops = 0
+	entry.TxBytes = 0
+	entry.TxPackets = 0
+	entry.TxErrors = 0
+	entry.TxDrops = 0
+}
+
+func NewNetStat() *NetStat {
+	return new(NetStat)
+}
+
 func NewStatRecord() *StatRecord {
 	return &StatRecord{
 		time.Now(),
+		nil,
 		nil,
 		nil,
 		nil,

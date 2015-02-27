@@ -1,6 +1,13 @@
 package subsystem
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func getField(val interface{}, field string) reflect.Value {
+	return reflect.ValueOf(val).FieldByName(field)
+}
 
 func TestCpuCoreStatUptime(t *testing.T) {
 	var corestat *CpuCoreStat
@@ -196,4 +203,79 @@ func TestCpuStatClear(t *testing.T) {
 				corestat)
 		}
 	}
+}
+
+func TestNewNetStatEntry(t *testing.T) {
+	entry := NewNetStatEntry()
+
+	checkField := func(e *NetStatEntry, fieldName string, wanted int64) {
+		val := reflect.ValueOf(*e).FieldByName(fieldName).Int()
+		if val != wanted {
+			t.Errorf(".%s = %v, want %v",
+				fieldName, val, wanted)
+		}
+	}
+
+	checkStrField := func(e *NetStatEntry, fieldName string, wanted string) {
+		val := reflect.ValueOf(*e).FieldByName(fieldName).String()
+		if val != wanted {
+			t.Errorf(".%s = %v, want %v",
+				fieldName, val, wanted)
+		}
+	}
+
+	checkStrField(entry, "Name", "")
+	checkField(entry, "RxBytes", 0)
+	checkField(entry, "RxPackets", 0)
+	checkField(entry, "RxErrors", 0)
+	checkField(entry, "RxDrops", 0)
+	checkField(entry, "RxFifo", 0)
+	checkField(entry, "RxFrame", 0)
+	checkField(entry, "RxCompressed", 0)
+	checkField(entry, "RxMulticast", 0)
+	checkField(entry, "TxBytes", 0)
+	checkField(entry, "TxPackets", 0)
+	checkField(entry, "TxErrors", 0)
+	checkField(entry, "TxDrops", 0)
+	checkField(entry, "TxFifo", 0)
+	checkField(entry, "TxFrame", 0)
+	checkField(entry, "TxCompressed", 0)
+	checkField(entry, "TxMulticast", 0)
+
+	entry.Name = "lo"
+	entry.RxBytes = 10
+	entry.RxPackets = 20
+
+	entry.Clear()
+
+	checkStrField(entry, "Name", "")
+	checkField(entry, "RxBytes", 0)
+	checkField(entry, "RxPackets", 0)
+}
+
+func TestNewNetStat(t *testing.T) {
+	netstat := NewNetStat()
+
+	if len(netstat.Entries) != 0 {
+		t.Errorf("len(netstat.Entries) = %v, want %v",
+			len(netstat.Entries), 0)
+	}
+}
+
+func TestNewStatRecord(t *testing.T) {
+	stat_record := NewStatRecord()
+
+	checkFieldIsNil := func(field string) {
+		val := getField(*stat_record, field)
+		if !val.IsNil() {
+			t.Errorf("stat_record.%s = %v, want %v",
+				field, val, nil)
+		}
+	}
+
+	checkFieldIsNil("Cpu")
+	checkFieldIsNil("Proc")
+	checkFieldIsNil("Disk")
+	checkFieldIsNil("Softirq")
+	checkFieldIsNil("Net")
 }
