@@ -31,38 +31,10 @@ class RecordOption
   end
 
   def make_command
-    # try to search perfmonger-record in build environment
-    # then search installed directory
+    @recorder_bin = ::PerfMonger::Command::CoreFinder.recorder()
+    @player_bin = ::PerfMonger::Command::CoreFinder.player()
 
-    # check os
-    case RUBY_PLATFORM
-    when /linux/
-      os = "linux"
-    else
-      os = nil
-    end
-
-    # check arch
-    case RUBY_PLATFORM
-    when /x86_64|amd64/
-      arch = "amd64"
-    when /i\d86/
-      arch = "386"
-    else
-      arch = nil
-    end
-
-    if !os || !arch
-      puts("[ERROR] unsupported platform: " + RUBY_PLATFORM)
-      exit(false)
-    end
-
-    suffix = "_" + os + "_" + arch
-
-    @recorder_bin = File.expand_path("../../../exec/perfmonger-recorder#{suffix}", __FILE__)
-    @player_bin = File.expand_path("../../../exec/perfmonger-player#{suffix}", __FILE__)
-
-    if ! File.executable?(@recorder_bin) || ! File.executable?(@player_bin)
+    if ! @recorder_bin || ! @player_bin
       puts("ERROR: no executable binaries")
       exit(false)
     end
