@@ -4,6 +4,7 @@ package subsystem
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -218,6 +219,56 @@ func ReadDiskStats(record *StatRecord) error {
 
 		record.Disk.Entries = append(record.Disk.Entries, entry)
 	}
+
+	return nil
+}
+
+func ReadNetStat(record *StatRecord) error {
+	if record == nil {
+		return errors.New("Valid *StatRecord is required.")
+	}
+
+	net_stat := NewNetStat()
+
+	f, err := os.Open("/proc/net/dev")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case line[0:7] == "Inter-|":
+			continue
+		case line[0:7] == " face |":
+			continue
+		}
+
+		e := NewNetStatEntry()
+
+		var devname string
+		n, err := fmt.Sscanf(line,
+			"%s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &devname,
+			&e.RxBytes, &e.RxPackets, &e.RxErrors, &e.RxDrops,
+			&e.RxFifo, &e.RxFrame, &e.RxCompressed, &e.RxMulticast,
+			&e.TxBytes, &e.TxPackets, &e.TxErrors, &e.TxDrops,
+			&e.TxFifo, &e.TxFrame, &e.TxCompressed, &e.TxMulticast)
+		if err != nil {
+			return err
+		}
+		if n != 17 {
+			continue
+		}
+
+		// trim trailing ":" from devname
+		e.Name = devname[0 : len(devname)-1]
+
+		net_stat.Entries = append(net_stat.Entries, e)
+	}
+
+	record.Net = net_stat
 
 	return nil
 }
