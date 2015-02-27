@@ -16,7 +16,7 @@ Run a command and gather performance information during its execution.
 Options:
 EOS
 
-    @logfile = './perfmonger.log'
+    @logfile = './perfmonger.pgr'
     @json = false
 
     @parser.on('--json', "Output summary in JSON") do

@@ -43,15 +43,19 @@ class StatCommand < BaseCommand
           system(*@argv)
         end
       end
+
       Process.wait(command_pid)
+
     ensure
       @end_time = Time.now
       Process.kill(:INT, record_pid)
       Process.wait(record_pid)
     end
 
-    puts("")
-    printf("Execution time: %.4f\n", @end_time - @start_time)
+    $stdout.puts("")
+    $stdout.printf("Execution time: %.4f\n", @end_time - @start_time)
+    $stdout.puts("")
+    $stdout.flush()
     summary_command = SummaryCommand.new.run([@option.logfile], @argv.join(" "))
   end
 end
