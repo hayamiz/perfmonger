@@ -3,6 +3,8 @@
   * New features
     * Bash completion support
     * Zsh completion support
+    * [record] subcommand:
+      * Add Network device usage
   * Changes
     * [record] subcommand:
       * Its core was completely rewritten in Go
