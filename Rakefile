@@ -7,15 +7,7 @@ task :default => [:spec]
 desc "Run all specs in spec directory"
 RSpec::Core::RakeTask.new(:spec)
 
-desc "Build ext"
-task :build_ext do
-  Dir.chdir("ext/perfmonger") do
-    sh "ruby extconf.rb"
-    sh "make"
-  end
-end
-
-task :spec => [:build_ext, :self_build_core]
+task :spec => [:self_build_core]
 
 desc "Cross build core recorder/player"
 task :cross_build_core do
@@ -43,10 +35,6 @@ end
 
 desc "Removed generated files"
 task :clean do
-  sh "rm -f ext/perfmonger/perfmonger_record"
-  if File.exists?("ext/perfmonger/Makefile")
-    sh "make -C ext/perfmonger clean"
-  end
   sh "make -C core clean"
 end
 
