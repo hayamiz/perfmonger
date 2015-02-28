@@ -4,6 +4,8 @@ before_install:
   - sudo apt-get update
 install:
   - sudo apt-get install libglib2.0-dev autotools-dev golang
+  - sudo go get -u github.com/hayamiz/perfmonger/core/subsystem
+  - sudo go get -u golang.org/x/crypto/ssh/terminal
   - bundle install
 rvm:
   - 1.8.7
