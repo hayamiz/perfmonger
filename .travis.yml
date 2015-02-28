@@ -3,10 +3,17 @@ language: ruby
 before_install:
   - sudo apt-get update
 install:
-  - sudo apt-get install libglib2.0-dev autotools-dev golang
-  - sudo go get -u github.com/hayamiz/perfmonger/core/subsystem
-  - sudo go get -u golang.org/x/crypto/ssh/terminal
+  - sudo apt-get install libglib2.0-dev autotools-dev
   - bundle install
+  - go_version="1.4.2"
+  - wget http://golang.org/dl/go${go_version}.linux-amd64.tar.gz
+  - sudo tar -C /usr/local -xzf go${go_version}.linux-amd64.tar.gz
+  - export PATH=$PATH:/usr/local/go/bin
+  - export GOPATH="$HOME/go"
+  - export PATH="$PATH:$GOPATH/bin"
+  - mkdir -p "$HOME/go/{src,pkg,bin}"
+  - go get -u golang.org/x/crypto/ssh/terminal
+  - go get -u github.com/hayamiz/perfmonger/core/subsystem
 rvm:
   - 1.8.7
   - 1.9.3
