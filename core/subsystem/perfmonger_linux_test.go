@@ -1,6 +1,9 @@
 package subsystem
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestReadNetStat(t *testing.T) {
 	var err error
@@ -9,6 +12,11 @@ func TestReadNetStat(t *testing.T) {
 	err = ReadNetStat(stat_record)
 	if err == nil {
 		t.Errorf("Error should be returned with nil *StatRecord.")
+	}
+
+	_, err = os.Stat("/proc/net/dev")
+	if err != nil {
+		t.Skip("/proc/net/dev is not present.")
 	}
 
 	stat_record = NewStatRecord()
