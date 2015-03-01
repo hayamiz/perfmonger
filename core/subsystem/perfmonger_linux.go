@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 )
@@ -255,7 +256,9 @@ func ReadNetStat(record *StatRecord) error {
 			&e.RxFifo, &e.RxFrame, &e.RxCompressed, &e.RxMulticast,
 			&e.TxBytes, &e.TxPackets, &e.TxErrors, &e.TxDrops,
 			&e.TxFifo, &e.TxFrame, &e.TxCompressed, &e.TxMulticast)
-		if err != nil {
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			return err
 		}
 		if n != 17 {
