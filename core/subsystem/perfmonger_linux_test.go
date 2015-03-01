@@ -22,6 +22,7 @@ func TestReadNetStat(t *testing.T) {
 	stat_record = NewStatRecord()
 	err = ReadNetStat(stat_record)
 	if err != nil {
+		t.Log("Error: %v", err)
 		t.Error("Error should not be returned with valid *StatRecord.")
 	}
 	if stat_record.Net == nil {
