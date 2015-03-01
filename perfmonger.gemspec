@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = '>= 1.8.7'
 
-  if RUBY_VERSION <= '1.8.7'
+  if RUBY_VERSION < '1.9'
     s.add_dependency "json"
   end
   s.add_development_dependency "bundler"
@@ -27,8 +27,6 @@ Gem::Specification.new do |s|
   s.files      += Dir.glob("lib/exec/*")
   s.test_files  = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f)}
-
-  s.extensions << 'ext/perfmonger/extconf.rb'
 
   s.post_install_message = <<EOS
 
