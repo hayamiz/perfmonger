@@ -1,9 +1,6 @@
 
 language: ruby
-before_install:
-  - sudo apt-get update
 install:
-  - sudo apt-get install libglib2.0-dev autotools-dev
   - bundle install
   - go_version="1.4.2"
   - wget http://golang.org/dl/go${go_version}.linux-amd64.tar.gz
