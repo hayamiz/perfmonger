@@ -131,15 +131,15 @@ func main() {
 		fmt.Println("")
 		if cpu_usage != nil {
 			fmt.Printf(`* Average CPU usage (MAX: %d %%)
-  * Non idle portion: %.2f
-       %%usr: %.2f
-       %%sys: %.2f
-       %%irq: %.2f
-      %%soft: %.2f
-     %%other: %.2f
-  * Idle portion: %.2f
-    %%iowait: %.2f
-      %%idle: %.2f
+  * Non idle portion: %.2f %%
+       %%usr: %.2f %%
+       %%sys: %.2f %%
+       %%irq: %.2f %%
+      %%soft: %.2f %%
+     %%other: %.2f %%
+  * Idle portion: %.2f %%
+    %%iowait: %.2f %%
+      %%idle: %.2f %%
 
 `,
 				100*cpu_usage.NumCore,
