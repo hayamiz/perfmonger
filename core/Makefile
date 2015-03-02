@@ -10,7 +10,7 @@ GOSRC :=                                        \
 all: perfmonger-recorder perfmonger-player perfmonger-summarizer
 
 clean:
-	rm -f perfmonger-recorder perfmonger-player
+	rm -f perfmonger-recorder perfmonger-player perfmonger-summarizer
 
 perfmonger-recorder: perfmonger-recorder.go $(GOSRC)
 	go build $<
