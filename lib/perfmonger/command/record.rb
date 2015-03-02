@@ -1,9 +1,6 @@
 require 'optparse'
 require 'tempfile'
 require 'tmpdir'
-if RUBY_VERSION < "1.9"
-  require 'rubygems'
-end
 require 'json'
 
 module PerfMonger

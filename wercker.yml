@@ -5,22 +5,11 @@ build:
     # See the Ruby section on the wercker devcenter:
     # http://devcenter.wercker.com/articles/languages/ruby.html
     steps:
-        - rvm-use:
-            version: 1.8.7-p374
-        - bundle-install
-
         - script:
             name: install go packages
             code: |
               go get -u golang.org/x/crypto/ssh/terminal
               go get -u github.com/hayamiz/perfmonger/core/subsystem
-
-        - script:
-            name: run rspec
-            code: |
-              bundle exec rake clean
-              bundle exec rake spec
-
         - rvm-use:
             version: 1.9.3-p551
         - bundle-install

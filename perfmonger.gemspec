@@ -13,11 +13,8 @@ Gem::Specification.new do |s|
   s.homepage    = 'http://github.com/hayamiz/perfmonger/'
   s.license     = 'GPL-2'
 
-  s.required_ruby_version = '>= 1.8.7'
+  s.required_ruby_version = '>= 1.9.3'
 
-  if RUBY_VERSION < '1.9'
-    s.add_dependency "json"
-  end
   s.add_development_dependency "bundler"
   s.add_development_dependency "rake"
   s.add_development_dependency "rspec"
