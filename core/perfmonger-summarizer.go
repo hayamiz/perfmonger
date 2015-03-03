@@ -92,6 +92,7 @@ func main() {
 
 	var cpu_usage *ss.CpuUsage = nil
 	var disk_usage *ss.DiskUsage = nil
+	var net_usage *ss.NetUsage = nil
 
 	if fst_record.Cpu != nil && lst_record.Cpu != nil {
 		cpu_usage, err = ss.GetCpuUsage(fst_record.Cpu, lst_record.Cpu)
@@ -101,6 +102,12 @@ func main() {
 		disk_usage, err = ss.GetDiskUsage(
 			fst_record.Time, fst_record.Disk,
 			lst_record.Time, lst_record.Disk)
+	}
+
+	if fst_record.Disk != nil && lst_record.Disk != nil {
+		net_usage, err = ss.GetNetUsage(
+			fst_record.Time, fst_record.Net,
+			lst_record.Time, lst_record.Net)
 	}
 
 	interval := lst_record.Time.Sub(fst_record.Time)
@@ -119,6 +126,11 @@ func main() {
 			disk_usage.WriteJsonTo(buf)
 		}
 
+		if disk_usage != nil {
+			buf.WriteString(`,"net":`)
+			net_usage.WriteJsonTo(buf)
+		}
+
 		buf.WriteByte('}')
 
 		fmt.Println(buf.String())
@@ -128,16 +140,20 @@ func main() {
 		} else {
 			fmt.Printf("== performance summary of '%s' ==\n", option.title)
 		}
-		fmt.Println("")
+		fmt.Printf(`
+Duration: %.3f sec
+
+`,
+			interval.Seconds())
 		if cpu_usage != nil {
 			fmt.Printf(`* Average CPU usage (MAX: %d %%)
-  * Non idle portion: %.2f %%
+  * Non-idle usage: %.2f %%
        %%usr: %.2f %%
        %%sys: %.2f %%
        %%irq: %.2f %%
       %%soft: %.2f %%
      %%other: %.2f %%
-  * Idle portion: %.2f %%
+  * Idle usage: %.2f %%
     %%iowait: %.2f %%
       %%idle: %.2f %%
 
