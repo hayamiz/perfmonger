@@ -52,10 +52,6 @@ class StatCommand < BaseCommand
       Process.wait(record_pid)
     end
 
-    $stdout.puts("")
-    $stdout.printf("Execution time: %.4f\n", @end_time - @start_time)
-    $stdout.puts("")
-    $stdout.flush()
     summary_command = SummaryCommand.new.run([@option.logfile], @argv.join(" "))
   end
 end
