@@ -28,4 +28,10 @@ describe "perfmonger command" do
     assert_success(true)
     expect(stdout_from(cmd)).to include(PerfMonger::VERSION)
   end
+
+  it 'fails if unknown subcommand given' do
+    cmd = "#{perfmonger_bin} piyo"
+    run(cmd)
+    assert_success(false)
+  end
 end
