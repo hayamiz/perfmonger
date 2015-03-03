@@ -31,6 +31,5 @@ describe '[fingerprint] subcommand' do
     run("tar xf output.tgz")
     assert_success(true)
     check_directory_presence(["output"], true)
-    check_file_presence(%w{output/dmidecode.log})
   end
 end
