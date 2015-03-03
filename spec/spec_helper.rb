@@ -15,10 +15,7 @@ require 'pathname'
 Dir.glob(::File.expand_path('../support/*.rb', __FILE__)).each { |f| require_relative f }
 
 def data_file(rel_path)
-  from = Pathname.new(Dir.pwd)
-  path = Pathname.new(File.expand_path(rel_path, TEST_DATA_DIR))
-
-  path.relative_path_from(from).to_s
+  File.expand_path(rel_path, TEST_DATA_DIR)
 end
 
 def perfmonger_bin
