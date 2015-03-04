@@ -5,10 +5,12 @@
     * Zsh completion support
     * [record] subcommand:
       * Add Network device usage
+    * [play] subcommand:
+      * Play a perfmonger log and print in JSON
   * Changes
     * [record] subcommand:
-      * Its core was completely rewritten in Go
-      * Output JSON format change
+      * Its core was completely rewritten in Go and records data in encoding/gob format
+      * Carve out JSON output function to [play] subcommand
   * Bug fixes
     * [plot] subcommand:
       * Correctly find supported terminal
