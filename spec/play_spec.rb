@@ -7,7 +7,7 @@ describe '[play] subcommand' do
     cmd = "#{perfmonger_bin} play #{busy100}"
     run(cmd)
     assert_success(true)
-    expect(stdout_from(cmd).lines.size).to eq 3
+    expect(stdout_from(cmd).lines.to_a.size).to eq 3
 
     stdout_from(cmd).each_line do |line|
       expect do
