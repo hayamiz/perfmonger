@@ -59,15 +59,8 @@ class RecordOption
       cmd << "-no-disk"
     end
 
-    if @logfile
-      cmd << "-output"
-      cmd << @logfile
-    end
-
-    if !@logfile && $stdout.tty?
-      cmd << "-player-bin"
-      cmd << @player_bin
-    end
+    cmd << "-output"
+    cmd << @logfile
 
     raise NotImplementedError if @verbose
 
@@ -85,7 +78,7 @@ class RecordOption
     @no_disk           = false
     @all_devices       = true
     @devices           = []
-    @logfile           = nil
+    @logfile           = "perfmonger.pgr"
 
     @parser = OptionParser.new
 
