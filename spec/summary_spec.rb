@@ -46,8 +46,6 @@ describe '[summary] subcommand' do
 
     json = JSON.parse(output)
 
-    %w{cpu disk net}.each do |key|
-      expect(json).to have_key(key)
-    end
+    expect(json.keys.sort).to eq %w{cpu disk net exectime}.sort
   end
 end
