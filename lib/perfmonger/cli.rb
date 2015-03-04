@@ -42,10 +42,12 @@ EOS
       case command_name
       when "record"
         [0, command_name]
-      when "stat"
+      when "play"
         [1, command_name]
-      when "plot"
+      when "stat"
         [2, command_name]
+      when "plot"
+        [3, command_name]
       else
         [999, command_name]
       end
