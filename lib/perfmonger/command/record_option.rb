@@ -32,9 +32,8 @@ class RecordOption
 
   def make_command
     @recorder_bin = ::PerfMonger::Command::CoreFinder.recorder()
-    @player_bin = ::PerfMonger::Command::CoreFinder.player()
 
-    if ! @recorder_bin || ! @player_bin
+    if ! @recorder_bin
       puts("ERROR: no executable binaries")
       exit(false)
     end
