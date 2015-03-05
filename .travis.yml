@@ -1,6 +1,8 @@
 
 language: ruby
 install:
+  - sudo apt-get install gnuplot
+  - gnuplot -e "set terminal" < /dev/null 2>&1
   - bundle install
   - go_version="1.4.2"
   - wget http://golang.org/dl/go${go_version}.linux-amd64.tar.gz

@@ -6,6 +6,12 @@ build:
     # http://devcenter.wercker.com/articles/languages/ruby.html
     steps:
         - script:
+            name: install gnuplot and check terminal
+            code: |
+              sudo apt-get install gnuplot
+              gnuplot -e "set terminal" < /dev/null 2>&1
+
+        - script:
             name: install go packages
             code: |
               go get -u golang.org/x/crypto/ssh/terminal
