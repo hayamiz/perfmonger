@@ -8,6 +8,7 @@ build:
         - script:
             name: install gnuplot and check terminal
             code: |
+              sudo apt-get update
               sudo apt-get install gnuplot
               gnuplot -e "set terminal" < /dev/null 2>&1
 
