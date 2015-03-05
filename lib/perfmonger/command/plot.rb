@@ -100,12 +100,20 @@ EOS
       exit(false)
     end
 
-    plot_ioinfo()
-    plot_cpuinfo()
+    player_bin = ::PerfMonger::Command::CoreFinder.player()
+
+    tmpfile = Tempfile.new("jsondata")
+    IO.popen([player_bin, @data_file], "r").each_line do |line|
+      tmpfile.print(line)
+    end
+    tmpfile.flush()
+
+    plot_ioinfo(tmpfile.path)
+    plot_cpuinfo(tmpfile.path)
   end
 
   private
-  def plot_ioinfo()
+  def plot_ioinfo(json_file)
     iops_pdf_filename = @output_prefix + 'iops.pdf'
     transfer_pdf_filename = @output_prefix + 'transfer.pdf'
     gp_filename  = @output_prefix + 'io.gp'
@@ -126,20 +134,20 @@ EOS
         start_time = nil
         devices = nil
 
-        File.open(@data_file).each_line do |line|
+        File.open(json_file).each_line do |line|
           record = JSON.parse(line)
           time = record["time"]
-          ioinfo = record["ioinfo"]
-          return unless ioinfo
+          diskinfo = record["disk"]
+          return unless diskinfo
 
           start_time ||= time
-          devices ||= ioinfo["devices"]
+          devices ||= diskinfo["devices"]
 
           datafile.puts([time - start_time,
                          devices.map{|device|
-                           [ioinfo[device]["riops"], ioinfo[device]["wiops"],
-                            ioinfo[device]["rsecps"] * 512 / 1024 / 1024, # in MB/s
-                            ioinfo[device]["wsecps"] * 512 / 1024 / 1024, # in MB/s
+                           [diskinfo[device]["riops"], diskinfo[device]["wiops"],
+                            diskinfo[device]["rkbyteps"] * 512 / 1024 / 1024, # in MB/s
+                            diskinfo[device]["wkbyteps"] * 512 / 1024 / 1024, # in MB/s
                            ]
                          }].flatten.map(&:to_s).join("\t"))
         end
@@ -214,7 +222,7 @@ EOS
     end # mktempdir
   end # def
 
-  def plot_cpuinfo()
+  def plot_cpuinfo(json_file)
     pdf_filename = @output_prefix + 'cpu.pdf'
     gp_filename  = @output_prefix + 'cpu.gp'
     dat_filename = @output_prefix + 'cpu.dat'
@@ -243,21 +251,21 @@ EOS
         devices = nil
         nr_cpu = nil
 
-        File.open(@data_file).each_line do |line|
+        File.open(json_file).each_line do |line|
           record = JSON.parse(line)
 
           time = record["time"]
-          cpuinfo = record["cpuinfo"]
+          cpuinfo = record["cpu"]
           return unless cpuinfo
-          nr_cpu = cpuinfo['nr_cpu']
+          nr_cpu = cpuinfo['num_core']
 
-          cores = cpuinfo['cpus']
+          cores = cpuinfo['cores']
 
           start_time ||= time
           end_time = [end_time, time].max
 
           datafile.puts([time - start_time,
-                         %w|usr nice sys iowait irq soft steal guest idle|.map do |key|
+                         %w|usr nice sys iowait hardirq softirq steal guest idle|.map do |key|
                            cores.map{|core| core[key]}.inject(&:+)
                          end].flatten.map(&:to_s).join("\t"))
         end
@@ -266,7 +274,7 @@ EOS
         col_idx = 2
         columns = []
         plot_stmt_list = []
-        %w|%usr %nice %sys %iowait %irq %soft %steal %guest|.each do |key|
+        %w|%usr %nice %sys %iowait %hardirq %softirq %steal %guest|.each do |key|
           columns << col_idx
           plot_stmt = "\"#{datafile.path}\" usi 1:(#{columns.map{|i| "$#{i}"}.join("+")}) with filledcurve x1 lw 0 lc #{col_idx - 1} title \"#{key}\""
           plot_stmt_list << plot_stmt
@@ -321,15 +329,15 @@ EOS
         legend_height = 0.04
         nr_cpu.times do |cpu_idx|
           all_datafile.puts("# cpu #{cpu_idx}")
-          File.open(@data_file).each_line do |line|
+          File.open(json_file).each_line do |line|
             record = JSON.parse(line)
             time = record["time"]
-            cpurec = record["cpuinfo"]["cpus"][cpu_idx]
+            cpurec = record["cpu"]["cores"][cpu_idx]
             all_datafile.puts([time - start_time,
                                cpurec["usr"] + cpurec["nice"],
                                cpurec["sys"],
-                               cpurec["irq"],
-                               cpurec["soft"],
+                               cpurec["hardirq"],
+                               cpurec["softirq"],
                                cpurec["steal"] + cpurec["guest"],
                                cpurec["iowait"]].map(&:to_s).join("\t"))
           end
