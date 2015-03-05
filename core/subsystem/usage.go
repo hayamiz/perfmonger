@@ -158,7 +158,7 @@ func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) (*CpuUsage, error) {
 
 func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
 	fmt.Fprintf(buf,
-		`{"riops":%.2f,"wiops":%.2f,"rkbyteps":%.2f,"wkbytesps":%.2f,"rlatency":%.3f,"wlatency":%.3f,"rsize":%.2f,"wsize":%.2f,"qlen":%.2f}`,
+		`{"riops":%.2f,"wiops":%.2f,"rkbyteps":%.2f,"wkbyteps":%.2f,"rlatency":%.3f,"wlatency":%.3f,"rsize":%.2f,"wsize":%.2f,"qlen":%.2f}`,
 		duentry.RdIops, duentry.WrIops, duentry.RdSecps/2.0, duentry.WrSecps/2.0,
 		duentry.RdLatency, duentry.WrLatency,
 		duentry.AvgRdSize, duentry.AvgWrSize, duentry.ReqQlen)
