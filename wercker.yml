@@ -54,6 +54,6 @@ build:
               bundle exec rake spec
 
         - script:
-            name: run go tesst
+            name: run go test
             code: |
               bundle exec rake test_core
