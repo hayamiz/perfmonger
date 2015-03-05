@@ -19,5 +19,7 @@ describe '[live] subcommand' do
       json = JSON.parse(line)
       expect(json.keys.sort).to eq %w{time cpu disk net}.sort
     end
+
+    check_file_presence("perfmonger.pgr")
   end
 end
