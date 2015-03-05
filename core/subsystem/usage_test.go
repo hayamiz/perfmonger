@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"math"
+	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,6 +15,48 @@ func isValidJson(byt []byte) bool {
 	var val interface{}
 	err := json.Unmarshal(byt, &val)
 	return err == nil
+}
+
+func jsonHasKey(byt []byte, key_path string) bool {
+	var val interface{}
+	err := json.Unmarshal(byt, &val)
+	if err != nil {
+		return false
+	}
+
+	keys := strings.Split(key_path, ".")
+
+	array_re := regexp.MustCompile("^\\[(\\d+)\\]$")
+
+	for _, key := range keys {
+		var idx int = -1
+		m := array_re.FindStringSubmatch(key)
+		if len(m) > 0 {
+			_i, err := strconv.ParseInt(m[1], 10, 32)
+			if err != nil {
+				return false
+			}
+			idx = int(_i)
+		}
+
+		switch val.(type) {
+		case map[string]interface{}:
+			v, ok := val.(map[string]interface{})[key]
+			if !ok {
+				return false
+			}
+			val = v
+		case []interface{}:
+			if idx < 0 {
+				return false
+			}
+			val = val.([]interface{})[idx]
+		default:
+			return false
+		}
+	}
+
+	return true
 }
 
 func floatEqWithin(val1, val2, epsilon float64) bool {
@@ -155,6 +200,25 @@ func TestGetCpuUsage(t *testing.T) {
 	if !isValidJson(buf.Bytes()) {
 		t.Errorf("Invalid JSON: %s", buf.String())
 	}
+
+	assertHasKey := func(key_path string) {
+		if !jsonHasKey(buf.Bytes(), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		}
+	}
+	assertHasKey("num_core")
+	assertHasKey("cores")
+	assertHasKey("cores.[0]")
+	assertHasKey("cores.[0].usr")
+	assertHasKey("cores.[0].sys")
+	assertHasKey("cores.[0].nice")
+	assertHasKey("cores.[0].idle")
+	assertHasKey("cores.[0].iowait")
+	assertHasKey("cores.[0].hardirq")
+	assertHasKey("cores.[0].softirq")
+	assertHasKey("cores.[0].steal")
+	assertHasKey("cores.[0].guest")
+	assertHasKey("cores.[0].guestnice")
 }
 
 func TestDiskUsage(t *testing.T) {
@@ -275,6 +339,24 @@ func TestDiskUsage(t *testing.T) {
 	if !isValidJson(buf.Bytes()) {
 		t.Errorf("invalid json: %s", buf.String())
 	}
+
+	assertHasKey := func(key_path string) {
+		if !jsonHasKey(buf.Bytes(), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		}
+	}
+	assertHasKey("devices")
+	assertHasKey("sda")
+	assertHasKey("sda.riops")
+	assertHasKey("sda.wiops")
+	assertHasKey("sda.rkbyteps")
+	assertHasKey("sda.wkbyteps")
+	assertHasKey("sda.rlatency")
+	assertHasKey("sda.wlatency")
+	assertHasKey("sda.rsize")
+	assertHasKey("sda.wsize")
+	assertHasKey("sda.qlen")
+	assertHasKey("total")
 }
 
 func TestGetNetUsage(t *testing.T) {
@@ -385,4 +467,27 @@ func TestGetNetUsage(t *testing.T) {
 		t.Errorf("total.RxPacketsPerSec = %v, want %v", (*usage)["total"].RxPacketsPerSec,
 			(100.0+150.0)/interval)
 	}
+
+	buf = bytes.NewBuffer([]byte{})
+	usage.WriteJsonTo(buf)
+	if !isValidJson(buf.Bytes()) {
+		t.Errorf("invalid json: %s", buf.String())
+	}
+
+	assertHasKey := func(key_path string) {
+		if !jsonHasKey(buf.Bytes(), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		}
+	}
+	assertHasKey("devices")
+	assertHasKey("devices.[0]")
+	assertHasKey("eth0")
+	assertHasKey("eth0.rxkbyteps")
+	assertHasKey("eth0.txkbyteps")
+	assertHasKey("eth0.rxpktps")
+	assertHasKey("eth0.txpktps")
+	assertHasKey("eth0.rxerrps")
+	assertHasKey("eth0.txerrps")
+	assertHasKey("eth0.rxdropps")
+	assertHasKey("eth0.txdropps")
 }
