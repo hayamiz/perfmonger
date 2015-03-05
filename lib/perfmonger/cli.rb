@@ -40,14 +40,16 @@ EOS
       # important command first: sort by [priority, name]
       command_name = command.command_name
       case command_name
-      when "record"
+      when "live"
         [0, command_name]
-      when "play"
+      when "record"
         [1, command_name]
-      when "stat"
+      when "play"
         [2, command_name]
-      when "plot"
+      when "stat"
         [3, command_name]
+      when "plot"
+        [4, command_name]
       else
         [999, command_name]
       end
@@ -73,6 +75,7 @@ EOS
 
 Commands:
 #{command_list_str}
+
 EOS
 
     parser.summary_indent = "  "
