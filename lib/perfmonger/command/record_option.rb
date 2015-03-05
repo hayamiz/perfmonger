@@ -58,6 +58,8 @@ class RecordOption
       cmd << "-no-disk"
     end
 
+    # TODO: implement device filter
+
     cmd << "-output"
     cmd << @logfile
 
