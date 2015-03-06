@@ -9,6 +9,9 @@ if [ $1 = "-" ]; then
         (Linux)
             os="linux"
             ;;
+        (Darwin)
+            os="darwin"
+            ;;
         (*)
             os=""
             ;;

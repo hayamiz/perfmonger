@@ -1,7 +1,7 @@
 package subsystem
 
 import (
-    "time"
+	"time"
 )
 
 /*
@@ -24,36 +24,37 @@ PerfMonger binary format:
 
 */
 
-
-
 //
 // Common header
 //
 
 const (
-    Linux = 1
-    Darwin = 2
+	Linux  = 1
+	Darwin = 2
 )
 
 type PlatformType int
 
 type CommonHeader struct {
-    Platform	PlatformType
-    Hostname	string
-    StartTime	time.Time
+	Platform  PlatformType
+	Hostname  string
+	StartTime time.Time
 }
-
 
 //
 // Platform-dependent header
 //
 
 type LinuxDevice struct {
-    Name	string
-    Parts	[]string
+	Name  string
+	Parts []string
 }
 
 type LinuxHeader struct {
-    Devices	map[string]LinuxDevice
-    DevsParts	[]string
+	Devices   map[string]LinuxDevice
+	DevsParts []string
+}
+
+type DarwinHeader struct {
+	DevsParts []string
 }
