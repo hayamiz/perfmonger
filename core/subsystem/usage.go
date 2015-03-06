@@ -218,7 +218,6 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 
 	var total_rd_ios int64 = 0
 	var total_wr_ios int64 = 0
-	cnt := 0
 
 	for _, entry1 := range d1.Entries {
 		name := entry1.Name
@@ -263,8 +262,6 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 
 		(*usage)[name] = entry
 
-		cnt++
-
 		total.RdIops += entry.RdIops
 		total.WrIops += entry.WrIops
 		total.RdSectors += entry.RdSectors
@@ -290,9 +287,7 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 		total.AvgWrSize /= float64(total_wr_ios)
 	}
 
-	if cnt > 1 {
-		(*usage)["total"] = total
-	}
+	(*usage)["total"] = total
 
 	return usage, nil
 }
@@ -316,8 +311,6 @@ func GetNetUsage(t1 time.Time, d1 *NetStat, t2 time.Time, d2 *NetStat) (*NetUsag
 	net_usage := new(NetUsage)
 	(*net_usage) = make(NetUsage)
 	total := new(NetUsageEntry)
-
-	cnt := 0
 
 	for _, d1_entry := range d1.Entries {
 		devname := d1_entry.Name
@@ -373,13 +366,9 @@ func GetNetUsage(t1 time.Time, d1 *NetStat, t2 time.Time, d2 *NetStat) (*NetUsag
 		total.TxFramePerSec += ue.TxFramePerSec
 		total.TxCompressedPerSec += ue.TxCompressedPerSec
 		total.TxMulticastPerSec += ue.TxMulticastPerSec
-
-		cnt++
 	}
 
-	if cnt > 1 {
-		(*net_usage)["total"] = total
-	}
+	(*net_usage)["total"] = total
 
 	return net_usage, nil
 }

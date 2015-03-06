@@ -262,8 +262,9 @@ func TestDiskUsage(t *testing.T) {
 		t.Error("Error should be returned.")
 	}
 	_, sda_ok := (*usage)["sda"]
-	if len(*usage) != 1 || !sda_ok {
-		t.Errorf("DiskUsage = %v, want 1 entry 'sda'", *usage)
+	_, total_ok := (*usage)["total"]
+	if len(*usage) != 2 || !sda_ok || !total_ok {
+		t.Errorf("DiskUsage = %v, want 2 entries 'sda' and 'total'", *usage)
 	}
 	if (*usage)["sda"].Interval != interval_duration {
 		t.Errorf("sda.Interval = %v, want %v", (*usage)["sda"].Interval, interval_duration)
@@ -302,7 +303,7 @@ func TestDiskUsage(t *testing.T) {
 	}
 	_, sda_ok = (*usage)["sda"]
 	_, sdb_ok := (*usage)["sda"]
-	_, total_ok := (*usage)["total"]
+	_, total_ok = (*usage)["total"]
 	if len(*usage) != 3 || !sda_ok || !sdb_ok || !total_ok {
 		t.Errorf("DiskUsage = %v, want 3 entries 'sda', 'sdb' and 'total'.",
 			*usage)
@@ -400,8 +401,9 @@ func TestGetNetUsage(t *testing.T) {
 			n1, n2)
 	}
 	_, lo_ok := (*usage)["lo"]
-	if len(*usage) != 1 || !lo_ok {
-		t.Errorf("NetUsage = %v, want 1 entry \"lo\"", usage)
+	_, total_ok := (*usage)["total"]
+	if len(*usage) != 2 || !lo_ok || !total_ok {
+		t.Errorf("NetUsage = %v, want 2 entries \"lo\" and \"total\"", usage)
 	}
 
 	if (*usage)["lo"].Interval != interval_duration {
@@ -431,8 +433,9 @@ func TestGetNetUsage(t *testing.T) {
 			n1, n2)
 	}
 	_, lo_ok = (*usage)["lo"]
-	if len(*usage) != 1 || !lo_ok {
-		t.Errorf(`NetUsage = %v, want 1 entry "lo".`, usage)
+	_, total_ok = (*usage)["total"]
+	if len(*usage) != 2 || !lo_ok || !total_ok {
+		t.Errorf(`NetUsage = %v, want 2 entry "lo" and "total".`, usage)
 	}
 
 	n2.Entries = append(n2.Entries, NewNetStatEntry())
@@ -447,7 +450,7 @@ func TestGetNetUsage(t *testing.T) {
 	}
 	_, lo_ok = (*usage)["lo"]
 	_, eth0_ok := (*usage)["eth0"]
-	_, total_ok := (*usage)["total"]
+	_, total_ok = (*usage)["total"]
 	if len(*usage) != 3 || !lo_ok || !eth0_ok || !total_ok {
 		t.Errorf(`NetUsage = %v, want 3 entry "lo", "eth0" and "total".`, usage)
 	}
