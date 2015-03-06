@@ -167,7 +167,11 @@ func ReadCpuStat(record *StatRecord) error {
 	return nil
 }
 
-func ReadDiskStats(record *StatRecord) error {
+func ReadDiskStats(record *StatRecord, targets *map[string]bool) error {
+	if record == nil {
+		return errors.New("Valid *StatRecord is required.")
+	}
+
 	f, ferr := os.Open("/proc/diskstats")
 	if ferr != nil {
 		panic(ferr)
@@ -216,6 +220,17 @@ func ReadDiskStats(record *StatRecord) error {
 
 		if entry.RdIos == 0 && entry.WrIos == 0 {
 			continue
+		}
+
+		if targets != nil {
+			if _, ok := (*targets)[entry.Name]; !ok {
+				// device not in targets
+				continue
+			}
+		} else {
+			if !isDevice(entry.Name) {
+				continue
+			}
 		}
 
 		record.Disk.Entries = append(record.Disk.Entries, entry)

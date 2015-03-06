@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -31,6 +32,8 @@ type RecorderOption struct {
 	debug               bool
 	listDevices         bool
 	player_bin          string
+	disks               string
+	targetDisks         *map[string]bool
 }
 
 var option RecorderOption
@@ -64,6 +67,8 @@ func parseArgs() {
 		false, "Enable debug mode")
 	flag.BoolVar(&option.listDevices, "list-devices",
 		false, "List devices and exits")
+	flag.StringVar(&option.disks, "disks",
+		"", "Disk devices to be monitored")
 	flag.StringVar(&option.player_bin, "player-bin",
 		"", "Run perfmonger-player to show JSON output")
 
@@ -73,6 +78,16 @@ func parseArgs() {
 		option.output == "-" {
 		fmt.Fprintf(os.Stderr, "[recording to data.pgr]\n")
 		option.output = "data.pgr"
+	}
+
+	if option.disks == "" {
+		option.targetDisks = nil
+	} else {
+		option.targetDisks = new(map[string]bool)
+		*option.targetDisks = make(map[string]bool)
+		for _, dev := range strings.Split(option.disks, ",") {
+			(*option.targetDisks)[dev] = true
+		}
 	}
 
 	if option.debug {
@@ -220,7 +235,7 @@ func main() {
 			ss.ReadCpuStat(record)
 		}
 		if !option.no_disk {
-			ss.ReadDiskStats(record)
+			ss.ReadDiskStats(record, option.targetDisks)
 		}
 		if !option.no_net {
 			ss.ReadNetStat(record)

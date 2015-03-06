@@ -5,6 +5,34 @@ import (
 	"testing"
 )
 
+func TestReadDiskStat(t *testing.T) {
+	var err error
+	var stat_record *StatRecord = nil
+
+	err = ReadDiskStats(stat_record, nil)
+	if err == nil {
+		t.Errorf("Error should be returned with nil *StatRecord.")
+	}
+
+	_, err = os.Stat("/proc/diskstats")
+	if err != nil {
+		t.Skip("/proc/diskstats is not present.")
+	}
+
+	stat_record = NewStatRecord()
+	err = ReadDiskStats(stat_record, nil)
+	if err != nil {
+		t.Error("Error should not be returned with valid *StatRecord")
+	}
+	if stat_record.Disk == nil {
+		t.Error("stat_record.Disk should not be nil")
+		return
+	}
+	if len(stat_record.Disk.Entries) == 0 {
+		t.Error("No device found.")
+	}
+}
+
 func TestReadNetStat(t *testing.T) {
 	var err error
 	var stat_record *StatRecord = nil
