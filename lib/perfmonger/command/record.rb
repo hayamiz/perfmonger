@@ -23,6 +23,8 @@ private
   def exec_record_cmd()
     cmd = @option.make_command
 
+    $stdout.puts("[recording to #{@option.logfile}]")
+
     Process.exec(*cmd)
   end
 end
