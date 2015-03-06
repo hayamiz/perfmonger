@@ -180,9 +180,7 @@ func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
 
-	if len(devices) > 1 {
-		devices = append(devices, "total")
-	}
+	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*dusage)[device]
@@ -389,9 +387,7 @@ func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
 
-	if len(devices) > 1 {
-		devices = append(devices, "total")
-	}
+	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*nusage)[device]
