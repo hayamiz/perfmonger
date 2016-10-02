@@ -3,7 +3,7 @@
 READLINK=$(type -p greadlink readlink | head -1)
 cd $(dirname $($READLINK -f $0))
 
-if [ $1 = "-" ]; then
+if [[ $1 = "-" ]]; then
     # do self build
     case `uname -s` in
         (Linux)
