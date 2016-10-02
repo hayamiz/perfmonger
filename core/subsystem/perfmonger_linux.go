@@ -109,6 +109,7 @@ func ReadCpuStat(record *StatRecord) error {
 		var cpu string
 		line := scan.Text()
 		if line[0:4] == "cpu " {
+			// Linux 2.6.33 or later
 			_, err = fmt.Sscanf(line,
 				"%s %d %d %d %d %d %d %d %d %d %d",
 				&cpu,
@@ -122,8 +123,24 @@ func ReadCpuStat(record *StatRecord) error {
 				&record.Cpu.All.Steal,
 				&record.Cpu.All.Guest,
 				&record.Cpu.All.GuestNice)
+			if err == io.EOF {
+				// Linux 2.6.24 or later
+				_, err = fmt.Sscanf(line,
+					"%s %d %d %d %d %d %d %d %d %d",
+					&cpu,
+					&record.Cpu.All.User,
+					&record.Cpu.All.Nice,
+					&record.Cpu.All.Sys,
+					&record.Cpu.All.Idle,
+					&record.Cpu.All.Iowait,
+					&record.Cpu.All.Hardirq,
+					&record.Cpu.All.Softirq,
+					&record.Cpu.All.Steal,
+					&record.Cpu.All.Guest)
+				record.Cpu.All.GuestNice = 0
+			}
 			if err != nil {
-				return err
+				panic(err)
 			}
 		} else if line[0:3] == "cpu" {
 			var n_core int
@@ -131,10 +148,11 @@ func ReadCpuStat(record *StatRecord) error {
 			// assume n_core < 10000
 			_, err = fmt.Sscanf(line[3:7], "%d", &n_core)
 			if err != nil {
-				return err
+				panic(err)
 			}
 
 			core_stat = &record.Cpu.CoreStats[n_core]
+			// Linux 2.6.33 or later
 			_, err = fmt.Sscanf(line,
 				"%s %d %d %d %d %d %d %d %d %d %d",
 				&cpu,
@@ -148,18 +166,33 @@ func ReadCpuStat(record *StatRecord) error {
 				&core_stat.Steal,
 				&core_stat.Guest,
 				&core_stat.GuestNice)
+			if err == io.EOF {
+				// Linux 2.6.24 or later
+				_, err = fmt.Sscanf(line,
+					"%s %d %d %d %d %d %d %d %d %d",
+					&cpu,
+					&core_stat.User,
+					&core_stat.Nice,
+					&core_stat.Sys,
+					&core_stat.Idle,
+					&core_stat.Iowait,
+					&core_stat.Hardirq,
+					&core_stat.Softirq,
+					&core_stat.Steal,
+					&core_stat.Guest)
+			}
 			if err != nil {
-				return err
+				panic(err)
 			}
 		} else if line[0:5] == "ctxt " {
 			_, err = fmt.Sscanf(line[4:], "%d", &record.Proc.ContextSwitch)
 			if err != nil {
-				return err
+				panic(err)
 			}
 		} else if line[0:10] == "processes " {
 			_, err = fmt.Sscanf(line[10:], "%d", &record.Proc.Fork)
 			if err != nil {
-				return err
+				panic(err)
 			}
 		}
 	}
