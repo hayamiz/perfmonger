@@ -18,6 +18,7 @@ EOS
 
     @json = false
     @pager = nil
+    @disk_only_regex = nil
 
     @parser.on('--json', "Output summary in JSON") do
       @json = true
@@ -36,6 +37,10 @@ EOS
       else
         @pager = pager
       end
+    end
+
+    @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX") do |regex|
+      @disk_only_regex = regex
     end
   end
 
@@ -74,11 +79,17 @@ EOS
       cmd << "-json"
     end
 
+    if @disk_only_regex
+      cmd << "-disk-only"
+      cmd << @disk_only_regex
+    end
+
     cmd << "-title"
     cmd << summary_title
 
     cmd << @logfile
 
+    p cmd
     Process.exec(*cmd)
   end
 end

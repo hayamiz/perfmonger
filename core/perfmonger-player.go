@@ -27,8 +27,7 @@ func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	dusage, err := ss.GetDiskUsage(
 		prev_rec.Time, prev_rec.Disk,
-		cur_rec.Time, cur_rec.Disk,
-	)
+		cur_rec.Time, cur_rec.Disk)
 	if err != nil {
 		return err
 	}

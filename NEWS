@@ -1,3 +1,8 @@
+## XXXX-XX-XX: PerfMonger 0.8.0
+  * New features
+    * [summary] subcommand:
+      * Add --disk-only option to filter out unnecessary disks
+
 ## 2015-03-08: PerfMonger 0.7.0 released
 
   * New features

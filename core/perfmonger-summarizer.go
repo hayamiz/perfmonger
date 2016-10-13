@@ -9,29 +9,41 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
 type SummaryOption struct {
-	logfile string
-	title   string
-	json    bool
+	logfile         string
+	title           string
+	json            bool
+	disk_only       string
+	disk_only_regex *regexp.Regexp
 }
 
 var option SummaryOption
 
 func parseArgs() {
+	var err error
+
 	flag.BoolVar(&option.json, "json",
 		false, "Show summary in JSON")
 	flag.StringVar(&option.title, "title",
 		"", "Title of summary")
+	flag.StringVar(&option.disk_only, "disk-only",
+		"", "Select disk devices by regex")
 
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
 		os.Exit(1)
+	}
+
+	option.disk_only_regex, err = regexp.Compile(option.disk_only)
+	if err != nil {
+		panic(err)
 	}
 
 	option.logfile = flag.Args()[0]
@@ -99,9 +111,10 @@ func main() {
 	}
 
 	if fst_record.Disk != nil && lst_record.Disk != nil {
-		disk_usage, err = ss.GetDiskUsage(
+		disk_usage, err = ss.GetDiskUsage1(
 			fst_record.Time, fst_record.Disk,
-			lst_record.Time, lst_record.Disk)
+			lst_record.Time, lst_record.Disk,
+			option.disk_only_regex)
 	}
 
 	if fst_record.Disk != nil && lst_record.Disk != nil {

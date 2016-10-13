@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"time"
 )
@@ -199,6 +200,11 @@ func avgDelta(v int64, w int64, interval float64) float64 {
 }
 
 func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*DiskUsage, error) {
+	return GetDiskUsage1(t1, d1, t2, d2, nil)
+}
+
+func GetDiskUsage1(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat,
+	filter *regexp.Regexp) (*DiskUsage, error) {
 	interval := t2.Sub(t1)
 	itv := interval.Seconds()
 
@@ -219,6 +225,14 @@ func GetDiskUsage(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat) (*Disk
 
 	for _, entry1 := range d1.Entries {
 		name := entry1.Name
+		fmt.Println(filter, name)
+		if filter != nil {
+			fmt.Println("filter", filter)
+			fmt.Println("filter.MatchString(name)", filter.MatchString(name))
+			if !filter.MatchString(name) {
+				continue
+			}
+		}
 		var entry2 *DiskStatEntry = nil
 		for _, e := range d2.Entries {
 			if e.Name == entry1.Name {
