@@ -3,6 +3,12 @@
     * [summary] subcommand:
       * Add --disk-only option to filter out unnecessary disks
 
+## 2016-10-02: PerfMonger 0.7.1 released
+
+  * Bug fix
+    * [record] subcommand:
+      * Parse /proc/stat with 10 columns (9 values) correctly
+
 ## 2015-03-08: PerfMonger 0.7.0 released
 
   * New features
