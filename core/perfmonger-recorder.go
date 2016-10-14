@@ -8,10 +8,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
+	"path"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -110,6 +115,55 @@ func main() {
 	var enc *gob.Encoder
 	var out *bufio.Writer
 	var err error
+
+	// Find existing session, or create new one
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	session_file := path.Join(os.TempDir(),
+		fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
+
+	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
+
+	// make lock file if not exists
+	session_exists := false
+
+	if _, err := os.Stat(lockfile); err != nil {
+		ioutil.WriteFile(lockfile, []byte(""), 0644)
+	}
+	fd, _ := syscall.Open("lock", syscall.O_RDONLY, 0000)
+	defer syscall.Close(fd)
+	syscall.Flock(fd, syscall.LOCK_EX)
+
+	if _, err := os.Stat(session_file); err == nil {
+		pidstr, err := ioutil.ReadFile(session_file)
+		pid, err := strconv.Atoi(string(pidstr))
+		if err != nil {
+			goto MakeNewSession
+		}
+
+		proc, err := os.FindProcess(pid)
+		err = proc.Signal(syscall.Signal(0))
+
+		if err == nil {
+			session_exists = true
+			goto Unlock
+		}
+	}
+MakeNewSession:
+	err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
+	if err != nil {
+		panic(err)
+	}
+
+Unlock:
+	syscall.Flock(fd, syscall.LOCK_UN)
+
+	if session_exists {
+		fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running.\n")
+		return
+	}
 
 	parseArgs()
 
