@@ -225,10 +225,7 @@ func GetDiskUsage1(t1 time.Time, d1 *DiskStat, t2 time.Time, d2 *DiskStat,
 
 	for _, entry1 := range d1.Entries {
 		name := entry1.Name
-		fmt.Println(filter, name)
 		if filter != nil {
-			fmt.Println("filter", filter)
-			fmt.Println("filter.MatchString(name)", filter.MatchString(name))
 			if !filter.MatchString(name) {
 				continue
 			}
