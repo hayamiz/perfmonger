@@ -14,6 +14,7 @@ task :cross_build_core do
   puts "Buildling binaries for each platform"
   Dir.chdir("./core") do
     sh "./build.sh"
+    sh "make"
   end
 end
 
