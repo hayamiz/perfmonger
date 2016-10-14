@@ -24,6 +24,7 @@ EOS
     @output_type = 'pdf'
     @output_prefix = ''
     @save_gpfiles = false
+    @disk_only_regex = nil
   end
 
   def parse_args(argv)
@@ -72,6 +73,9 @@ EOS
       @save_gpfiles = true
     end
 
+    @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX") do |regex|
+      @disk_only_regex = Regexp.compile(regex)
+    end
 
     @parser.parse!(argv)
 
@@ -142,6 +146,12 @@ EOS
 
           start_time ||= time
           devices ||= diskinfo["devices"]
+
+          if @disk_only_regex
+            devices = devices.select do |devname|
+              devname =~ @disk_only_regex
+            end
+          end
 
           datafile.puts([time - start_time,
                          devices.map{|device|
