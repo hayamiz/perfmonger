@@ -34,7 +34,7 @@ Gem::Specification.new do |s|
 Thank you for installing perfmonger.
 Try to start performance monitoring with:
 
-    perfmonger record
+    perfmonger live
 
 Enjoy.
 
