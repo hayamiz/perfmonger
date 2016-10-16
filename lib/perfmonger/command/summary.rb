@@ -89,7 +89,6 @@ EOS
 
     cmd << @logfile
 
-    p cmd
     Process.exec(*cmd)
   end
 end
