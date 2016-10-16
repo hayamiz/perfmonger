@@ -9,6 +9,8 @@ class RecordOption
   attr_reader :report_cpu
   attr_reader :no_disk
   attr_reader :logfile
+  attr_reader :background
+  attr_reader :kill
 
   attr_reader :parser
   attr_accessor :record_bin
@@ -83,6 +85,8 @@ class RecordOption
     @no_disk           = false
     @devices           = []
     @logfile           = "perfmonger.pgr"
+    @background            = false
+    @kill              = false
 
     @parser = OptionParser.new
 
@@ -118,6 +122,14 @@ class RecordOption
 
     @parser.on('-l', '--logfile FILE') do |file|
       @logfile = file
+    end
+
+    @parser.on('--background', 'Run in background') do
+      @background = true
+    end
+
+    @parser.on('--kill', 'Stop currently running perfmonger-reocrd') do
+      @kill = true
     end
 
     @parser.on('-v', '--verbose') do
