@@ -22,7 +22,9 @@ Gem::Specification.new do |s|
   s.add_development_dependency "guard-rspec"
   s.add_development_dependency "aruba"
 
-  s.files       = `git ls-files`.split("\n")
+  s.files       = `git ls-files`.split("\n").select do |file|
+    ! (file =~ /^dbg\//)
+  end
   s.files      += Dir.glob("lib/exec/*")
   s.test_files  = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f)}
