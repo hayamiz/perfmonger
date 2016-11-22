@@ -132,8 +132,7 @@ func main() {
 	if _, err := os.Stat(lockfile); err != nil {
 		ioutil.WriteFile(lockfile, []byte(""), 0644)
 	}
-	fd, _ := syscall.Open("lock", syscall.O_RDONLY, 0000)
-	defer syscall.Close(fd)
+	fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
 	syscall.Flock(fd, syscall.LOCK_EX)
 
 	if _, err := os.Stat(session_file); err == nil {
@@ -143,6 +142,7 @@ func main() {
 			goto MakeNewSession
 		}
 
+		// check if PID in session file is valid
 		proc, err := os.FindProcess(pid)
 		err = proc.Signal(syscall.Signal(0))
 
@@ -156,9 +156,11 @@ MakeNewSession:
 	if err != nil {
 		panic(err)
 	}
+	defer os.Remove(session_file)
 
 Unlock:
 	syscall.Flock(fd, syscall.LOCK_UN)
+	syscall.Close(fd)
 
 	if session_exists {
 		fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running.\n")
