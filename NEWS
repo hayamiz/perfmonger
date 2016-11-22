@@ -1,7 +1,13 @@
-## XXXX-XX-XX: PerfMonger 0.8.0
+## XXXX-XX-XX: PerfMonger 0.9.0
+  * ...
+
+## 2016-11-22: PerfMonger 0.8.0
   * New features
+    * [record] subcommand:
+      * Implemented "session" for preventing double start
+      * Add --background and --kill option for running perfmonger in background (useful for scripting)
     * [summary] subcommand:
-      * Add --disk-only option to filter out unnecessary disks
+      * Add --disk-only option to filter results of not interesting disks
 
 ## 2016-10-02: PerfMonger 0.7.1 released
 
