@@ -3,4 +3,4 @@
 
 require 'perfmonger'
 
-PerfMonger::CLI::Runner.new.run(ARGV)
+exit(PerfMonger::CLI::Runner.new.run(ARGV))
