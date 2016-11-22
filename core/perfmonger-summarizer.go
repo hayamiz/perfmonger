@@ -139,7 +139,7 @@ func main() {
 			disk_usage.WriteJsonTo(buf)
 		}
 
-		if disk_usage != nil {
+		if net_usage != nil {
 			buf.WriteString(`,"net":`)
 			net_usage.WriteJsonTo(buf)
 		}
