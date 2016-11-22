@@ -11,6 +11,7 @@ class RecordOption
   attr_reader :logfile
   attr_reader :background
   attr_reader :kill
+  attr_reader :status
 
   attr_reader :parser
   attr_accessor :record_bin
@@ -130,6 +131,10 @@ class RecordOption
 
     @parser.on('--kill', 'Stop currently running perfmonger-reocrd') do
       @kill = true
+    end
+
+    @parser.on('--status', 'Show currently running perfmonger-record status') do
+      @status = true
     end
 
     @parser.on('-v', '--verbose') do

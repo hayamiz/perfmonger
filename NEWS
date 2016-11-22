@@ -2,9 +2,13 @@
   * ...
 
 ## 2016-11-22: PerfMonger 0.8.1
+  * New features
+    * [record] subcommand:
+      * Add --status to check currently running session
   * Bug fixes
     * [record] subcommand:
-      * 
+      * Open correct lock file for session management
+      * Error handling in --kill processing (no session, already dead session PID)
 
 ## 2016-11-22: PerfMonger 0.8.0
   * New features

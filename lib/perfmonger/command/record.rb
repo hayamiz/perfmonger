@@ -44,13 +44,51 @@ class RecordCommand < BaseCommand
           f.flock(File::LOCK_UN)
         end
       end
-    else
+      return true
+    end
+
+    if @option.status
+      unless session_pid
+        puts "[ERROR] No perfmonger-recorder is running."
+        return false
+      end
+
+      begin
+        # check if session_pid is valid
+        gid = Process.getpgid(session_pid)
+
+        cmdline = File.read("/proc/#{session_pid}/cmdline").split("\0")
+        exe = cmdline.shift
+        args = cmdline
+        start_time = File::Stat.new("/proc/#{session_pid}").mtime
+        elapsed_time = Time.now - start_time
+
+        puts <<EOS
+==== perfmonger record is running (PID: #{session_pid}) ====
+
+* Running executable: #{exe}
+* Arguments: #{args.join(" ")}
+* Started at #{start_time} (running #{elapsed_time.to_i} sec)
+
+EOS
+      rescue Errno::ESRCH
+        puts "[ERROR] No perfmonger-recorder is running."
+      end
+
+      return true
+    end
+
+    # run perfmonger-recorder (normal path)
+    begin
       if session_pid && Process.getpgid(session_pid)
         $stderr.puts("[ERROR] another perfmonger is already running.")
         return false
       end
-      exec_record_cmd()
+    rescue Errno::ESRCH
+      # Actually there is no perfmonger running. go through.
     end
+
+    exec_record_cmd()
 
     true
   end
