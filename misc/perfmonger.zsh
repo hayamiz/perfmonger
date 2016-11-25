@@ -1,4 +1,3 @@
-#compdef perfmonger
 
 _perfmonger-record() {
     local curcontext=$curcontext state line ret=1
