@@ -16,7 +16,8 @@ class InitShellCommand < BaseCommand
     shell = `ps -p #{Process.ppid()} -o 'args='`.strip
     shell = File.basename(shell.split.first)
 
-    if shell == "zsh"
+    case shell
+    when "zsh"
       if argv.first == "-"
         puts <<EOS
 source #{File.expand_path("misc/perfmonger.zsh", gem_dir)}
@@ -24,6 +25,18 @@ EOS
       else
         puts <<EOS
 # Add a following line to ~/.zshrc
+
+eval "$(perfmonger init-shell -)"
+EOS
+      end
+    when "bash"
+      if argv.first == "-"
+        puts <<EOS
+source #{File.expand_path("misc/perfmonger.bash", gem_dir)}
+EOS
+      else
+        puts <<EOS
+# Add a following line to ~/.bashrc
 
 eval "$(perfmonger init-shell -)"
 EOS
