@@ -5,15 +5,16 @@ _perfmonger-record() {
 
     # TODO: match -d,--device multiple times
     _arguments -w -C -S \
-        '(-D --all-devices)'{-d,--device}'[device name to be monitored]: :__perfmonger_devices' \
-        '(-d --device)'{-D,--all-devices}'[monitor all devices]' \
+        '--background[run in background mode]' \
+        '--status[show running perfmonger recording session]' \
+        '--kill[kill running perfmonger recording session]' \
+        {-d,--device}'[device name to be monitored]: :__perfmonger_devices' \
         '(-i --interval)'{-i,--interval}'[measurement interval]: interval in sec' \
-        {-l,--logfile}'[log file name]:_files' \
+        {-l,--logfile}'[log file name]: :_files' \
         {-B,--no-interval-backoff}'[prevent interval backoff]' \
         {-s,--start-delay}'[wait specified time before starting measurement]: wait time in sec' \
         {-t,--timeout}'[length of measurement time]: timeout in sec' \
-        {-C,--cpu}'[report CPU usage]' \
-        {-S,--context-switch}'[report context switches per sec]' \
+        '--no-cpu[Do not monitor CPU usage]' \
         {-v,--verbose}'[verbose]' \
         {-h,--help}'[show help]' \
         && return
@@ -116,7 +117,9 @@ _perfmonger() {
 
 _perfmonger_commands() {
     _values 'command' \
-        'record[record system performance]' \
+        'record[record system performance into a log file]' \
+        'play[play a recorded performance log in JSON]' \
+        'live[iostat and mpstat equivalent speaking JSON]' \
         'stat[run a command and record system performance during execution]' \
         'plot[plot system performance graphs from a perfmonger log file]' \
         'fingerprint[gather all possible system config information]' \
