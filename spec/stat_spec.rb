@@ -9,7 +9,7 @@ describe '[stat] subcommand' do
   it 'should print "Execution time: XXX.XXX"' do
     cmd = "#{perfmonger_bin} stat -- sleep 1"
     run(cmd)
-    assert_success(true)
-    check_file_presence("perfmonger.pgr")
+    expect(last_command_started).to be_successfully_executed
+    expect("perfmonger.pgr").to be_an_existing_file
   end
 end

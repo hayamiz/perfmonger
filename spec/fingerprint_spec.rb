@@ -15,21 +15,21 @@ describe '[fingerprint] subcommand' do
 
   it 'should create output tgz successfully' do
     run("#{perfmonger_bin} fingerprint output.tgz", 20)
-    assert_success(true)
-    check_file_presence("output.tgz")
+    expect(last_command_started).to be_successfully_executed
+    expect("output.tgz").to be_an_existing_file
   end
 
   it 'should create output tgz successfully with alias invocation' do
     run("#{perfmonger_bin} fp output.tgz", 20)
-    assert_success(true)
-    check_file_presence("output.tgz")
+    expect(last_command_started).to be_successfully_executed
+    expect("output.tgz").to be_an_existing_file
   end
 
   it "should create output tgz successfully with content" do
     run("#{perfmonger_bin} fingerprint output.tgz", 20)
-    assert_success(true)
+    expect(last_command_started).to be_successfully_executed
     run("tar xf output.tgz")
-    assert_success(true)
-    check_directory_presence(["output"], true)
+    expect(last_command_started).to be_successfully_executed
+    expect("output").to be_an_existing_directory
   end
 end

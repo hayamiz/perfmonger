@@ -14,11 +14,11 @@ describe '[plot] subcommand' do
 
     cmd = "#{perfmonger_bin} plot #{busy100}"
     run(cmd, 30)
-    assert_success(true)
-    check_file_presence("iops.pdf")
-    check_file_presence("transfer.pdf")
-    check_file_presence("cpu.pdf")
-    check_file_presence("allcpu.pdf")
+    expect(last_command_started).to be_successfully_executed
+    expect("iops.pdf").to be_an_existing_file
+    expect("transfer.pdf").to be_an_existing_file
+    expect("cpu.pdf").to be_an_existing_file
+    expect("allcpu.pdf").to be_an_existing_file
   end
 
   it 'should create PDFs, data and gnuplot files when --save is given' do
@@ -26,17 +26,18 @@ describe '[plot] subcommand' do
 
     cmd = "#{perfmonger_bin} plot --save #{busy100}"
     run(cmd, 30)
-    assert_success(true)
-    check_file_presence("iops.pdf")
-    check_file_presence("transfer.pdf")
-    check_file_presence("cpu.pdf")
-    check_file_presence("allcpu.pdf")
+    expect(last_command_started).to be_successfully_executed
 
-    check_file_presence("io.gp")
-    check_file_presence("io.dat")
-    check_file_presence("cpu.gp")
-    check_file_presence("cpu.dat")
-    check_file_presence("allcpu.gp")
-    check_file_presence("allcpu.dat")
+    expect("iops.pdf").to be_an_existing_file
+    expect("transfer.pdf").to be_an_existing_file
+    expect("cpu.pdf").to be_an_existing_file
+    expect("allcpu.pdf").to be_an_existing_file
+
+    expect("io.gp").to be_an_existing_file
+    expect("io.dat").to be_an_existing_file
+    expect("cpu.gp").to be_an_existing_file
+    expect("cpu.dat").to be_an_existing_file
+    expect("allcpu.gp").to be_an_existing_file
+    expect("allcpu.dat").to be_an_existing_file
   end
 end

@@ -114,6 +114,8 @@ EOS
 
     plot_ioinfo(tmpfile.path)
     plot_cpuinfo(tmpfile.path)
+
+    true
   end
 
   private

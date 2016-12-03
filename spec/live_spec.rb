@@ -8,10 +8,11 @@ describe '[live] subcommand' do
   it 'should print JSON records for 3 seconds and exit successfully.' do
     cmd = "#{perfmonger_bin} live --timeout 3"
     run(cmd, 5)
-    assert_success(true)
-    expect(stdout_from(cmd).lines.to_a.size).to eq 3
+    expect(last_command_started).to be_successfully_executed
+    expect(last_command_started.stdout.lines.to_a.size).to eq 3
 
-    stdout_from(cmd).each_line do |line|
+    run(cmd)
+    last_command_started.stdout.each_line do |line|
       expect do
         JSON.parse(line)
       end.not_to raise_error
@@ -20,6 +21,6 @@ describe '[live] subcommand' do
       expect(json.keys.sort).to eq %w{time cpu disk net}.sort
     end
 
-    check_file_presence("perfmonger.pgr")
+    expect("perfmonger.pgr").to be_an_existing_file
   end
 end

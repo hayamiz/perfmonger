@@ -8,8 +8,8 @@ describe '[record] subcommand' do
   it 'should create a valid logfile with no output to stdout' do
     cmd = "#{perfmonger_bin} record --timeout 1"
     run(cmd)
-    assert_success(true)
-    check_file_presence("perfmonger.pgr") # default file name
-    expect(stdout_from(cmd)).to be_empty
+    expect(last_command_started).to be_successfully_executed
+    expect("perfmonger.pgr").to be_an_existing_file # default file name
+    expect(last_command_started.stdout).to be_empty
   end
 end

@@ -6,10 +6,11 @@ describe '[play] subcommand' do
     busy100 = data_file "busy100.pgr"
     cmd = "#{perfmonger_bin} play #{busy100}"
     run(cmd)
-    assert_success(true)
-    expect(stdout_from(cmd).lines.to_a.size).to eq 3
+    expect(last_command_started).to be_successfully_executed
+    expect(last_command_started.stdout.lines.to_a.size).to eq 3
 
-    stdout_from(cmd).each_line do |line|
+    run(cmd)
+    last_command_started.stdout.each_line do |line|
       expect do
         JSON.parse(line)
       end.not_to raise_error

@@ -6,8 +6,8 @@ describe '[summary] subcommand' do
     busy100 = data_file "busy100.pgr"
     cmd = "#{perfmonger_bin} summary #{busy100}"
     run(cmd)
-    assert_success(true)
-    output = stdout_from(cmd)
+    expect(last_command_started).to be_successfully_executed
+    output = last_command_started.stdout
 
     # measurement duration
     expect(output).to match(/^Duration: (\d+\.\d+) sec$/)
@@ -37,8 +37,8 @@ describe '[summary] subcommand' do
     busy100 = data_file "busy100.pgr"
     cmd = "#{perfmonger_bin} summary --json #{busy100}"
     run(cmd)
-    assert_success(true)
-    output = stdout_from(cmd)
+    expect(last_command_started).to be_successfully_executed
+    output = last_command_started.stdout
 
     expect do
       JSON.parse(output)

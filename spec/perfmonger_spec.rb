@@ -9,29 +9,29 @@ describe "perfmonger command" do
   it 'should print help and exit with failure when no arguments given' do
     cmd = "#{perfmonger_bin}"
     run(cmd)
-    assert_success(false)
-    expect(stdout_from(cmd)).to match(/^Usage: perfmonger/)
+    expect(last_command_started).not_to be_successfully_executed
+    expect(last_command_started.stdout).to match(/^Usage: perfmonger/)
   end
 
   it 'should print help and exit with success when --help is given' do
     ["-h", "--help"].each do |arg|
       cmd = "#{perfmonger_bin} #{arg}"
       run(cmd)
-      assert_success(true)
-      expect(stdout_from(cmd)).to match(/^Usage: perfmonger/)
+      expect(last_command_started).to be_successfully_executed
+      expect(last_command_started.stdout).to match(/^Usage: perfmonger/)
     end
   end
 
   it 'should print version number if --version given' do
     cmd = "#{perfmonger_bin} --version"
     run(cmd)
-    assert_success(true)
-    expect(stdout_from(cmd)).to include(PerfMonger::VERSION)
+    expect(last_command_started).to be_successfully_executed
+    expect(last_command_started.stdout).to include(PerfMonger::VERSION)
   end
 
   it 'fails if unknown subcommand given' do
     cmd = "#{perfmonger_bin} piyo"
     run(cmd)
-    assert_success(false)
+    expect(last_command_started).not_to be_successfully_executed
   end
 end
