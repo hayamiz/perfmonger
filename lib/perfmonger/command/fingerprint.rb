@@ -122,6 +122,8 @@ EOS
 
       FileUtils.mv(tmptar_path, @output_tarball)
     end
+
+    true
   end
 
   private
