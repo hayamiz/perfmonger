@@ -69,6 +69,18 @@ EOS
         save_disk_info()
       end
 
+      do_with_message("Saving fdisk info") do
+        save_fdisk_info()
+      end
+
+      do_with_message("Saving lsblk info") do
+        save_lsblk_info()
+      end
+
+      do_with_message("Saving LVM info") do
+        save_lvm_info()
+      end
+
       do_with_message("Saving PCI/PCIe info") do
         save_pci_info()
       end
@@ -207,6 +219,40 @@ EOS
         f.puts(content)
         f.puts("")
       end
+    end
+  end
+
+  def save_fdisk_info()
+    fdisk_bin = find_executable("fdisk")
+
+    File.open("#{@output_dir}/fdisk.log", "w") do |f|
+      f.puts(`#{fdisk_bin} -l`)
+    end
+  end
+
+  def save_lsblk_info()
+    lsblk_bin = find_executable("lsblk")
+
+    File.open("#{@output_dir}/lsblk.log", "w") do |f|
+      f.puts(`#{lsblk_bin} -t`)
+    end
+  end
+
+  def save_lvm_info()
+    vgdisplay_bin = find_executable("vgdisplay")
+    lvdisplay_bin = find_executable("lvdisplay")
+    pvdisplay_bin = find_executable("pvdisplay")
+
+    File.open("#{@output_dir}/lvm-vgdisplay.log", "w") do |f|
+      f.puts(`#{vgdisplay_bin}`)
+    end
+
+    File.open("#{@output_dir}/lvm-lvdisplay.log", "w") do |f|
+      f.puts(`#{lvdisplay_bin}`)
+    end
+
+    File.open("#{@output_dir}/lvm-pvdisplay.log", "w") do |f|
+      f.puts(`#{pvdisplay_bin}`)
     end
   end
 
