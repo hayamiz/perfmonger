@@ -3,6 +3,7 @@
     * [init-shell] subcommand: Added for loading shell completion function from rcfile
       * zsh support
       * bash support
+    * [fingerprint] log LVM, fdisk, and lsblk info
   * ...
 
 ## 2016-11-22: PerfMonger 0.8.2
