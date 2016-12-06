@@ -104,22 +104,42 @@ EOS
       exit(false)
     end
 
-    player_bin = ::PerfMonger::Command::CoreFinder.player()
+    # tmpfile = Tempfile.new("jsondata")
+    # IO.popen([player_bin, @data_file], "r").each_line do |line|
+    #   tmpfile.print(line)
+    # end
+    # tmpfile.flush()
+    # 
+    # plot_ioinfo(tmpfile.path)
+    # plot_cpuinfo(tmpfile.path)
 
-    tmpfile = Tempfile.new("jsondata")
-    IO.popen([player_bin, @data_file], "r").each_line do |line|
-      tmpfile.print(line)
+    formatter_bin = ::PerfMonger::Command::CoreFinder.plot_formatter()
+
+    meta_json = nil
+    IO.popen([formatter_bin, "-perfmonger", @data_file], "r") do |io|
+      meta_json = io.read
     end
-    tmpfile.flush()
+    if $?.exitstatus != 0
+      puts("ERROR: failed to run perfmonger-plot-formatter")
+      exit(false)
+    end
+    meta = JSON.parse(meta_json)
 
-    plot_ioinfo(tmpfile.path)
-    plot_cpuinfo(tmpfile.path)
+    plot_disk(meta)
+    plot_cpu(meta)
+
+    meta["disk"]["devices"].each do |dev_entry|
+      dev_name = dev_entry["name"]
+      dat_idx = dev_entry["idx"]
+
+
+    end
 
     true
   end
 
   private
-  def plot_ioinfo(json_file)
+  def plot_ioinfo(meta)
     iops_pdf_filename = @output_prefix + 'iops.pdf'
     transfer_pdf_filename = @output_prefix + 'transfer.pdf'
     gp_filename  = @output_prefix + 'io.gp'
