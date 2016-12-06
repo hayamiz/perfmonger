@@ -47,9 +47,13 @@ type DiskMeta struct {
 	Devices []DiskMetaEntry `json:"devices"`
 }
 
+type CpuMeta struct {
+	NumCore int `json:"num_core"`
+}
+
 type PlotMeta struct {
 	Disk DiskMeta `json:"disk"`
-	// Cpu  CpuMeta  `json:"cpu"`
+	Cpu  CpuMeta  `json:"cpu"`
 }
 
 type DiskDatTmpFile struct {
@@ -162,6 +166,7 @@ func main() {
 
 	disk_dat_files := map[string]*DiskDatTmpFile{}
 	cpu_dat_files := make([]*CpuDatTmpFile, records[0].Cpu.NumCore)
+	meta.Cpu.NumCore = records[0].Cpu.NumCore
 
 	f, err = os.Create(opt.CpuFile)
 	if err != nil {
@@ -210,7 +215,7 @@ func main() {
 					"# elapsed_time	r_iops	w_iops	r_MB/s	w_MB/s	r_latency	w_latency	r_avgsz	w_avgsz	qdepth"))
 			}
 
-			elapsed_time := cur_rec.Time.Sub(t0).Seconds()
+			elapsed_time := prev_rec.Time.Sub(t0).Seconds()
 			disk_dat.Writer.WriteString(
 				fmt.Sprintf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 					elapsed_time,
@@ -243,7 +248,7 @@ func main() {
 				cpu_dat.Writer.WriteString("# elapsed_time	%usr	%nice	%sys	%iowait	%hardirq	%softirq	%steal	%guest	%idle\n")
 			}
 
-			printCoreUsage(cpu_dat.Writer, cur_rec.Time.Sub(t0).Seconds(), coreusage)
+			printCoreUsage(cpu_dat.Writer, prev_rec.Time.Sub(t0).Seconds(), coreusage)
 		}
 		printCoreUsage(cpu_writer, cur_rec.Time.Sub(t0).Seconds(), cusage.All)
 
