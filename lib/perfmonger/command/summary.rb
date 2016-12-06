@@ -39,7 +39,7 @@ EOS
       end
     end
 
-    @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX") do |regex|
+    @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX (Ex. 'sd[b-d]')") do |regex|
       @disk_only_regex = regex
     end
   end
