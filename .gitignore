@@ -8,3 +8,6 @@
 /lib/exec/
 /ext/perfmonger/Makefile
 /core/perfmonger-summarizer
+/cpu.dat
+/disk.dat
+/perfmonger.pgr
