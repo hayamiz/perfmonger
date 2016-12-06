@@ -33,8 +33,8 @@ _perfmonger-summary() {
     # TODO: accept only 1 file
     _arguments -w -C -S \
         '--json[output summary in JSON format]' \
+        '--disk-only[select disk devices that matches regexp]: regular expression for target devices' \
         {-p,--pager}'[use pager to see summary output]: pager program' \
-        {-h,--help}'[show help]' \
         {-h,--help}'[show help]' \
         '*:: :_files' \
         && return
@@ -51,6 +51,10 @@ _perfmonger-plot() {
         {-T,--output-type}'[output image type]:output type:(pdf png)' \
         {-p,--prefix}'[output file name prefix]:prefix' \
         {-s,--save}'[save gnuplot script and data files]' \
+        '--disk-only[select disk devices that matches regexp]: regular expression for target devices' \
+        '--disk-read-only[plot only read performance for disks]' \
+        '--disk-write-only[plot only write performance for disks]' \
+        '--disk-read-write[plot read and write performance for disks]' \
         {-h,--help}'[show help]' \
         '*:: :_files' \
         && return
