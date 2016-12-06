@@ -25,6 +25,8 @@ EOS
     @output_prefix = ''
     @save_gpfiles = false
     @disk_only_regex = nil
+    @disk_plot_read = true
+    @disk_plot_write = true
   end
 
   def parse_args(argv)
@@ -77,6 +79,21 @@ EOS
       @disk_only_regex = Regexp.compile(regex)
     end
 
+    @parser.on('--disk-read-only', "Plot only READ performance for disks") do
+      @disk_plot_read = true
+      @disk_plot_write = false
+    end
+
+    @parser.on('--disk-write-only', "Plot only WRITE performance for disks") do
+      @disk_plot_read = false
+      @disk_plot_write = true
+    end
+
+    @parser.on('--disk-read-write', "Plot READ and WRITE performance for disks") do
+      @disk_plot_read = true
+      @disk_plot_write = true
+    end
+
     @parser.parse!(argv)
 
     if argv.size == 0
@@ -124,28 +141,27 @@ EOS
     plot_disk(meta)
     plot_cpu(meta)
 
-    meta["disk"]["devices"].each do |dev_entry|
-      dev_name = dev_entry["name"]
-      dat_idx = dev_entry["idx"]
-
-
-    end
-
     true
   end
 
   private
   def plot_disk(meta)
-    iops_pdf_filename = @output_prefix + 'iops.pdf'
-    transfer_pdf_filename = @output_prefix + 'transfer.pdf'
+    iops_pdf_filename = @output_prefix + 'disk-iops.pdf'
+    transfer_pdf_filename = @output_prefix + 'disk-transfer.pdf'
+    total_iops_pdf_filename = @output_prefix + 'disk-total-iops.pdf'
+    total_transfer_pdf_filename = @output_prefix + 'disk-total-transfer.pdf'
     gp_filename  = @output_prefix + 'disk.gp'
     dat_filename = @output_prefix + 'disk.dat'
     if @output_type != 'pdf'
-      iops_img_filename = @output_prefix + 'iops.' + @output_type
-      transfer_img_filename = @output_prefix + 'transfer.' + @output_type
+      iops_img_filename = @output_prefix + 'disk-iops.' + @output_type
+      transfer_img_filename = @output_prefix + 'disk-transfer.' + @output_type
+      total_iops_img_filename = @output_prefix + 'disk-iops.' + @output_type
+      total_transfer_img_filename = @output_prefix + 'disk-transfer.' + @output_type
     else
       iops_img_filename = nil
       transfer_img_filename = nil
+      total_iops_img_filename = nil
+      total_transfer_img_filename = nil
     end
 
     start_time = meta["start_time"]
@@ -154,23 +170,66 @@ EOS
     Dir.chdir(@tmpdir) do
       gpfile = File.new(gp_filename, 'w')
 
+      total_iops_plot_stmt_list = []
       iops_plot_stmt_list = meta["disk"]["devices"].map do |dev_entry|
         devname = dev_entry["name"]
         idx = dev_entry["idx"]
-        plot_stmt = []
-        plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:2 with lines lw 2 title \"#{devname} read\"")
-        plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:3 with lines lw 2 title \"#{devname} write\"")
-        plot_stmt
+
+        if devname == "total"
+          if @disk_plot_read
+            total_iops_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:2 with lines lw 2 title \"#{devname} read\"")
+          end
+          if @disk_plot_write
+            total_iops_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:3 with lines lw 2 title \"#{devname} write\"")
+          end
+        elsif @disk_only_regex && !(devname =~ @disk_only_regex)
+          []
+        else
+          plot_stmt = []
+
+          if @disk_plot_read
+            plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:2 with lines lw 2 title \"#{devname} read\"")
+          end
+          if @disk_plot_write
+            plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:3 with lines lw 2 title \"#{devname} write\"")
+          end
+
+          plot_stmt
+        end
       end.flatten
 
+      total_transfer_plot_stmt_list = []
       transfer_plot_stmt_list = meta["disk"]["devices"].map do |dev_entry|
         devname = dev_entry["name"]
         idx = dev_entry["idx"]
-        plot_stmt = []
-        plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:4 with lines lw 2 title \"#{devname} read\"")
-        plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:5 with lines lw 2 title \"#{devname} write\"")
-        plot_stmt
+
+        if devname == "total"
+          if @disk_plot_read
+            total_transfer_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:4 with lines lw 2 title \"#{devname} read\"")
+          end
+          if @disk_plot_write
+            total_transfer_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:5 with lines lw 2 title \"#{devname} write\"")
+          end
+        elsif @disk_only_regex && !(devname =~ @disk_only_regex)
+          []
+        else
+          plot_stmt = []
+
+          if @disk_plot_read
+            plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:4 with lines lw 2 title \"#{devname} read\"")
+          end
+          if @disk_plot_write
+            plot_stmt.push("\"disk.dat\" ind #{idx} usi 1:5 with lines lw 2 title \"#{devname} write\"")
+          end
+
+          plot_stmt
+        end
       end.flatten
+
+      if iops_plot_stmt_list.size == 0
+        puts("No plot target disk devices.")
+        return
+      end
 
       gpfile.puts <<EOS
 set term pdfcairo enhanced color
@@ -189,11 +248,19 @@ set key below center
 
 plot #{iops_plot_stmt_list.join(",\\\n     ")}
 
+set title "Total IOPS"
+set output "#{total_iops_pdf_filename}"
+plot #{total_iops_plot_stmt_list.join(",\\\n     ")}
+
 
 set title "Transfer rate"
 set output "#{transfer_pdf_filename}"
 set ylabel "transfer rate [MB/s]"
 plot #{transfer_plot_stmt_list.join(",\\\n     ")}
+
+set title "Total transfer rate"
+set output "#{total_transfer_pdf_filename}"
+plot #{total_transfer_plot_stmt_list.join(",\\\n     ")}
 EOS
       gpfile.close
 
@@ -202,11 +269,14 @@ EOS
       if @output_type != 'pdf'
         system("convert -density 150 -background white #{iops_pdf_filename} #{iops_img_filename}")
         system("convert -density 150 -background white #{transfer_pdf_filename} #{transfer_img_filename}")
+        system("convert -density 150 -background white #{total_iops_pdf_filename} #{total_iops_img_filename}")
+        system("convert -density 150 -background white #{total_transfer_pdf_filename} #{total_transfer_img_filename}")
       end
 
     end # chdir
 
     copy_targets = [iops_pdf_filename, transfer_pdf_filename]
+    copy_targets = [total_iops_pdf_filename, total_transfer_pdf_filename]
     copy_targets.push(iops_img_filename) if iops_img_filename
     copy_targets.push(transfer_img_filename) if transfer_img_filename
 
