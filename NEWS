@@ -7,6 +7,7 @@
       * log LVM, fdisk, and lsblk info
     * [plot]
       * Fast plot data formatting with new core implementation
+      * Add --disk-only, --disk-read-only, --disk-write-only to filter disks for plot
   * ...
 
 ## 2016-11-22: PerfMonger 0.8.2
