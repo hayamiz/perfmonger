@@ -54,7 +54,7 @@ for idx in $(seq 0 $((${#TARGET[@]}-1))); do
     export GOOS=$1
     export GOARCH=$2
 
-    for subcmd in recorder player summarizer; do
+    for subcmd in recorder player summarizer plot-formatter; do
         TARGETS+=(../lib/exec/perfmonger-${subcmd}_${GOOS}_${GOARCH})
 
         cat <<EOF >> Makefile

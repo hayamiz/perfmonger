@@ -55,6 +55,10 @@ class CoreFinder
     def summarizer
       self.find("summarizer")
     end
+
+    def plot_formatter
+      self.find("plot-formatter")
+    end
   end
 end
 
