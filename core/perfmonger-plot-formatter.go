@@ -52,8 +52,10 @@ type CpuMeta struct {
 }
 
 type PlotMeta struct {
-	Disk DiskMeta `json:"disk"`
-	Cpu  CpuMeta  `json:"cpu"`
+	Disk      DiskMeta `json:"disk"`
+	Cpu       CpuMeta  `json:"cpu"`
+	StartTime float64  `json:"start_time"`
+	EndTime   float64  `json:"end_time"`
 }
 
 type DiskDatTmpFile struct {
@@ -161,8 +163,9 @@ func main() {
 	t0 := records[curr].Time
 	curr ^= 1
 
-	meta := PlotMeta{}
 	meta_set := false
+	meta := PlotMeta{}
+	meta.StartTime = float64(records[0].Time.UnixNano()) / 1.0e9
 
 	disk_dat_files := map[string]*DiskDatTmpFile{}
 	cpu_dat_files := make([]*CpuDatTmpFile, records[0].Cpu.NumCore)
@@ -250,11 +253,13 @@ func main() {
 
 			printCoreUsage(cpu_dat.Writer, prev_rec.Time.Sub(t0).Seconds(), coreusage)
 		}
-		printCoreUsage(cpu_writer, cur_rec.Time.Sub(t0).Seconds(), cusage.All)
+		printCoreUsage(cpu_writer, prev_rec.Time.Sub(t0).Seconds(), cusage.All)
 
 		curr ^= 1
 		meta_set = true
 	}
+
+	meta.EndTime = float64(records[curr^1].Time.UnixNano()) / 1.0e9
 
 	for _, disk_dat := range disk_dat_files {
 		disk_dat.Writer.Flush()
