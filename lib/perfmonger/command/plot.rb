@@ -155,8 +155,8 @@ EOS
     if @output_type != 'pdf'
       iops_img_filename = @output_prefix + 'disk-iops.' + @output_type
       transfer_img_filename = @output_prefix + 'disk-transfer.' + @output_type
-      total_iops_img_filename = @output_prefix + 'disk-iops.' + @output_type
-      total_transfer_img_filename = @output_prefix + 'disk-transfer.' + @output_type
+      total_iops_img_filename = @output_prefix + 'disk-total-iops.' + @output_type
+      total_transfer_img_filename = @output_prefix + 'disk-total-transfer.' + @output_type
     else
       iops_img_filename = nil
       transfer_img_filename = nil
@@ -182,6 +182,8 @@ EOS
           if @disk_plot_write
             total_iops_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:3 with lines lw 2 title \"#{devname} write\"")
           end
+
+          []
         elsif @disk_only_regex && !(devname =~ @disk_only_regex)
           []
         else
@@ -210,6 +212,8 @@ EOS
           if @disk_plot_write
             total_transfer_plot_stmt_list.push("\"disk.dat\" ind #{idx} usi 1:5 with lines lw 2 title \"#{devname} write\"")
           end
+
+          []
         elsif @disk_only_regex && !(devname =~ @disk_only_regex)
           []
         else
@@ -279,6 +283,8 @@ EOS
     copy_targets = [total_iops_pdf_filename, total_transfer_pdf_filename]
     copy_targets.push(iops_img_filename) if iops_img_filename
     copy_targets.push(transfer_img_filename) if transfer_img_filename
+    copy_targets.push(total_iops_img_filename) if total_iops_img_filename
+    copy_targets.push(total_transfer_img_filename) if total_transfer_img_filename
 
     if @save_gpfiles
       copy_targets.push(dat_filename)
