@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
@@ -199,7 +200,22 @@ func main() {
 		}
 		didx := 0
 
-		for dname, dusage_entry := range *dusage {
+		var dnames []string
+		for dname, _ := range *dusage {
+			if dname != "total" {
+				dnames = append(dnames, dname)
+			}
+		}
+		sort.Strings(dnames)
+		dnames = append(dnames, "total")
+
+		// for dname, dusage_entry := range *dusage {
+		for _, dname := range dnames {
+			dusage_entry, ok := (*dusage)[dname]
+			if !ok {
+				panic("device '" + dname + "' not found")
+			}
+
 			if !meta_set {
 				meta.Disk.Devices =
 					append(meta.Disk.Devices,
