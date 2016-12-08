@@ -27,6 +27,7 @@ EOS
     @disk_only_regex = nil
     @disk_plot_read = true
     @disk_plot_write = true
+    @disk_numkey_threshold = 10
   end
 
   def parse_args(argv)
@@ -92,6 +93,10 @@ EOS
     @parser.on('--disk-read-write', "Plot READ and WRITE performance for disks") do
       @disk_plot_read = true
       @disk_plot_write = true
+    end
+
+    @parser.on('--disk-numkey-threshold NUM', "Legends of per-disk plots are turned off if the number of disks is larger than this value.") do |num|
+      @disk_numkey_threshold = num.to_i
     end
 
     @parser.parse!(argv)
@@ -235,6 +240,16 @@ EOS
         return
       end
 
+      num_dev = meta["disk"]["devices"].select do |dev_entry|
+        dev_entry["name"] != "total"
+      end.size
+
+      if num_dev > @disk_numkey_threshold
+        set_key_stmt = "unset key"
+      else
+        set_key_stmt = "set key below center"
+      end
+
       gpfile.puts <<EOS
 set term pdfcairo enhanced color
 set title "IOPS"
@@ -248,11 +263,11 @@ set grid
 set xrange [#{@offset_time}:#{end_time - start_time}]
 set yrange [0:*]
 
-set key below center
-
+#{set_key_stmt}
 plot #{iops_plot_stmt_list.join(",\\\n     ")}
 
 set title "Total IOPS"
+unset key
 set output "#{total_iops_pdf_filename}"
 plot #{total_iops_plot_stmt_list.join(",\\\n     ")}
 
@@ -260,10 +275,12 @@ plot #{total_iops_plot_stmt_list.join(",\\\n     ")}
 set title "Transfer rate"
 set output "#{transfer_pdf_filename}"
 set ylabel "transfer rate [MB/s]"
+#{set_key_stmt}
 plot #{transfer_plot_stmt_list.join(",\\\n     ")}
 
 set title "Total transfer rate"
 set output "#{total_transfer_pdf_filename}"
+unset key
 plot #{total_transfer_plot_stmt_list.join(",\\\n     ")}
 EOS
       gpfile.close
@@ -279,8 +296,9 @@ EOS
 
     end # chdir
 
-    copy_targets = [iops_pdf_filename, transfer_pdf_filename]
-    copy_targets = [total_iops_pdf_filename, total_transfer_pdf_filename]
+    copy_targets = []
+    copy_targets += [iops_pdf_filename, transfer_pdf_filename]
+    copy_targets += [total_iops_pdf_filename, total_transfer_pdf_filename]
     copy_targets.push(iops_img_filename) if iops_img_filename
     copy_targets.push(transfer_img_filename) if transfer_img_filename
     copy_targets.push(total_iops_img_filename) if total_iops_img_filename
