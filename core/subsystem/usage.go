@@ -96,7 +96,19 @@ func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) (*CpuCoreUsage, error) {
 	itv := c2.Uptime() - c1.Uptime()
 
 	if itv == 0 {
-		return nil, errors.New("uptime difference is zero")
+		// return nil, errors.New("uptime difference is zero")
+		usage.User = 0
+		usage.Nice = 0
+		usage.Sys = 0
+		usage.Idle = 0
+		usage.Iowait = 0
+		usage.Hardirq = 0
+		usage.Softirq = 0
+		usage.Steal = 0
+		usage.Guest = 0
+		usage.GuestNice = 0
+
+		return usage, nil
 	} else if itv < 0 {
 		return nil, errors.New("uptime difference is negative")
 	}
