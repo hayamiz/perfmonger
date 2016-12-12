@@ -1,3 +1,9 @@
+## XXXX-XX-XX: PerfMonger 0.10.0
+  * New features
+    * ...
+  * Bug fixes
+    * ...
+
 ## 2016-12-12: PerfMonger 0.9.0
   * New features
     * [init-shell] subcommand: Added for loading shell completion function from rcfile
