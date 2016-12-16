@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 )
 
 type PlatformHeader LinuxHeader
@@ -92,7 +95,23 @@ func ReadCpuStat(record *StatRecord) error {
 	defer f.Close()
 
 	if record.Cpu == nil {
-		record.Cpu = NewCpuStat(runtime.NumCPU())
+		num_core := 0
+		out, err := exec.Command("nproc", "--all").Output()
+		out_str := strings.TrimSpace(string(out))
+
+		if err == nil {
+			num_core, err = strconv.Atoi(out_str)
+
+			if err != nil {
+				num_core = 0
+			}
+		}
+
+		if num_core == 0 {
+			num_core = runtime.NumCPU()
+		}
+
+		record.Cpu = NewCpuStat(num_core)
 	} else {
 		record.Cpu.Clear()
 	}
