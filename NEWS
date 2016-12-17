@@ -1,8 +1,12 @@
 ## XXXX-XX-XX: PerfMonger 0.10.0
   * New features
-    * ...
+    * [fingerprint] subcommand:
+      * Additionally log biosdecode and nvme info
   * Bug fixes
-    * ...
+    * [record] subcommand:
+      * Get CPU count by nproc(1) in linux subsystem
+    * [fingerprint] subcommand:
+      * Surpress accessing non-readable sysfs files
 
 ## 2016-12-12: PerfMonger 0.9.0
   * New features
