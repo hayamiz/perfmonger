@@ -101,8 +101,17 @@ EOS
         save_dmidecode_info()
       end
 
+      do_with_message("Saving biosdecode info") do
+        save_biosdecode_info()
+      end
+
+      do_with_message("Saving nvme info") do
+        save_nvme_info()
+      end
+
 
       ## Collect vendor specific info
+
 
       # LSI MegaRAID
       megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
@@ -474,6 +483,33 @@ EOS
       File.open("#{@output_dir}/dmidecode.log", "w") do |f|
         content = `#{dmidecode_bin} 2>&1`
         f.puts("## dmidecode")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_biosdecode_info()
+    biosdecode_bin = find_executable("biosdecode")
+
+    if biosdecode_bin
+      File.open("#{@output_dir}/biosdecode.log", "w") do |f|
+        content = `#{biosdecode_bin} 2>&1`
+        f.puts("## biosdecode")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_nvme_info()
+    # https://github.com/linux-nvme/nvme-cli
+    nvme_bin = find_executable("nvme")
+
+    if nvme_bin
+      File.open("#{@output_dir}/nvme-cli-list.log", "w") do |f|
+        content = `#{nvme_bin} list 2>&1`
+        f.puts("## nvme list")
         f.puts(content)
         f.puts("")
       end
