@@ -1,4 +1,10 @@
-## XXXX-XX-XX: PerfMonger 0.9.0
+## XXXX-XX-XX: PerfMonger 0.10.0
+  * New features
+    * ...
+  * Bug fixes
+    * ...
+
+## 2016-12-12: PerfMonger 0.9.0
   * New features
     * [init-shell] subcommand: Added for loading shell completion function from rcfile
       * zsh support
@@ -8,7 +14,6 @@
     * [plot]
       * Fast plot data formatting with new core implementation
     * Improved shell completion
-  * ...
 
 ## 2016-11-22: PerfMonger 0.8.2
   * Bug fixes
