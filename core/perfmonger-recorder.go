@@ -32,6 +32,7 @@ type RecorderOption struct {
 	devsParts           []string
 	output              string
 	no_cpu              bool
+	no_intr             bool
 	no_disk             bool
 	no_net              bool
 	debug               bool
@@ -65,6 +66,8 @@ func parseArgs() {
 		"-", "Output file name")
 	flag.BoolVar(&option.no_cpu, "no-cpu",
 		false, "Do not record CPU usage")
+	flag.BoolVar(&option.no_intr, "no-intr",
+		false, "Do not record interrupts count")
 	flag.BoolVar(&option.no_disk, "no-disk",
 		false, "Do not record disk usage")
 	flag.BoolVar(&option.no_net, "no-net",
@@ -302,6 +305,9 @@ func main() {
 
 		if !option.no_cpu {
 			ss.ReadCpuStat(record)
+		}
+		if !option.no_intr {
+			ss.ReadInterruptStat(record)
 		}
 		if !option.no_disk {
 			ss.ReadDiskStats(record, option.targetDisks)

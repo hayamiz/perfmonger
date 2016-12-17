@@ -43,6 +43,20 @@ type SoftIrqStat struct {
 	Rcu         int64
 }
 
+type InterruptStatEntry struct {
+	IrqNo   int    // >0 if associated with devices, -1 if not
+	IrqType string // set intr name if IrqNo == -1
+
+	NumCore    int
+	IntrCounts []int
+	Descr      string
+}
+
+type InterruptStat struct {
+	NumEntries uint
+	Entries    []*InterruptStatEntry
+}
+
 type DiskStatEntry struct {
 	Major      uint
 	Minor      uint
@@ -89,12 +103,13 @@ type NetStat struct {
 }
 
 type StatRecord struct {
-	Time    time.Time
-	Cpu     *CpuStat
-	Proc    *ProcStat
-	Disk    *DiskStat
-	Softirq *SoftIrqStat
-	Net     *NetStat
+	Time      time.Time
+	Cpu       *CpuStat
+	Interrupt *InterruptStat
+	Proc      *ProcStat
+	Disk      *DiskStat
+	Softirq   *SoftIrqStat
+	Net       *NetStat
 }
 
 func (core_stat *CpuCoreStat) Clear() {
@@ -140,6 +155,14 @@ func (cpu_stat *CpuStat) Clear() {
 	for idx, _ := range cpu_stat.CoreStats {
 		cpu_stat.CoreStats[idx].Clear()
 	}
+}
+
+func NewInterruptStat() *InterruptStat {
+	intr_stat := new(InterruptStat)
+	intr_stat.NumEntries = 0
+	intr_stat.Entries = make([]*InterruptStatEntry, 0)
+
+	return intr_stat
 }
 
 func NewProcStat() *ProcStat {
@@ -199,6 +222,7 @@ func NewNetStat() *NetStat {
 func NewStatRecord() *StatRecord {
 	return &StatRecord{
 		time.Now(),
+		nil,
 		nil,
 		nil,
 		nil,

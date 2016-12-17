@@ -1,5 +1,11 @@
 ## XXXX-XX-XX: PerfMonger 0.10.0
   * New features
+    * [record] subcommand:
+      * Record /proc/interrupts information (experimental)
+    * [play] subcommand:
+      * Play /proc/interrupts information by cpu cores (experimental)
+    * [summary] subcommand:
+      * Summarize /proc/interrupts information (experimental, currently outputs only in JSON mode)
     * [fingerprint] subcommand:
       * Additionally log biosdecode and nvme info
   * Bug fixes

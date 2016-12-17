@@ -219,6 +219,89 @@ func ReadCpuStat(record *StatRecord) error {
 	return nil
 }
 
+func parseInterruptStatEntry(line string, num_core int) (*InterruptStatEntry, error) {
+	entry := new(InterruptStatEntry)
+
+	entry.NumCore = num_core
+	entry.IntrCounts = make([]int, num_core)
+
+	tokens := strings.Fields(line)
+
+	idx := 0
+
+	tok := tokens[0]
+	tok = strings.TrimRight(tok, ":")
+	if irqno, err := strconv.Atoi(tok); err == nil {
+		entry.IrqNo = irqno
+		entry.IrqType = ""
+	} else {
+		entry.IrqNo = -1
+		entry.IrqType = tok
+	}
+
+	for idx := 1; idx < num_core+1; idx += 1 {
+		var c int
+		var err error
+
+		if idx >= len(tokens) {
+			break
+		}
+
+		tok = tokens[idx]
+		if c, err = strconv.Atoi(tok); err != nil {
+			return nil, errors.New("Invalid string for IntrCounts element: " + tok)
+		}
+
+		entry.IntrCounts[idx-1] = c
+	}
+
+	idx = num_core + 1
+	if idx < len(tokens) {
+		entry.Descr = strings.Join(tokens[idx:], " ")
+	} else {
+		entry.Descr = ""
+	}
+
+	return entry, nil
+}
+
+func ReadInterruptStat(record *StatRecord) error {
+	intr_stat := NewInterruptStat()
+
+	if record == nil {
+		return errors.New("Valid *StatRecord is required.")
+	}
+
+	f, err := os.Open("/proc/interrupts")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	scan := bufio.NewScanner(f)
+
+	if !scan.Scan() {
+		return errors.New("/proc/interrupts seems to be empty")
+	}
+
+	cores := strings.Fields(scan.Text())
+	num_core := len(cores)
+
+	for scan.Scan() {
+		entry, err := parseInterruptStatEntry(scan.Text(), num_core)
+
+		if err != nil {
+			return err
+		}
+
+		intr_stat.Entries = append(intr_stat.Entries, entry)
+		intr_stat.NumEntries += 1
+	}
+
+	record.Interrupt = intr_stat
+
+	return nil
+}
+
 func ReadDiskStats(record *StatRecord, targets *map[string]bool) error {
 	if record == nil {
 		return errors.New("Valid *StatRecord is required.")

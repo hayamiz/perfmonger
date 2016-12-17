@@ -103,11 +103,19 @@ func main() {
 	lst_record := lst_records[idx]
 
 	var cpu_usage *ss.CpuUsage = nil
+	var intr_usage *ss.InterruptUsage = nil
 	var disk_usage *ss.DiskUsage = nil
 	var net_usage *ss.NetUsage = nil
 
 	if fst_record.Cpu != nil && lst_record.Cpu != nil {
 		cpu_usage, err = ss.GetCpuUsage(fst_record.Cpu, lst_record.Cpu)
+	}
+
+	if fst_record.Interrupt != nil && lst_record.Interrupt != nil {
+		intr_usage, err = ss.GetInterruptUsage(
+			fst_record.Time, fst_record.Interrupt,
+			lst_record.Time, lst_record.Interrupt,
+		)
 	}
 
 	if fst_record.Disk != nil && lst_record.Disk != nil {
@@ -132,6 +140,11 @@ func main() {
 		if cpu_usage != nil {
 			buf.WriteString(`,"cpu":`)
 			cpu_usage.WriteJsonTo(buf)
+		}
+
+		if intr_usage != nil {
+			buf.WriteString(`,"intr":`)
+			intr_usage.WriteJsonTo(buf)
 		}
 
 		if disk_usage != nil {
