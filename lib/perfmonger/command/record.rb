@@ -79,13 +79,19 @@ EOS
     end
 
     # run perfmonger-recorder (normal path)
-    begin
-      if session_pid && Process.getpgid(session_pid)
-        $stderr.puts("[ERROR] another perfmonger is already running.")
-        return false
+
+    if @option.background
+      # If perfmonger is going to start in background mode,
+      # there must be an another session running.
+
+      begin
+        if session_pid && Process.getpgid(session_pid)
+          $stderr.puts("[ERROR] another perfmonger is already running in background mode")
+          return false
+        end
+      rescue Errno::ESRCH
+        # Actually there is no perfmonger running. go through.
       end
-    rescue Errno::ESRCH
-      # Actually there is no perfmonger running. go through.
     end
 
     exec_record_cmd()

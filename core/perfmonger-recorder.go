@@ -39,6 +39,7 @@ type RecorderOption struct {
 	player_bin          string
 	disks               string
 	targetDisks         *map[string]bool
+	background          bool
 }
 
 var option RecorderOption
@@ -72,6 +73,8 @@ func parseArgs() {
 		false, "Enable debug mode")
 	flag.BoolVar(&option.listDevices, "list-devices",
 		false, "List devices and exits")
+	flag.BoolVar(&option.background, "background",
+		false, "Run in background mode")
 	flag.StringVar(&option.disks, "disks",
 		"", "Disk devices to be monitored")
 	flag.StringVar(&option.player_bin, "player-bin",
@@ -116,55 +119,65 @@ func main() {
 	var out *bufio.Writer
 	var err error
 
-	// Find existing session, or create new one
-	user, err := user.Current()
-	if err != nil {
-		panic(err)
+	// Need to check '-background' before parsing args
+	is_background := false
+	for _, arg := range os.Args {
+		if arg == "-background" {
+			is_background = true
+		}
 	}
-	session_file := path.Join(os.TempDir(),
-		fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
 
-	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
-
-	// make lock file if not exists
-	session_exists := false
-
-	if _, err := os.Stat(lockfile); err != nil {
-		ioutil.WriteFile(lockfile, []byte(""), 0644)
-	}
-	fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
-	syscall.Flock(fd, syscall.LOCK_EX)
-
-	if _, err := os.Stat(session_file); err == nil {
-		pidstr, err := ioutil.ReadFile(session_file)
-		pid, err := strconv.Atoi(string(pidstr))
+	if is_background {
+		// Find existing session, or create new one
+		user, err := user.Current()
 		if err != nil {
-			goto MakeNewSession
+			panic(err)
 		}
+		session_file := path.Join(os.TempDir(),
+			fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
 
-		// check if PID in session file is valid
-		proc, err := os.FindProcess(pid)
-		err = proc.Signal(syscall.Signal(0))
+		lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
 
-		if err == nil {
-			session_exists = true
-			goto Unlock
+		// make lock file if not exists
+		session_exists := false
+
+		if _, err := os.Stat(lockfile); err != nil {
+			ioutil.WriteFile(lockfile, []byte(""), 0644)
 		}
-	}
-MakeNewSession:
-	err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer os.Remove(session_file)
+		fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
+		syscall.Flock(fd, syscall.LOCK_EX)
 
-Unlock:
-	syscall.Flock(fd, syscall.LOCK_UN)
-	syscall.Close(fd)
+		if _, err := os.Stat(session_file); err == nil {
+			pidstr, err := ioutil.ReadFile(session_file)
+			pid, err := strconv.Atoi(string(pidstr))
+			if err != nil {
+				goto MakeNewSession
+			}
 
-	if session_exists {
-		fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running.\n")
-		return
+			// check if PID in session file is valid
+			proc, err := os.FindProcess(pid)
+			err = proc.Signal(syscall.Signal(0))
+
+			if err == nil {
+				session_exists = true
+				goto Unlock
+			}
+		}
+	MakeNewSession:
+		err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
+		if err != nil {
+			panic(err)
+		}
+		defer os.Remove(session_file)
+
+	Unlock:
+		syscall.Flock(fd, syscall.LOCK_UN)
+		syscall.Close(fd)
+
+		if session_exists {
+			fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running in background mode\n")
+			return
+		}
 	}
 
 	parseArgs()

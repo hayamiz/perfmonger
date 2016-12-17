@@ -64,6 +64,9 @@ class RecordOption
       cmd << "-disks"
       cmd << @devices.join(",")
     end
+    if @background
+      cmd << "-background"
+    end
 
     # TODO: implement device filter
 
