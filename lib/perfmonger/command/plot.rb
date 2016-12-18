@@ -80,22 +80,22 @@ EOS
       @disk_only_regex = Regexp.compile(regex)
     end
 
-    @parser.on('--disk-read-only', "Plot only READ performance for disks") do
+    @parser.on('--plot-read-only', "Plot only READ performance for disks") do
       @disk_plot_read = true
       @disk_plot_write = false
     end
 
-    @parser.on('--disk-write-only', "Plot only WRITE performance for disks") do
+    @parser.on('--plot-write-only', "Plot only WRITE performance for disks") do
       @disk_plot_read = false
       @disk_plot_write = true
     end
 
-    @parser.on('--disk-read-write', "Plot READ and WRITE performance for disks") do
+    @parser.on('--plot-read-write', "Plot READ and WRITE performance for disks") do
       @disk_plot_read = true
       @disk_plot_write = true
     end
 
-    @parser.on('--disk-numkey-threshold NUM', "Legends of per-disk plots are turned off if the number of disks is larger than this value.") do |num|
+    @parser.on('--plot-numkey-threshold NUM', "Legends of per-disk plots are turned off if the number of disks is larger than this value.") do |num|
       @disk_numkey_threshold = num.to_i
     end
 
