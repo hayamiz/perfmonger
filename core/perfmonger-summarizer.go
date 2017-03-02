@@ -59,7 +59,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	dec := gob.NewDecoder(f)
+	defer f.Close()
+
+	input_reader := newPerfmongerLogReader(f)
+	dec := gob.NewDecoder(input_reader)
 
 	err = dec.Decode(&cheader)
 	if err == io.EOF {
