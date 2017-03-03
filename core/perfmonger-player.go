@@ -125,10 +125,10 @@ func main() {
 		in = f
 		defer f.Close()
 	}
+	input_reader := newPerfmongerLogReader(in)
+	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)
-
-	dec := gob.NewDecoder(in)
 
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader

@@ -19,4 +19,20 @@ describe '[play] subcommand' do
       expect(json.keys.sort).to eq %w{time cpu disk net}.sort
     end
   end
+
+  it "should play plain pgr file" do
+    busy100 = data_file "busy100.pgr"
+    cmd = "#{perfmonger_bin} play #{busy100}"
+    run(cmd)
+    expect(last_command_started).to be_successfully_executed
+    expect(last_command_started.stdout).to eq File.read(data_file "busy100.pgr.played")
+  end
+
+  it "should play plain gzipped file" do
+    busy100 = data_file "busy100.pgr.gz"
+    cmd = "#{perfmonger_bin} play #{busy100}"
+    run(cmd)
+    expect(last_command_started).to be_successfully_executed
+    expect(last_command_started.stdout).to eq File.read(data_file "busy100.pgr.played")
+  end
 end

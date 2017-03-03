@@ -2,10 +2,13 @@
   * New features
     * [record] subcommand:
       * Record /proc/interrupts information (experimental)
+      * Support gzipped input
     * [play] subcommand:
       * Play /proc/interrupts information by cpu cores (experimental)
+      * Support gzipped input
     * [summary] subcommand:
       * Summarize /proc/interrupts information (experimental, currently outputs only in JSON mode)
+      * Support gzipped input
     * [fingerprint] subcommand:
       * Additionally log biosdecode and nvme info
   * Bug fixes

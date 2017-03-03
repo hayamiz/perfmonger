@@ -123,16 +123,14 @@ func printCoreUsage(writer *bufio.Writer, elapsed_time float64, coreusage *ss.Cp
 func main() {
 	opt := parseArgs()
 
-	var in *os.File
-
 	f, err := os.Open(opt.PerfmongerFile)
 	if err != nil {
 		panic(err)
 	}
-	in = f
 	defer f.Close()
 
-	dec := gob.NewDecoder(bufio.NewReader(in))
+	input_reader := newPerfmongerLogReader(f)
+	dec := gob.NewDecoder(input_reader)
 
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader
