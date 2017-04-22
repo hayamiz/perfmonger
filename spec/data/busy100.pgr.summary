@@ -1,0 +1,55 @@
+== performance summary of 'spec/data/busy100.pgr' ==
+
+Duration: 7.524 sec
+
+* Average CPU usage (MAX: 200 %)
+  * Non-idle usage: 100.73 %
+       %usr: 100.33 %
+       %sys: 0.40 %
+       %irq: 0.00 %
+      %soft: 0.00 %
+     %other: 0.00 %
+  * Idle usage: 99.27 %
+    %iowait: 0.00 %
+      %idle: 99.27 %
+
+* Average DEVICE usage: sda
+        read IOPS: 0.00
+       write IOPS: 0.66
+  read throughput: 0.00 MB/s
+ write throughput: 0.01 MB/s
+     read latency: 0.0 usec
+    write latency: 0.0 usec
+      read amount: 0.00 MB
+     write amount: 0.08 MB
+
+* Average DEVICE usage: sda1
+        read IOPS: 0.00
+       write IOPS: 0.66
+  read throughput: 0.00 MB/s
+ write throughput: 0.01 MB/s
+     read latency: 0.0 usec
+    write latency: 0.0 usec
+      read amount: 0.00 MB
+     write amount: 0.08 MB
+
+* Average DEVICE usage: sda2
+        read IOPS: 0.00
+       write IOPS: 0.00
+  read throughput: 0.00 MB/s
+ write throughput: 0.00 MB/s
+     read latency: 0.0 usec
+    write latency: 0.0 usec
+      read amount: 0.00 MB
+     write amount: 0.00 MB
+
+* Average DEVICE usage: total
+        read IOPS: 0.00
+       write IOPS: 1.33
+  read throughput: 0.00 MB/s
+ write throughput: 0.02 MB/s
+     read latency: 0.0 usec
+    write latency: 0.0 usec
+      read amount: 0.00 MB
+     write amount: 0.16 MB
+

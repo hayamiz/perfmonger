@@ -2,6 +2,17 @@
 require 'spec_helper'
 
 describe '[summary] subcommand' do
+  let(:busy100_summary) do
+    content = File.read(data_file "busy100.pgr.summary")
+
+    # strip file path from content
+    content.gsub(/^== performance summary of .*$/, "")
+  end
+
+  let(:busy100_summary_json) do
+    File.read(data_file "busy100.pgr.summary.json")
+  end
+
   it 'should print valid output' do
     busy100 = data_file "busy100.pgr"
     cmd = "#{perfmonger_bin} summary #{busy100}"
@@ -47,5 +58,24 @@ describe '[summary] subcommand' do
     json = JSON.parse(output)
 
     expect(json.keys.sort).to eq %w{cpu disk net exectime}.sort
+  end
+
+  it 'should work with gzipped input' do
+    busy100 = data_file "busy100.pgr.gz"
+    cmd = "#{perfmonger_bin} summary #{busy100}"
+    run(cmd)
+    expect(last_command_started).to be_successfully_executed
+    output = last_command_started.stdout
+
+    # strip file path from output
+    output.gsub!(/^== performance summary of .*$/, "")
+    expect(output).to eq busy100_summary
+
+
+    cmd = "#{perfmonger_bin} summary --json #{busy100}"
+    run(cmd)
+    expect(last_command_started).to be_successfully_executed
+    output = last_command_started.stdout
+    expect(output).to eq busy100_summary_json
   end
 end

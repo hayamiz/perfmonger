@@ -24,6 +24,32 @@ func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 	return nil
 }
 
+func showInterruptStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+	// intr_usage, err := ss.GetInterruptUsage(
+	// 	prev_rec.Time, prev_rec.Interrupt,
+	// 	cur_rec.Time, cur_rec.Interrupt)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// buffer.WriteString(`,"intr":`)
+	// intr_usage.WriteJsonTo(buffer)
+	//
+	// return nil
+
+	intr_usage, err := ss.GetInterruptUsage(
+		prev_rec.Time, prev_rec.Interrupt,
+		cur_rec.Time, cur_rec.Interrupt)
+	if err != nil {
+		return err
+	}
+
+	buffer.WriteString(`,"intr":`)
+	intr_usage.WriteJsonTo(buffer)
+
+	return nil
+}
+
 func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	dusage, err := ss.GetDiskUsage(
 		prev_rec.Time, prev_rec.Disk,
@@ -61,6 +87,12 @@ func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRec
 			return err
 		}
 	}
+	if cur_rec.Interrupt != nil {
+		err := showInterruptStat(buffer, prev_rec, cur_rec)
+		if err != nil {
+			return err
+		}
+	}
 	if cur_rec.Disk != nil {
 		err := showDiskStat(buffer, prev_rec, cur_rec)
 		if err != nil {
@@ -93,10 +125,10 @@ func main() {
 		in = f
 		defer f.Close()
 	}
+	input_reader := newPerfmongerLogReader(in)
+	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)
-
-	dec := gob.NewDecoder(in)
 
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader

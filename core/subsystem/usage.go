@@ -29,6 +29,20 @@ type CpuUsage struct {
 	CoreUsages []*CpuCoreUsage
 }
 
+type CpuCoreIntrUsage struct {
+	Device float64 // intr/sec for devices
+	System float64 // intr/sec for system internal interrupts (timers, TLB miss, ...)
+}
+
+type InterruptUsage struct {
+	Interval time.Duration
+
+	NumEntries uint
+	NumCore    int
+
+	CoreIntrUsages []*CpuCoreIntrUsage
+}
+
 type DiskUsageEntry struct {
 	Interval time.Duration
 
@@ -96,7 +110,19 @@ func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) (*CpuCoreUsage, error) {
 	itv := c2.Uptime() - c1.Uptime()
 
 	if itv == 0 {
-		return nil, errors.New("uptime difference is zero")
+		// return nil, errors.New("uptime difference is zero")
+		usage.User = 0
+		usage.Nice = 0
+		usage.Sys = 0
+		usage.Idle = 0
+		usage.Iowait = 0
+		usage.Hardirq = 0
+		usage.Softirq = 0
+		usage.Steal = 0
+		usage.Guest = 0
+		usage.GuestNice = 0
+
+		return usage, nil
 	} else if itv < 0 {
 		return nil, errors.New("uptime difference is negative")
 	}
@@ -155,6 +181,68 @@ func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) (*CpuUsage, error) {
 	usage.All.GuestNice *= float64(usage.NumCore)
 
 	return usage, nil
+}
+
+func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *InterruptStat) (*InterruptUsage, error) {
+	num_core := i1.Entries[0].NumCore
+
+	usage := new(InterruptUsage)
+	usage.Interval = t2.Sub(t1)
+	usage.NumEntries = i1.NumEntries
+	usage.NumCore = num_core
+	usage.CoreIntrUsages = make([]*CpuCoreIntrUsage, num_core)
+
+	for coreid := 0; coreid < usage.NumCore; coreid += 1 {
+		core_usage := new(CpuCoreIntrUsage)
+		core_usage.Device = 0
+		core_usage.System = 0
+
+		core_dev_count := 0
+		core_sys_count := 0
+
+		for idx, istat_entry1 := range i1.Entries {
+			istat_entry2 := i2.Entries[idx]
+
+			if istat_entry1.IrqNo != istat_entry2.IrqNo ||
+				istat_entry1.IrqType != istat_entry2.IrqType {
+				return nil, errors.New("Intr stat format changed")
+			}
+
+			countup := istat_entry2.IntrCounts[coreid] - istat_entry1.IntrCounts[coreid]
+			if istat_entry1.IrqNo != -1 {
+				core_dev_count += countup
+			} else {
+				core_sys_count += countup
+			}
+		}
+
+		core_usage.Device = float64(core_dev_count) / usage.Interval.Seconds()
+		core_usage.System = float64(core_sys_count) / usage.Interval.Seconds()
+
+		usage.CoreIntrUsages[coreid] = core_usage
+	}
+
+	return usage, nil
+}
+
+func (intr_usage *InterruptUsage) WriteJsonTo(buf *bytes.Buffer) {
+	buf.WriteString("{")
+	buf.WriteString(`"core_dev_intr":[`)
+	for idx, core_usage := range intr_usage.CoreIntrUsages {
+		if idx > 0 {
+			buf.WriteString(",")
+		}
+		fmt.Fprintf(buf, "%.2f", core_usage.Device)
+	}
+	buf.WriteString(`],"core_sys_intr":[`)
+	for idx, core_usage := range intr_usage.CoreIntrUsages {
+		if idx > 0 {
+			buf.WriteString(",")
+		}
+		fmt.Fprintf(buf, "%.2f", core_usage.System)
+	}
+	buf.WriteString("]")
+	buf.WriteString("}")
 }
 
 func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {

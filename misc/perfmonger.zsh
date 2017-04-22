@@ -26,6 +26,16 @@ _perfmonger-stat() {
     return ret
 }
 
+_perfmonger-play() {
+    local curcontext=$curcontext state line ret=1
+    declare -A opt_args
+
+    _arguments -w -C -S \
+        '*:: :_files' \
+        {-h,--help}'[show help]' \
+        && return
+}
+
 _perfmonger-summary() {
     local curcontext=$curcontext state line ret=1
     declare -A opt_args

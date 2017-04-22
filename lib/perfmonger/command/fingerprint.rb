@@ -101,8 +101,17 @@ EOS
         save_dmidecode_info()
       end
 
+      do_with_message("Saving biosdecode info") do
+        save_biosdecode_info()
+      end
+
+      do_with_message("Saving nvme info") do
+        save_nvme_info()
+      end
+
 
       ## Collect vendor specific info
+
 
       # LSI MegaRAID
       megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
@@ -271,31 +280,79 @@ EOS
   end
 
   def save_device_info()
-    (Dir.glob('/sys/block/sd*') +
-     Dir.glob('/sys/block/xvd*')).each do |sd_dev|
-      File.open("#{@output_dir}/block-#{File.basename(sd_dev)}.log", "w") do |f|
-        f.puts("## ls -l #{sd_dev}")
-        f.puts(`ls -l #{sd_dev}`)
+    # list of file pattern regexps which cannot be read
+    blacklists = [
+                  %r|device/sw_activity$|,
+                  %r|trace/pid$|,
+                  %r|trace/end_lba$|,
+                  %r|trace/enable$|,
+                  %r|trace/act_mask$|,
+                  %r|trace/start_lba$|,
+                  %r|trace/pid$|,
+                  %r|trace/end_lba$|,
+                  %r|trace/act_mask$|,
+                  %r|power/autosuspend_delay_ms$|,
+                  %r|device/unload_heads$|,
+                  %r|device/vpd_pg80$|,
+                  %r|device/vpd_pg83$|,
+                 ]
+
+    Dir.glob('/sys/block/*').each do |blockdev|
+      if File.basename(blockdev) =~ /^(loop|ram)/
+        next
+      end
+
+      devname = File.basename(blockdev)
+
+      File.open("#{@output_dir}/block-#{File.basename(blockdev)}.log", "w") do |f|
+        f.puts("## ls -l #{blockdev}")
+        f.puts(`ls -l #{blockdev}`)
         f.puts("")
-        ['device/queue_depth',
-         'device/queue_type',
-         'device/iorequest_cnt',
-         'device/vendor',
-         'queue/scheduler',
-         'queue/nr_requests',
-         'queue/rq_affinity',
-         'queue/nomerges',
-         'queue/add_random',
-         'queue/rotational',
-         'queue/max_hw_sectors_kb',
-         'queue/physical_block_size',
-         'queue/optimal_io_size',
-        ].each do |entity|
-          path = "#{sd_dev}/#{entity}"
-          if File.exists?(path)
-            f.puts("## #{path}")
-            f.puts(`cat #{path}`)
+
+        dirs = []
+        Dir.glob(blockdev + "/*").each do |entry|
+          next if blacklists.any?{|r| r =~ entry}
+
+          st = File::Stat.new(entry)
+
+          if st.ftype == "file" && st.readable? && st.mode & 0444 > 0
+            f.puts("## #{entry}")
+            f.puts(`cat #{entry}`)
             f.puts("")
+          elsif st.ftype == "link" && st.readable? && st.mode & 0444 > 0
+            f.puts("## #{entry}")
+            f.puts(`ls -l #{entry}`)
+            f.puts("")
+          elsif st.ftype == "directory" && st.readable? && st.mode & 0444 > 0
+            dirs.push(entry)
+          end
+        end
+
+        while (dir = dirs.shift) != nil
+          Dir.glob(dir + "/*").each do |entry|
+            next if blacklists.any?{|r| r =~ entry}
+
+            st = File::Stat.new(entry)
+
+            if st.ftype == "file" && st.readable? && st.mode & 0444 > 0
+              f.puts("## #{entry}")
+              f.puts(`cat #{entry}`)
+              f.puts("")
+            elsif st.ftype == "link" && st.readable? && st.mode & 0444 > 0
+              f.puts("## #{entry}")
+              f.puts(`ls -l #{entry}`)
+              f.puts("")
+            elsif st.ftype == "directory" && st.readable? && st.mode & 0444 > 0
+              f.puts("## #{entry}")
+              f.puts(`ls -l #{entry}/`)
+              f.puts("")
+            end
+
+            if devname =~ /^nvme/
+              if entry =~ /device\/device$/
+                dirs.push(entry)
+              end
+            end
           end
         end
       end
@@ -474,6 +531,33 @@ EOS
       File.open("#{@output_dir}/dmidecode.log", "w") do |f|
         content = `#{dmidecode_bin} 2>&1`
         f.puts("## dmidecode")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_biosdecode_info()
+    biosdecode_bin = find_executable("biosdecode")
+
+    if biosdecode_bin
+      File.open("#{@output_dir}/biosdecode.log", "w") do |f|
+        content = `#{biosdecode_bin} 2>&1`
+        f.puts("## biosdecode")
+        f.puts(content)
+        f.puts("")
+      end
+    end
+  end
+
+  def save_nvme_info()
+    # https://github.com/linux-nvme/nvme-cli
+    nvme_bin = find_executable("nvme")
+
+    if nvme_bin
+      File.open("#{@output_dir}/nvme-cli-list.log", "w") do |f|
+        content = `#{nvme_bin} list 2>&1`
+        f.puts("## nvme list")
         f.puts(content)
         f.puts("")
       end
