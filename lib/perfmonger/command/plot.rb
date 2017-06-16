@@ -28,6 +28,7 @@ EOS
     @disk_plot_read = true
     @disk_plot_write = true
     @disk_numkey_threshold = 10
+    @plot_iops_max = nil
   end
 
   def parse_args(argv)
@@ -97,6 +98,10 @@ EOS
 
     @parser.on('--plot-numkey-threshold NUM', "Legends of per-disk plots are turned off if the number of disks is larger than this value.") do |num|
       @disk_numkey_threshold = num.to_i
+    end
+
+    @parser.on('--plot-iops-max IOPS', "Maximum of IOPS plot range (default: auto)") do |iops|
+      @plot_iops_max = iops.to_f
     end
 
     @parser.parse!(argv)
@@ -250,8 +255,13 @@ EOS
         set_key_stmt = "set key below center"
       end
 
+      iops_yrange = "set yrange [0:*]"
+      if @plot_iops_max
+        iops_yrange = "set yrange [0:#{@plot_iops_max}]"
+      end
+
       gpfile.puts <<EOS
-set term pdfcairo enhanced color
+set term pdfcairo enhanced color size 6in,2.5in
 set title "IOPS"
 set size 1.0, 1.0
 set output "#{iops_pdf_filename}"
@@ -261,7 +271,7 @@ set ylabel "IOPS"
 
 set grid
 set xrange [#{@offset_time}:#{end_time - start_time}]
-set yrange [0:*]
+#{iops_yrange}
 
 #{set_key_stmt}
 plot #{iops_plot_stmt_list.join(",\\\n     ")}
@@ -275,6 +285,7 @@ plot #{total_iops_plot_stmt_list.join(",\\\n     ")}
 set title "Transfer rate"
 set output "#{transfer_pdf_filename}"
 set ylabel "transfer rate [MB/s]"
+set yrange [0:*]
 #{set_key_stmt}
 plot #{transfer_plot_stmt_list.join(",\\\n     ")}
 
@@ -349,7 +360,7 @@ EOS
 
       pdf_file = File.join(@output_dir, "cpu.pdf")
       gpfile.puts <<EOS
-set term pdfcairo enhanced color
+set term pdfcairo enhanced color size 6in,2.5in
 set title "CPU usage (max: #{nr_cpu*100}%)"
 set output "#{pdf_filename}"
 set key outside center bottom horizontal

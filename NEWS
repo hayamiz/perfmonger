@@ -30,6 +30,7 @@
     * [plot]
       * Fast plot data formatting with new core implementation
       * Add --disk-only, --disk-read-only, --disk-write-only to filter disks for plot
+      * Add --plot-iops-max to limit Y-axis range
 
 ## 2016-11-22: PerfMonger 0.8.2
   * Bug fixes
