@@ -396,6 +396,7 @@ func ReadNetStat(record *StatRecord) error {
 		case line[0:7] == " face |":
 			continue
 		}
+		line = strings.Replace(line, ":", " ", -1)
 
 		e := NewNetStatEntry()
 
@@ -416,7 +417,10 @@ func ReadNetStat(record *StatRecord) error {
 		}
 
 		// trim trailing ":" from devname
-		e.Name = devname[0 : len(devname)-1]
+		if devname[len(devname)-1] == ':' {
+			devname = devname[0 : len(devname)-1]
+		}
+		e.Name = devname
 
 		net_stat.Entries = append(net_stat.Entries, e)
 	}

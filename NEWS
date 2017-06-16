@@ -11,12 +11,14 @@
       * Support gzipped input
     * [fingerprint] subcommand:
       * Additionally log biosdecode and nvme info
+    * Improved shell completion
   * Bug fixes
     * [record] subcommand:
       * Get CPU count by nproc(1) in linux subsystem
       * Create a session only in background mode, and an existing session do not prevent launching perfmonger-record in foreground mode
     * [fingerprint] subcommand:
       * Surpress accessing non-readable sysfs files
+  * ...
 
 ## 2016-12-12: PerfMonger 0.9.0
   * New features
@@ -27,7 +29,7 @@
       * log LVM, fdisk, and lsblk info
     * [plot]
       * Fast plot data formatting with new core implementation
-    * Improved shell completion
+      * Add --disk-only, --disk-read-only, --disk-write-only to filter disks for plot
 
 ## 2016-11-22: PerfMonger 0.8.2
   * Bug fixes
