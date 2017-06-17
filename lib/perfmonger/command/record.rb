@@ -108,6 +108,11 @@ private
     else
       $stdout.puts("[recording to #{@option.logfile}]")
     end
+
+    if ENV['PERFMONGER_DEBUG'] != nil && ! ENV['PERFMONGER_DEBUG'].empty?
+      $stderr.puts("[debug] cmd: " + cmd.join(" "))
+    end
+
     Process.exec(*cmd)
   end
 end
