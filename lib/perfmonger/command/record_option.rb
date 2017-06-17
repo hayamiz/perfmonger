@@ -60,6 +60,9 @@ class RecordOption
     if @no_disk
       cmd << "-no-disk"
     end
+    if @no_intr
+      cmd << "-no-intr"
+    end
     if @devices.size > 0
       cmd << "-disks"
       cmd << @devices.join(",")
@@ -87,6 +90,7 @@ class RecordOption
     @verbose           = false
     @no_cpu            = false
     @no_disk           = false
+    @no_intr           = true
     @devices           = []
     @logfile           = "perfmonger.pgr"
     @background            = false
@@ -98,6 +102,10 @@ class RecordOption
                'Device name to be monitored (e.g. sda, sdb, md0, dm-1).') do |device|
       @devices.push(device)
       @no_disk = false
+    end
+
+    @parser.on('--record-intr', 'Record per core interrupts count (experimental)') do
+      @no_intr = false
     end
 
     @parser.on('-i', '--interval SEC',
