@@ -1,4 +1,4 @@
-## XXXX-XX-XX: PerfMonger 0.10.0
+## 2017-06-19: PerfMonger 0.10.0
   * New features
     * [record] subcommand:
       * Record /proc/interrupts information (experimental)
@@ -20,7 +20,6 @@
       * Create a session only in background mode, and an existing session do not prevent launching perfmonger-record in foreground mode
     * [fingerprint] subcommand:
       * Surpress accessing non-readable sysfs files
-  * ...
 
 ## 2016-12-12: PerfMonger 0.9.0
   * New features
