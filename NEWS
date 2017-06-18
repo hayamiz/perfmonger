@@ -2,7 +2,9 @@
   * New features
     * [record] subcommand:
       * Record /proc/interrupts information (experimental)
-      * Support gzipped input
+      * Support gzipped output format
+        * Enabled by default
+        * Disabled with --no-gzip option
     * [play] subcommand:
       * Play /proc/interrupts information by cpu cores (experimental)
       * Support gzipped input

@@ -73,6 +73,13 @@ class RecordOption
 
     # TODO: implement device filter
 
+    if ! @logfile_set && @gzip
+      @logfile += ".gz"
+    end
+    if @gzip
+      cmd << "-gzip"
+    end
+
     cmd << "-output"
     cmd << @logfile
 
@@ -93,6 +100,8 @@ class RecordOption
     @no_intr           = true
     @devices           = []
     @logfile           = "perfmonger.pgr"
+    @logfile_set       = false
+    @gzip              = true
     @background            = false
     @kill              = false
 
@@ -134,6 +143,11 @@ class RecordOption
 
     @parser.on('-l', '--logfile FILE') do |file|
       @logfile = file
+      @logfile_set = true
+    end
+
+    @parser.on('--no-gzip', 'Do not Save a logfile in gzipped format') do
+      @gzip = false
     end
 
     @parser.on('--background', 'Run in background') do

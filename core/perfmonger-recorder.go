@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/gob"
 	"flag"
 	"fmt"
@@ -41,6 +42,7 @@ type RecorderOption struct {
 	disks               string
 	targetDisks         *map[string]bool
 	background          bool
+	gzip                bool
 }
 
 var option RecorderOption
@@ -82,6 +84,8 @@ func parseArgs() {
 		"", "Disk devices to be monitored")
 	flag.StringVar(&option.player_bin, "player-bin",
 		"", "Run perfmonger-player to show JSON output")
+	flag.BoolVar(&option.gzip, "gzip",
+		false, "Save a logfile in gzipped format")
 
 	flag.Parse()
 
@@ -259,7 +263,14 @@ func main() {
 		if player_stdin != nil {
 			out = bufio.NewWriter(io.MultiWriter(file, player_stdin))
 		} else {
-			out = bufio.NewWriter(file)
+			if option.gzip {
+				gzwriter := gzip.NewWriter(file)
+				defer gzwriter.Close()
+
+				out = bufio.NewWriter(gzwriter)
+			} else {
+				out = bufio.NewWriter(file)
+			}
 		}
 	}
 
