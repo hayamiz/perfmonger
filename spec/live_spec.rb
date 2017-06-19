@@ -21,6 +21,6 @@ describe '[live] subcommand' do
       expect(json.keys.sort).to eq %w{time cpu disk net}.sort
     end
 
-    expect("perfmonger.pgr").to be_an_existing_file
+    expect("perfmonger.pgr.gz").to be_an_existing_file
   end
 end

@@ -10,6 +10,6 @@ describe '[stat] subcommand' do
     cmd = "#{perfmonger_bin} stat -- sleep 1"
     run(cmd)
     expect(last_command_started).to be_successfully_executed
-    expect("perfmonger.pgr").to be_an_existing_file
+    expect("perfmonger.pgr.gz").to be_an_existing_file
   end
 end

@@ -9,7 +9,7 @@ describe '[record] subcommand' do
     cmd = "#{perfmonger_bin} record --timeout 1"
     run(cmd)
     expect(last_command_started).to be_successfully_executed
-    expect("perfmonger.pgr").to be_an_existing_file # default file name
+    expect("perfmonger.pgr.gz").to be_an_existing_file # default file name
     expect(last_command_started.stdout).to be_empty
   end
 end
