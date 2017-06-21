@@ -5,28 +5,34 @@
 
 [![wercker status](https://app.wercker.com/status/44c3ade6a2406d337df6d93097a52fdf/m "wercker status")](https://app.wercker.com/project/bykey/44c3ade6a2406d337df6d93097a52fdf)
 
-PerfMonger is an yet anothor performance measurement/monitoring tool
-speaking JSON.
+PerfMonger is a system performance monitor which enables high-resolution and holistic performance measurement with the programmer friendly interface.
+
+* High-resolution: sub-second level monitoring is possible!
+* Holistic performance measurement: monitoring CPU, Disk I/O, Network all at once.
+* Programmer friendly: PerfMonger speaks monitoring results in JSON format, which makes later performance analysis much easier (ex. [jq](https://github.com/stedolan/jq)).
 
 **CAUTION: PerfMonger is still in early stage, so there may be a drastic change in the future. Do not use it for critical jobs**
 
 ## Target platform
 
   * GNU/Linux
+  * Mac OS X (experimental support)
 
 ## Prerequisites
 
   * Ruby 1.9.3 or later
   * gnuplot 4.6.0 or later (optional)
 
-Note: You need Cutter unit testing framework for building/running tests.
+Note: You need [Cutter](https://github.com/clear-code/cutter) unit testing framework for building/running tests.
 
 ## How to install
 
     gem install perfmonger
 
+
 ### Build from source
 
+    bundle
     rake build
 
 ## How to use: case study
