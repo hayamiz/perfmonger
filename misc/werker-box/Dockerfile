@@ -23,13 +23,13 @@ RUN bash -l -c "rvm use 2.0.0 && gem install bundler && bundle"
 RUN bash -l -c "rvm install 2.1.10"
 RUN bash -l -c "rvm use 2.1.10 && gem install bundler && bundle"
 
-RUN bash -l -c "rvm install 2.2.7"
-RUN bash -l -c "rvm use 2.2.7 && gem install bundler && bundle"
+RUN bash -l -c "rvm install 2.2.5"
+RUN bash -l -c "rvm use 2.2.5 && gem install bundler && bundle"
 
-RUN bash -l -c "rvm install 2.3.4"
-RUN bash -l -c "rvm use 2.3.4 && gem install bundler && bundle"
+RUN bash -l -c "rvm install 2.3.1"
+RUN bash -l -c "rvm use 2.3.1 && gem install bundler && bundle"
 
-RUN bash -l -c "rvm install 2.4.1"
-RUN bash -l -c "rvm use 2.4.1 && gem install bundler && bundle"
+RUN bash -l -c "rvm install 2.4.0"
+RUN bash -l -c "rvm use 2.4.0 && gem install bundler && bundle"
 
 CMD true

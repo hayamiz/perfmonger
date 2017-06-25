@@ -33,10 +33,10 @@ build:
             code: |
               bundle exec rake clean
               bundle exec rake spec
-
         - script:
             name: switch ruby to 2.1.10
             code: |
+
               source /etc/profile.d/rvm.sh
               rvm use 2.1.10
         - bundle-install
@@ -47,10 +47,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.2.7
+            name: switch ruby to 2.2.5
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.2.7
+              rvm use 2.2.5
         - bundle-install
         - script:
             name: run rspec
@@ -59,10 +59,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.3.4
+            name: switch ruby to 2.3.1
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.3.4
+              rvm use 2.3.1
         - bundle-install
         - script:
             name: run rspec
@@ -71,10 +71,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.4.1
+            name: switch ruby to 2.4.0
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.4.1
+              rvm use 2.4.0
         - bundle-install
         - script:
             name: run rspec
