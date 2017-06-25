@@ -18,19 +18,15 @@ PerfMonger is a system performance monitor which enables high-resolution and hol
   * GNU/Linux
   * Mac OS X (experimental support)
 
-## Prerequisites
-
-  * Ruby 1.9.3 or later
-  * gnuplot 4.6.0 or later (optional)
-
-Note: You need [Cutter](https://github.com/clear-code/cutter) unit testing framework for building/running tests.
-
-## How to install
+## How to installation
 
     gem install perfmonger
 
+You need gnuplot 4.6.0 or later build with cairo terminals for plotting measurement data with `perfmonger plot` command.
 
 ### Build from source
+
+You need Ruby 1.9.3 or later, and Go 1.8 or later to build perfmonger.
 
     bundle
     rake build
@@ -48,19 +44,3 @@ Note: You need [Cutter](https://github.com/clear-code/cutter) unit testing frame
 ### Monitor CPU usage and IO performance of /dev/sda, sdb for each 0.1 second
 
     $ perfmonger record -i 0.1 -d sda -d sdb
-
-### Plot CPU and IOPS
-
-    $ perfmonger record -i 0.1 -C -d sda > /tmp/perfmonger.log & sleep 10; pkill perfmonger
-    $ perfmonger plot -o /path/to/output_dir/ -Tpng /tmp/perfmonger.log
-    $ display /path/to/output_dir/read-iops.png
-    $ display /path/to/output_dir/cpu.png
-
-![Sample image of IOPS graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-read-iops.png)
-![Sample image of CPU usage graph](https://raw.github.com/hayamiz/perfmonger/master/misc/sample-cpu.png)
-
-## Special Thanks
-
-Large portion of PerfMonger comes from
-[SYSSTAT](http://sebastien.godard.pagesperso-orange.fr/) codebase. Thanks for
-their great work.
