@@ -6,19 +6,15 @@ build:
     # http://devcenter.wercker.com/articles/languages/ruby.html
     steps:
         - script:
-            name: install gnuplot and check terminal
-            code: |
-              sudo apt-get update
-              sudo apt-get install -y gnuplot
-              gnuplot -e "set terminal" < /dev/null 2>&1
-
-        - script:
             name: install go packages
             code: |
               go get -u golang.org/x/crypto/ssh/terminal
               go get -u github.com/hayamiz/perfmonger/core/subsystem
-        - rvm-use:
-            version: 1.9.3-p551
+        - script:
+            name: switch ruby to 1.9.3
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 1.9.3
         - bundle-install
         - script:
             name: run rspec
@@ -26,8 +22,11 @@ build:
               bundle exec rake clean
               bundle exec rake spec
 
-        - rvm-use:
-            version: 2.0.0-p598
+        - script:
+            name: switch ruby to 2.0.0
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.0.0
         - bundle-install
         - script:
             name: run rspec
@@ -35,8 +34,11 @@ build:
               bundle exec rake clean
               bundle exec rake spec
 
-        - rvm-use:
-            version: 2.1.5
+        - script:
+            name: switch ruby to 2.1.10
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.1.10
         - bundle-install
         - script:
             name: run rspec
@@ -44,8 +46,35 @@ build:
               bundle exec rake clean
               bundle exec rake spec
 
-        - rvm-use:
-            version: 2.2.0
+        - script:
+            name: switch ruby to 2.2.7
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.2.7
+        - bundle-install
+        - script:
+            name: run rspec
+            code: |
+              bundle exec rake clean
+              bundle exec rake spec
+
+        - script:
+            name: switch ruby to 2.3.4
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.3.4
+        - bundle-install
+        - script:
+            name: run rspec
+            code: |
+              bundle exec rake clean
+              bundle exec rake spec
+
+        - script:
+            name: switch ruby to 2.4.1
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.4.1
         - bundle-install
         - script:
             name: run rspec
