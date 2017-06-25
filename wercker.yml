@@ -1,4 +1,4 @@
-box: hayamiz/rvm-golang
+box: hayamiz/go-rvm
 # Build definition
 build:
     # The steps that will be executed on build
