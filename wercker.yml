@@ -86,3 +86,8 @@ build:
             name: run go test
             code: |
               bundle exec rake test_core
+    after-steps:
+      - slack-notifier:
+          url: $SLACK_URL
+          channel: pokeme
+          username: werckerbot
