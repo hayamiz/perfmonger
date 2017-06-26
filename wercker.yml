@@ -91,4 +91,4 @@ build:
           url: $SLACK_URL
           channel: pokeme
           username: werckerbot
-
+          notify_on: "failed"
