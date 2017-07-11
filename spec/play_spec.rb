@@ -1,7 +1,7 @@
 
 require 'spec_helper'
 
-describe '[play] subcommand' do
+RSpec.describe '[play] subcommand' do
   it 'should print 3 JSON records for busy100.pgr' do
     busy100 = data_file "busy100.pgr"
     cmd = "#{perfmonger_bin} play #{busy100}"

@@ -1,7 +1,7 @@
 
 require 'spec_helper'
 
-describe '[stat] subcommand' do
+RSpec.describe '[stat] subcommand' do
   before(:each) do
     skip_if_proc_is_not_available
   end

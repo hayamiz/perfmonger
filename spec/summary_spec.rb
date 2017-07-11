@@ -1,7 +1,7 @@
 
 require 'spec_helper'
 
-describe '[summary] subcommand' do
+RSpec.describe '[summary] subcommand' do
   let(:busy100_summary) do
     content = File.read(data_file "busy100.pgr.summary")
 

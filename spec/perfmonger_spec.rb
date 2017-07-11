@@ -1,7 +1,7 @@
 
 require 'spec_helper'
 
-describe "perfmonger command" do
+RSpec.describe "perfmonger command" do
   it "should be an executable" do
     expect(File.executable?(perfmonger_bin)).to be true
   end

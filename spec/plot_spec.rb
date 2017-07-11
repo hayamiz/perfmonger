@@ -2,7 +2,7 @@ require 'spec_helper'
 
 # TODO: examples for options
 
-describe '[plot] subcommand' do
+RSpec.describe '[plot] subcommand' do
   let(:busy100_disk_dat) {
     File.read(data_file "busy100.pgr.plot-formatted.disk.dat")
   }

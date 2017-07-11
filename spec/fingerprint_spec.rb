@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'tmpdir'
 
-describe '[fingerprint] subcommand' do
+RSpec.describe '[fingerprint] subcommand' do
   before(:each) do
     @old_pwd = Dir.pwd
     @tmpdir = Dir.mktmpdir

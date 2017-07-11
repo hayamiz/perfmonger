@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe '[live] subcommand' do
+RSpec.describe '[live] subcommand' do
   before(:each) do
     skip_if_proc_is_not_available
   end
