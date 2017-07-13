@@ -19,7 +19,7 @@ def data_file(rel_path)
 end
 
 def perfmonger_bin
-  File.expand_path('../../bin/perfmonger', __FILE__)
+  File.expand_path('../../exe/perfmonger', __FILE__)
 end
 
 RSpec.configure do |config|

@@ -26,7 +26,8 @@ Gem::Specification.new do |s|
   end
   s.files      += Dir.glob("lib/exec/*")
   s.test_files  = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f)}
+  s.bindir      = "exe"
+  s.executables = `git ls-files -- exe/*`.split("\n").map{|f| File.basename(f)}
 
   s.post_install_message = <<EOS
 

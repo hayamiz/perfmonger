@@ -114,7 +114,7 @@ EOS
     _, record_option = PerfMonger::Command::RecordOption.parse(@record_cmd_args)
 
     # find perfmonger command
-    perfmonger_bin = File.expand_path('bin/perfmonger', PerfMonger::ROOTDIR)
+    perfmonger_bin = File.expand_path('exe/perfmonger', PerfMonger::ROOTDIR)
     if ! File.executable?(perfmonger_bin)
       puts("ERROR: perfmonger not found!")
       exit(false)
