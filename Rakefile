@@ -7,7 +7,7 @@ task :default => [:spec, :test_core]
 desc "Run all specs in spec directory"
 RSpec::Core::RakeTask.new(:spec)
 
-task :spec => [:self_build_core]
+task :spec => [:cross_build_core]
 
 desc "Cross build core recorder/player"
 task :cross_build_core do
@@ -15,13 +15,6 @@ task :cross_build_core do
   Dir.chdir("./core") do
     sh "./build.sh"
     sh "make"
-  end
-end
-
-desc "Self build core recorder/player"
-task :self_build_core do
-  Dir.chdir("./core") do
-    sh "./build.sh -"
   end
 end
 
