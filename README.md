@@ -31,7 +31,66 @@ You need Ruby 1.9.3 or later, and Go 1.8 or later to build perfmonger.
     bundle
     rake build
 
-## How to use: case study
+## Getting started
+
+Basic usage of PerfMonger is:
+
+* Run `perfmonger record` to record performance information logs
+* Run `perfmonger play` to show performance information logs in JSON format
+
+Output of `perfmonger play` is formatted as follows:
+
+```
+{"time": 1500043743.504,
+  "cpu": {
+    "num_core": 2,
+    "all": {
+      "usr": 50.0,
+      "sys": 50.0,
+      "idle": 100.0,
+      ...
+    },
+    "cores": [
+      {
+        "usr": 25.0,
+        "sys": 25.0,
+        "idle": 50.0,
+        ...
+      },
+      {
+        "usr": 25.0,
+        "sys": 25.0,
+        "idle": 50.0,
+        ...
+      }
+    ]
+  },
+  "disk": {
+    "devices": ["sda"],
+    "sda": {
+      "riops": 10.0,
+      "wiops": 20.0,
+      "rkbyteps": 80.0,
+      "wkbyteps": 160.0,
+      ...
+    }
+    "total": {
+      "riops": 10.0,
+      "wiops": 20.0,
+      "rkbyteps": 80.0,
+      "wkbyteps": 160.0,
+      ...
+    }
+  }
+}
+```
+
+
+## Typical use cases
+
+### `perfmonger live`: live performance monitoring
+
+    $ perfmonger live
 
 ### Monitor IO performance of /dev/sda for each 0.1 second
 
