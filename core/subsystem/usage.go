@@ -2,7 +2,6 @@ package subsystem
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -84,18 +83,42 @@ type NetUsageEntry struct {
 
 type NetUsage map[string]*NetUsageEntry
 
+var UseColor = false
+
+func SetUseColor(use_color bool) {
+	UseColor = use_color
+}
+
 func (ccusage *CpuCoreUsage) WriteJsonTo(buf *bytes.Buffer) {
+	var fmtstr string
+	if UseColor {
+		fmtstr = "{\033[32m\"usr\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"nice\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"sys\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"idle\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"iowait\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"hardirq\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"softirq\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"steal\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"guest\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"guestnice\"\033[0m:\033[36m%.2f\033[0m}"
+	} else {
+		fmtstr = `{"usr":%.2f,"nice":%.2f,"sys":%.2f,"idle":%.2f,"iowait":%.2f,"hardirq":%.2f,"softirq":%.2f,"steal":%.2f,"guest":%.2f,"guestnice":%.2f}`
+	}
+
 	buf.WriteString(
-		fmt.Sprintf(`{"usr":%.2f,"nice":%.2f,"sys":%.2f,"idle":%.2f,"iowait":%.2f,"hardirq":%.2f,"softirq":%.2f,"steal":%.2f,"guest":%.2f,"guestnice":%.2f}`,
+		fmt.Sprintf(fmtstr,
 			ccusage.User, ccusage.Nice, ccusage.Sys, ccusage.Idle, ccusage.Iowait,
 			ccusage.Hardirq, ccusage.Softirq, ccusage.Steal, ccusage.Guest, ccusage.GuestNice))
 }
 
 func (cusage *CpuUsage) WriteJsonTo(buf *bytes.Buffer) {
-	buf.WriteString(
-		fmt.Sprintf(`{"num_core":%d,"all":`, cusage.NumCore))
+	if UseColor {
+		buf.WriteString(
+			fmt.Sprintf("{\033[32m\"num_core\"\033[0m:%d,\033[32m\"all\"\033[0m:", cusage.NumCore))
+	} else {
+		buf.WriteString(
+			fmt.Sprintf(`{"num_core":%d,"all":`, cusage.NumCore))
+	}
 	cusage.All.WriteJsonTo(buf)
-	buf.WriteString(`,"cores":[`)
+
+	if UseColor {
+		buf.WriteString(",\033[32m\"cores\"\033[0m:[")
+	} else {
+		buf.WriteString(`,"cores":[`)
+	}
+
 	for idx, ccusage := range cusage.CoreUsages {
 		if idx > 0 {
 			buf.WriteString(",")
@@ -227,30 +250,78 @@ func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *Interr
 
 func (intr_usage *InterruptUsage) WriteJsonTo(buf *bytes.Buffer) {
 	buf.WriteString("{")
-	buf.WriteString(`"core_dev_intr":[`)
-	for idx, core_usage := range intr_usage.CoreIntrUsages {
-		if idx > 0 {
-			buf.WriteString(",")
-		}
-		fmt.Fprintf(buf, "%.2f", core_usage.Device)
+
+	if UseColor {
+		buf.WriteString("\033[32m\"core_dev_intr\"\033[0m:[")
+	} else {
+		buf.WriteString(`"core_dev_intr":[`)
 	}
-	buf.WriteString(`],"core_sys_intr":[`)
 	for idx, core_usage := range intr_usage.CoreIntrUsages {
 		if idx > 0 {
 			buf.WriteString(",")
 		}
-		fmt.Fprintf(buf, "%.2f", core_usage.System)
+
+		if UseColor {
+			fmt.Fprintf(buf, "\033[36m%.2f\033[0m", core_usage.Device)
+		} else {
+			fmt.Fprintf(buf, "%.2f", core_usage.Device)
+		}
+	}
+
+	if UseColor {
+		buf.WriteString("],\033[32m\"core_sys_intr\"\033[0m:[")
+	} else {
+		buf.WriteString(`],"core_sys_intr":[`)
+	}
+
+	for idx, core_usage := range intr_usage.CoreIntrUsages {
+		if idx > 0 {
+			buf.WriteString(",")
+		}
+
+		if UseColor {
+			fmt.Fprintf(buf, "\033[36m%.2f\033[0m", core_usage.System)
+		} else {
+			fmt.Fprintf(buf, "%.2f", core_usage.System)
+		}
 	}
 	buf.WriteString("]")
 	buf.WriteString("}")
 }
 
 func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
+	var fmtstr string
+	if UseColor {
+		fmtstr = "{\033[32m\"riops\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wiops\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rlatency\"\033[0m:\033[36m%.3f\033[0m,\033[32m\"wlatency\"\033[0m:\033[36m%.3f\033[0m,\033[32m\"rsize\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wsize\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"qlen\"\033[0m:\033[36m%.2f\033[0m}"
+	} else {
+		fmtstr = `{"riops":%.2f,"wiops":%.2f,"rkbyteps":%.2f,"wkbyteps":%.2f,"rlatency":%.3f,"wlatency":%.3f,"rsize":%.2f,"wsize":%.2f,"qlen":%.2f}`
+	}
+
 	fmt.Fprintf(buf,
-		`{"riops":%.2f,"wiops":%.2f,"rkbyteps":%.2f,"wkbyteps":%.2f,"rlatency":%.3f,"wlatency":%.3f,"rsize":%.2f,"wsize":%.2f,"qlen":%.2f}`,
+		fmtstr,
 		duentry.RdIops, duentry.WrIops, duentry.RdSecps/2.0, duentry.WrSecps/2.0,
 		duentry.RdLatency, duentry.WrLatency,
 		duentry.AvgRdSize, duentry.AvgWrSize, duentry.ReqQlen)
+}
+
+func strarrayToString(arr []string) string {
+	buf := bytes.NewBuffer([]byte{})
+
+	fmt.Fprintf(buf, "[")
+	for i, elem := range arr {
+		if i > 0 {
+			fmt.Fprintf(buf, ",")
+		}
+
+		if UseColor {
+			fmt.Fprintf(buf, "\033[35m\"%s\"\033[0m", elem)
+		} else {
+			fmt.Fprintf(buf, "\"%s\"", elem)
+		}
+	}
+	fmt.Fprintf(buf, "]")
+
+	return buf.String()
 }
 
 func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
@@ -263,19 +334,23 @@ func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	sort.Strings(devices)
 
-	bytes, err := json.Marshal(devices)
-	if err != nil {
-		panic(err)
+	devstr := strarrayToString(devices)
+
+	if UseColor {
+		fmt.Fprintf(buf, "{\033[32m\"devices\"\033[0m:%s", devstr)
+	} else {
+		fmt.Fprintf(buf, `{"devices":%s`, devstr)
 	}
-	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
 
 	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*dusage)[device]
-		buf.WriteString(`,"`)
-		buf.WriteString(device)
-		buf.WriteString(`":`)
+		if UseColor {
+			buf.WriteString(",\033[35m\"" + device + "\"\033[0m:")
+		} else {
+			buf.WriteString(`,"` + device + `":`)
+		}
 		usage.WriteJsonTo(buf)
 	}
 
@@ -480,19 +555,23 @@ func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	sort.Strings(devices)
 
-	bytes, err := json.Marshal(devices)
-	if err != nil {
-		panic(err)
+	devstr := strarrayToString(devices)
+
+	if UseColor {
+		fmt.Fprintf(buf, "{\033[32m\"devices\"\033[0m:%s", devstr)
+	} else {
+		fmt.Fprintf(buf, `{"devices":%s`, devstr)
 	}
-	fmt.Fprintf(buf, `{"devices":%s`, string(bytes))
 
 	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*nusage)[device]
-		buf.WriteString(`,"`)
-		buf.WriteString(device)
-		buf.WriteString(`":`)
+		if UseColor {
+			buf.WriteString(",\033[35m\"" + device + "\"\033[0m:")
+		} else {
+			buf.WriteString(`,"` + device + `":`)
+		}
 		usage.WriteJsonTo(buf)
 	}
 
@@ -500,8 +579,16 @@ func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
 }
 
 func (entry *NetUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
+	var fmtstr string
+
+	if UseColor {
+		fmtstr = "{\033[32m\"rxkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxpktps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxerrps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxdropps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txpktps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txerrps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txdropps\"\033[0m:\033[36m%.2f\033[0m}"
+	} else {
+		fmtstr = `{"rxkbyteps":%.2f,"rxpktps":%.2f,"rxerrps":%.2f,"rxdropps":%.2f,"txkbyteps":%.2f,"txpktps":%.2f,"txerrps":%.2f,"txdropps":%.2f}`
+	}
+
 	buf.WriteString(
-		fmt.Sprintf(`{"rxkbyteps":%.2f,"rxpktps":%.2f,"rxerrps":%.2f,"rxdropps":%.2f,"txkbyteps":%.2f,"txpktps":%.2f,"txerrps":%.2f,"txdropps":%.2f}`,
+		fmt.Sprintf(fmtstr,
 			entry.RxBytesPerSec/1024.0, entry.RxPacketsPerSec,
 			entry.RxErrorsPerSec, entry.RxDropsPerSec,
 			entry.TxBytesPerSec/1024.0, entry.TxPacketsPerSec,

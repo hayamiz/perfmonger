@@ -11,6 +11,7 @@ import (
 	"os"
 
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
+	isatty "github.com/mattn/go-isatty"
 )
 
 func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
@@ -18,7 +19,12 @@ func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 	if err != nil {
 		return err
 	}
-	buffer.WriteString(`,"cpu":`)
+	if ss.UseColor {
+		buffer.WriteString(",\033[34;4m\"cpu\"\033[0m:")
+	} else {
+		buffer.WriteString(`,"cpu":`)
+	}
+
 	cusage.WriteJsonTo(buffer)
 
 	return nil
@@ -44,7 +50,11 @@ func showInterruptStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *s
 		return err
 	}
 
-	buffer.WriteString(`,"intr":`)
+	if ss.UseColor {
+		buffer.WriteString(",\033[34;4m\"intr\"\033[0m:")
+	} else {
+		buffer.WriteString(`,"intr":`)
+	}
 	intr_usage.WriteJsonTo(buffer)
 
 	return nil
@@ -58,7 +68,12 @@ func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Sta
 		return err
 	}
 
-	buffer.WriteString(`,"disk":`)
+	if ss.UseColor {
+		buffer.WriteString(",\033[34;4m\"disk\"\033[0m:")
+	} else {
+		buffer.WriteString(`,"disk":`)
+	}
+
 	dusage.WriteJsonTo(buffer)
 
 	return nil
@@ -73,14 +88,24 @@ func showNetStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 		return err
 	}
 
-	buffer.WriteString(`,"net":`)
+	if ss.UseColor {
+		buffer.WriteString(",\033[34;4m\"net\"\033[0m:")
+	} else {
+		buffer.WriteString(`,"net":`)
+	}
+
 	dusage.WriteJsonTo(buffer)
 
 	return nil
 }
 
 func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
-	buffer.WriteString(fmt.Sprintf(`{"time":%.3f`, float64(cur_rec.Time.UnixNano())/1e9))
+	if ss.UseColor {
+		buffer.WriteString(fmt.Sprintf("{\033[34;4m\"time\"\033[0m:\033[36m%.3f\033[0m", float64(cur_rec.Time.UnixNano())/1e9))
+	} else {
+		buffer.WriteString(fmt.Sprintf(`{"time":%.3f`, float64(cur_rec.Time.UnixNano())/1e9))
+	}
+
 	if cur_rec.Cpu != nil {
 		err := showCpuStat(buffer, prev_rec, cur_rec)
 		if err != nil {
@@ -129,6 +154,10 @@ func main() {
 	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)
+
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		ss.SetUseColor(true)
+	}
 
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader
