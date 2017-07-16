@@ -8,8 +8,8 @@ build:
         - script:
             name: install go packages
             code: |
-              go get -u golang.org/x/crypto/ssh/terminal
               go get -u github.com/hayamiz/perfmonger/core/subsystem
+              go get -u github.com/mattn/go-isatty
         - script:
             name: switch ruby to 1.9.3
             code: |
