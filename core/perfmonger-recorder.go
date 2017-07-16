@@ -190,7 +190,7 @@ func main() {
 	parseArgs()
 
 	hostname, _ := os.Hostname()
-	cheader := &ss.CommonHeader{ss.Linux, hostname, time.Now()}
+	cheader := &ss.CommonHeader{Platform: ss.Linux, Hostname: hostname, StartTime: time.Now()}
 
 	platform_header := ss.NewPlatformHeader()
 
