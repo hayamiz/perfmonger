@@ -24,7 +24,15 @@ desc "Run tests of core recorder/player"
 task :test_core do
   Dir.chdir("./core/subsystem") do
     sh "go test -v -cover"
+
+    # running static analysis
+    sh "go vet *.go"
   end
+
+  Dir.chdir("./core") do
+    sh "go vet *.go"
+  end
+
 end
 
 desc "Removed generated files"
