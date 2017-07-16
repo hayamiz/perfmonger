@@ -89,7 +89,7 @@ func TestGetCoreUsage(t *testing.T) {
 		usage.Steal == 0 &&
 		usage.Guest == 0 &&
 		usage.GuestNice == 0) {
-		t.Error("usage is not 0%, want 0%")
+		t.Error("usage is not 0 percent, want 0 percent")
 	}
 
 	// should return error if c1.Uptime() is larger than c2.Uptime()
