@@ -52,7 +52,7 @@ RSpec.configure do |config|
 end
 
 def skip_if_proc_is_not_available
-  if ! File.exists?("/proc/diskstats")
+  if ! File.exist?("/proc/diskstats")
     skip "/proc/diskstats is not available."
   end
 end
