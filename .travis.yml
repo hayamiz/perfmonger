@@ -13,6 +13,7 @@ install:
   - export PATH="$PATH:$GOPATH/bin"
   - mkdir -p "$HOME/go/{src,pkg,bin}"
   - go get -u github.com/mattn/go-isatty
+  - go get -u golang.org/x/crypto/ssh/terminal
   - go get -u github.com/hayamiz/perfmonger/core/subsystem
 rvm:
   - 1.9.3
