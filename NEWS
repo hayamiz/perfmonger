@@ -3,6 +3,8 @@
     * ...
   * Bug fixes
     * ...
+  * Changes
+    * Dropped support of i386
 
 ## 2017-06-19: PerfMonger 0.10.0
   * New features

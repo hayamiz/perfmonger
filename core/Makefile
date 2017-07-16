@@ -9,22 +9,6 @@ GO_SRC := utils.go
 all: build
 
 
-../lib/exec/perfmonger-recorder_linux_386: perfmonger-recorder.go $(GO_DEPS)
-	go build -o $@ perfmonger-recorder.go $(GO_SRC)
-
-
-../lib/exec/perfmonger-player_linux_386: perfmonger-player.go $(GO_DEPS)
-	go build -o $@ perfmonger-player.go $(GO_SRC)
-
-
-../lib/exec/perfmonger-summarizer_linux_386: perfmonger-summarizer.go $(GO_DEPS)
-	go build -o $@ perfmonger-summarizer.go $(GO_SRC)
-
-
-../lib/exec/perfmonger-plot-formatter_linux_386: perfmonger-plot-formatter.go $(GO_DEPS)
-	go build -o $@ perfmonger-plot-formatter.go $(GO_SRC)
-
-
 ../lib/exec/perfmonger-recorder_linux_amd64: perfmonger-recorder.go $(GO_DEPS)
 	go build -o $@ perfmonger-recorder.go $(GO_SRC)
 
@@ -57,8 +41,8 @@ all: build
 	go build -o $@ perfmonger-plot-formatter.go $(GO_SRC)
 
 
-build: ../lib/exec/perfmonger-recorder_linux_386 ../lib/exec/perfmonger-player_linux_386 ../lib/exec/perfmonger-summarizer_linux_386 ../lib/exec/perfmonger-plot-formatter_linux_386 ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64 ../lib/exec/perfmonger-recorder_darwin_amd64 ../lib/exec/perfmonger-player_darwin_amd64 ../lib/exec/perfmonger-summarizer_darwin_amd64 ../lib/exec/perfmonger-plot-formatter_darwin_amd64
+build: ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64 ../lib/exec/perfmonger-recorder_darwin_amd64 ../lib/exec/perfmonger-player_darwin_amd64 ../lib/exec/perfmonger-summarizer_darwin_amd64 ../lib/exec/perfmonger-plot-formatter_darwin_amd64
 
 clean:
-	rm -f ../lib/exec/perfmonger-recorder_linux_386 ../lib/exec/perfmonger-player_linux_386 ../lib/exec/perfmonger-summarizer_linux_386 ../lib/exec/perfmonger-plot-formatter_linux_386 ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64 ../lib/exec/perfmonger-recorder_darwin_amd64 ../lib/exec/perfmonger-player_darwin_amd64 ../lib/exec/perfmonger-summarizer_darwin_amd64 ../lib/exec/perfmonger-plot-formatter_darwin_amd64
+	rm -f ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64 ../lib/exec/perfmonger-recorder_darwin_amd64 ../lib/exec/perfmonger-player_darwin_amd64 ../lib/exec/perfmonger-summarizer_darwin_amd64 ../lib/exec/perfmonger-plot-formatter_darwin_amd64
 

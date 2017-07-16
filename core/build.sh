@@ -28,7 +28,7 @@ if [[ $1 = "-" ]]; then
     TARGET=("${os} ${arch}")
 else
     # cross build
-    TARGET=("linux 386" "linux amd64"  "darwin amd64")
+    TARGET=("linux amd64"  "darwin amd64")
 fi
 
 set -e
