@@ -1,4 +1,3 @@
-
 language: ruby
 install:
   - sudo apt-get update
@@ -23,3 +22,6 @@ rvm:
 script:
   - rake spec
   - rake test_core
+notifications:
+  slack:
+    secure: fH8tRyxWHL60OV6QuJlzig9lCLbjfpHx8E6D2EzgQz7+/wqAxtoTUyiN7mbpEJa4hyQeZfpmMpDTnl2tHD6eI8yqjAsY4Q+jt21tCKyrKMegq9Pypd4eMP4o+DupT2mXm0K3cZ2Kgb+yP8AuJPoTy20j3kpmnDFWdqRnhgpBLC8=
