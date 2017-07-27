@@ -11,6 +11,7 @@ build:
               go get -u github.com/hayamiz/perfmonger/core/subsystem
               go get -u github.com/mattn/go-isatty
               go get -u golang.org/x/crypto/ssh/terminal
+              go get -u github.com/hayamiz/go-projson
         - script:
             name: switch ruby to 1.9.3
             code: |
