@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sort"
 	"time"
+
+	projson "github.com/hayamiz/go-projson"
 )
 
 type CpuCoreUsage struct {
@@ -89,43 +91,46 @@ func SetUseColor(use_color bool) {
 	UseColor = use_color
 }
 
-func (ccusage *CpuCoreUsage) WriteJsonTo(buf *bytes.Buffer) {
-	var fmtstr string
-	if UseColor {
-		fmtstr = "{\033[32m\"usr\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"nice\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"sys\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"idle\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"iowait\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"hardirq\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"softirq\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"steal\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"guest\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"guestnice\"\033[0m:\033[36m%.2f\033[0m}"
-	} else {
-		fmtstr = `{"usr":%.2f,"nice":%.2f,"sys":%.2f,"idle":%.2f,"iowait":%.2f,"hardirq":%.2f,"softirq":%.2f,"steal":%.2f,"guest":%.2f,"guestnice":%.2f}`
-	}
-
-	buf.WriteString(
-		fmt.Sprintf(fmtstr,
-			ccusage.User, ccusage.Nice, ccusage.Sys, ccusage.Idle, ccusage.Iowait,
-			ccusage.Hardirq, ccusage.Softirq, ccusage.Steal, ccusage.Guest, ccusage.GuestNice))
+func (ccusage *CpuCoreUsage) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("usr")
+	printer.PutFloatFmt(ccusage.User, "%.2f")
+	printer.PutKey("nice")
+	printer.PutFloatFmt(ccusage.Nice, "%.2f")
+	printer.PutKey("sys")
+	printer.PutFloatFmt(ccusage.Sys, "%.2f")
+	printer.PutKey("idle")
+	printer.PutFloatFmt(ccusage.Idle, "%.2f")
+	printer.PutKey("iowait")
+	printer.PutFloatFmt(ccusage.Iowait, "%.2f")
+	printer.PutKey("hardirq")
+	printer.PutFloatFmt(ccusage.Hardirq, "%.2f")
+	printer.PutKey("softirq")
+	printer.PutFloatFmt(ccusage.Softirq, "%.2f")
+	printer.PutKey("steal")
+	printer.PutFloatFmt(ccusage.Steal, "%.2f")
+	printer.PutKey("guest")
+	printer.PutFloatFmt(ccusage.Guest, "%.2f")
+	printer.PutKey("guestnice")
+	printer.PutFloatFmt(ccusage.GuestNice, "%.2f")
+	printer.FinishObject()
 }
 
-func (cusage *CpuUsage) WriteJsonTo(buf *bytes.Buffer) {
-	if UseColor {
-		buf.WriteString(
-			fmt.Sprintf("{\033[32m\"num_core\"\033[0m:%d,\033[32m\"all\"\033[0m:", cusage.NumCore))
-	} else {
-		buf.WriteString(
-			fmt.Sprintf(`{"num_core":%d,"all":`, cusage.NumCore))
-	}
-	cusage.All.WriteJsonTo(buf)
+func (cusage *CpuUsage) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("num_core")
+	printer.PutInt(cusage.NumCore)
+	printer.PutKey("all")
 
-	if UseColor {
-		buf.WriteString(",\033[32m\"cores\"\033[0m:[")
-	} else {
-		buf.WriteString(`,"cores":[`)
-	}
+	cusage.All.WriteJsonTo(printer)
 
-	for idx, ccusage := range cusage.CoreUsages {
-		if idx > 0 {
-			buf.WriteString(",")
-		}
-		ccusage.WriteJsonTo(buf)
+	printer.PutKey("cores")
+	printer.BeginArray()
+	for _, ccusage := range cusage.CoreUsages {
+		ccusage.WriteJsonTo(printer)
 	}
-	buf.WriteString(`]}`)
+	printer.FinishArray()
+	printer.FinishObject()
 }
 
 func GetCpuCoreUsage(c1 *CpuCoreStat, c2 *CpuCoreStat) (*CpuCoreUsage, error) {
@@ -248,60 +253,45 @@ func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *Interr
 	return usage, nil
 }
 
-func (intr_usage *InterruptUsage) WriteJsonTo(buf *bytes.Buffer) {
-	buf.WriteString("{")
-
-	if UseColor {
-		buf.WriteString("\033[32m\"core_dev_intr\"\033[0m:[")
-	} else {
-		buf.WriteString(`"core_dev_intr":[`)
+func (intr_usage *InterruptUsage) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("core_dev_intr")
+	printer.BeginArray()
+	for _, core_usage := range intr_usage.CoreIntrUsages {
+		printer.PutFloatFmt(core_usage.Device, "%.2f")
 	}
-	for idx, core_usage := range intr_usage.CoreIntrUsages {
-		if idx > 0 {
-			buf.WriteString(",")
-		}
+	printer.FinishArray()
 
-		if UseColor {
-			fmt.Fprintf(buf, "\033[36m%.2f\033[0m", core_usage.Device)
-		} else {
-			fmt.Fprintf(buf, "%.2f", core_usage.Device)
-		}
+	printer.PutKey("core_sys_intr")
+	printer.BeginArray()
+	for _, core_usage := range intr_usage.CoreIntrUsages {
+		printer.PutFloatFmt(core_usage.System, "%.2f")
 	}
-
-	if UseColor {
-		buf.WriteString("],\033[32m\"core_sys_intr\"\033[0m:[")
-	} else {
-		buf.WriteString(`],"core_sys_intr":[`)
-	}
-
-	for idx, core_usage := range intr_usage.CoreIntrUsages {
-		if idx > 0 {
-			buf.WriteString(",")
-		}
-
-		if UseColor {
-			fmt.Fprintf(buf, "\033[36m%.2f\033[0m", core_usage.System)
-		} else {
-			fmt.Fprintf(buf, "%.2f", core_usage.System)
-		}
-	}
-	buf.WriteString("]")
-	buf.WriteString("}")
+	printer.FinishArray()
+	printer.FinishObject()
 }
 
-func (duentry *DiskUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
-	var fmtstr string
-	if UseColor {
-		fmtstr = "{\033[32m\"riops\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wiops\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rlatency\"\033[0m:\033[36m%.3f\033[0m,\033[32m\"wlatency\"\033[0m:\033[36m%.3f\033[0m,\033[32m\"rsize\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"wsize\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"qlen\"\033[0m:\033[36m%.2f\033[0m}"
-	} else {
-		fmtstr = `{"riops":%.2f,"wiops":%.2f,"rkbyteps":%.2f,"wkbyteps":%.2f,"rlatency":%.3f,"wlatency":%.3f,"rsize":%.2f,"wsize":%.2f,"qlen":%.2f}`
-	}
-
-	fmt.Fprintf(buf,
-		fmtstr,
-		duentry.RdIops, duentry.WrIops, duentry.RdSecps/2.0, duentry.WrSecps/2.0,
-		duentry.RdLatency, duentry.WrLatency,
-		duentry.AvgRdSize, duentry.AvgWrSize, duentry.ReqQlen)
+func (duentry *DiskUsageEntry) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("riops")
+	printer.PutFloatFmt(duentry.RdIops, "%.2f")
+	printer.PutKey("wiops")
+	printer.PutFloatFmt(duentry.WrIops, "%.2f")
+	printer.PutKey("rkbyteps")
+	printer.PutFloatFmt(duentry.RdSecps/2.0, "%.2f")
+	printer.PutKey("wkbyteps")
+	printer.PutFloatFmt(duentry.WrSecps/2.0, "%.2f")
+	printer.PutKey("rlatency")
+	printer.PutFloatFmt(duentry.RdLatency, "%.2f")
+	printer.PutKey("wlatency")
+	printer.PutFloatFmt(duentry.WrLatency, "%.2f")
+	printer.PutKey("rsize")
+	printer.PutFloatFmt(duentry.AvgRdSize, "%.2f")
+	printer.PutKey("wsize")
+	printer.PutFloatFmt(duentry.AvgWrSize, "%.2f")
+	printer.PutKey("qlen")
+	printer.PutFloatFmt(duentry.ReqQlen, "%.2f")
+	printer.FinishObject()
 }
 
 func strarrayToString(arr []string) string {
@@ -324,7 +314,7 @@ func strarrayToString(arr []string) string {
 	return buf.String()
 }
 
-func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
+func (dusage *DiskUsage) WriteJsonTo(printer *projson.JsonPrinter) {
 	var devices []string
 
 	for device, _ := range *dusage {
@@ -334,27 +324,24 @@ func (dusage *DiskUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	sort.Strings(devices)
 
-	devstr := strarrayToString(devices)
-
-	if UseColor {
-		fmt.Fprintf(buf, "{\033[32m\"devices\"\033[0m:%s", devstr)
-	} else {
-		fmt.Fprintf(buf, `{"devices":%s`, devstr)
+	printer.BeginObject()
+	printer.PutKey("devices")
+	printer.BeginArray()
+	for _, device := range devices {
+		printer.PutString(device)
 	}
+	printer.FinishArray()
 
 	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*dusage)[device]
-		if UseColor {
-			buf.WriteString(",\033[35m\"" + device + "\"\033[0m:")
-		} else {
-			buf.WriteString(`,"` + device + `":`)
-		}
-		usage.WriteJsonTo(buf)
+
+		printer.PutKey(device)
+		usage.WriteJsonTo(printer)
 	}
 
-	buf.WriteByte('}')
+	printer.FinishObject()
 }
 
 func avgDelta(v int64, w int64, interval float64) float64 {
@@ -545,7 +532,7 @@ func GetNetUsage(t1 time.Time, d1 *NetStat, t2 time.Time, d2 *NetStat) (*NetUsag
 	return net_usage, nil
 }
 
-func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
+func (nusage *NetUsage) WriteJsonTo(printer *projson.JsonPrinter) {
 	var devices []string
 
 	for device, _ := range *nusage {
@@ -555,42 +542,45 @@ func (nusage *NetUsage) WriteJsonTo(buf *bytes.Buffer) {
 	}
 	sort.Strings(devices)
 
-	devstr := strarrayToString(devices)
-
-	if UseColor {
-		fmt.Fprintf(buf, "{\033[32m\"devices\"\033[0m:%s", devstr)
-	} else {
-		fmt.Fprintf(buf, `{"devices":%s`, devstr)
+	printer.BeginObject()
+	printer.PutKey("devices")
+	printer.BeginArray()
+	for _, device := range devices {
+		printer.PutString(device)
 	}
+	printer.FinishArray()
 
 	devices = append(devices, "total")
 
 	for _, device := range devices {
 		usage := (*nusage)[device]
-		if UseColor {
-			buf.WriteString(",\033[35m\"" + device + "\"\033[0m:")
-		} else {
-			buf.WriteString(`,"` + device + `":`)
-		}
-		usage.WriteJsonTo(buf)
+
+		printer.PutKey(device)
+		usage.WriteJsonTo(printer)
 	}
 
-	buf.WriteByte('}')
+	printer.FinishObject()
 }
 
-func (entry *NetUsageEntry) WriteJsonTo(buf *bytes.Buffer) {
-	var fmtstr string
+func (entry *NetUsageEntry) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
 
-	if UseColor {
-		fmtstr = "{\033[32m\"rxkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxpktps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxerrps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"rxdropps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txkbyteps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txpktps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txerrps\"\033[0m:\033[36m%.2f\033[0m,\033[32m\"txdropps\"\033[0m:\033[36m%.2f\033[0m}"
-	} else {
-		fmtstr = `{"rxkbyteps":%.2f,"rxpktps":%.2f,"rxerrps":%.2f,"rxdropps":%.2f,"txkbyteps":%.2f,"txpktps":%.2f,"txerrps":%.2f,"txdropps":%.2f}`
-	}
+	printer.PutKey("rxkbyteps")
+	printer.PutFloatFmt(entry.RxBytesPerSec/1024.0, "%.2f")
+	printer.PutKey("rxpktps")
+	printer.PutFloatFmt(entry.RxPacketsPerSec, "%.2f")
+	printer.PutKey("rxerrps")
+	printer.PutFloatFmt(entry.RxErrorsPerSec, "%.2f")
+	printer.PutKey("rxdropps")
+	printer.PutFloatFmt(entry.RxDropsPerSec, "%.2f")
+	printer.PutKey("txkbyteps")
+	printer.PutFloatFmt(entry.TxBytesPerSec/1024.0, "%.2f")
+	printer.PutKey("txpktps")
+	printer.PutFloatFmt(entry.TxPacketsPerSec, "%.2f")
+	printer.PutKey("txerrps")
+	printer.PutFloatFmt(entry.TxErrorsPerSec, "%.2f")
+	printer.PutKey("txdropps")
+	printer.PutFloatFmt(entry.TxDropsPerSec, "%.2f")
 
-	buf.WriteString(
-		fmt.Sprintf(fmtstr,
-			entry.RxBytesPerSec/1024.0, entry.RxPacketsPerSec,
-			entry.RxErrorsPerSec, entry.RxDropsPerSec,
-			entry.TxBytesPerSec/1024.0, entry.TxPacketsPerSec,
-			entry.TxErrorsPerSec, entry.TxDropsPerSec))
+	printer.FinishObject()
 }

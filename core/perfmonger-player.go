@@ -4,45 +4,29 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
 
+	projson "github.com/hayamiz/go-projson"
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 	isatty "github.com/mattn/go-isatty"
 )
 
-func showCpuStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+func showCpuStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
 	if err != nil {
 		return err
 	}
-	if ss.UseColor {
-		buffer.WriteString(",\033[34;4m\"cpu\"\033[0m:")
-	} else {
-		buffer.WriteString(`,"cpu":`)
-	}
 
-	cusage.WriteJsonTo(buffer)
+	printer.PutKey("cpu")
+	cusage.WriteJsonTo(printer)
 
 	return nil
 }
 
-func showInterruptStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
-	// intr_usage, err := ss.GetInterruptUsage(
-	// 	prev_rec.Time, prev_rec.Interrupt,
-	// 	cur_rec.Time, cur_rec.Interrupt)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// buffer.WriteString(`,"intr":`)
-	// intr_usage.WriteJsonTo(buffer)
-	//
-	// return nil
-
+func showInterruptStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	intr_usage, err := ss.GetInterruptUsage(
 		prev_rec.Time, prev_rec.Interrupt,
 		cur_rec.Time, cur_rec.Interrupt)
@@ -51,16 +35,16 @@ func showInterruptStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *s
 	}
 
 	if ss.UseColor {
-		buffer.WriteString(",\033[34;4m\"intr\"\033[0m:")
+		printer.PutKey("intr")
 	} else {
-		buffer.WriteString(`,"intr":`)
+		printer.PutKey("intr")
 	}
-	intr_usage.WriteJsonTo(buffer)
+	intr_usage.WriteJsonTo(printer)
 
 	return nil
 }
 
-func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+func showDiskStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	dusage, err := ss.GetDiskUsage(
 		prev_rec.Time, prev_rec.Disk,
 		cur_rec.Time, cur_rec.Disk)
@@ -69,17 +53,17 @@ func showDiskStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Sta
 	}
 
 	if ss.UseColor {
-		buffer.WriteString(",\033[34;4m\"disk\"\033[0m:")
+		printer.PutKey("disk")
 	} else {
-		buffer.WriteString(`,"disk":`)
+		printer.PutKey("disk")
 	}
 
-	dusage.WriteJsonTo(buffer)
+	dusage.WriteJsonTo(printer)
 
 	return nil
 }
 
-func showNetStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+func showNetStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	dusage, err := ss.GetNetUsage(
 		prev_rec.Time, prev_rec.Net,
 		cur_rec.Time, cur_rec.Net,
@@ -89,48 +73,48 @@ func showNetStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.Stat
 	}
 
 	if ss.UseColor {
-		buffer.WriteString(",\033[34;4m\"net\"\033[0m:")
+		printer.PutKey("net")
 	} else {
-		buffer.WriteString(`,"net":`)
+		printer.PutKey("net")
 	}
 
-	dusage.WriteJsonTo(buffer)
+	dusage.WriteJsonTo(printer)
 
 	return nil
 }
 
-func showStat(buffer *bytes.Buffer, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
-	if ss.UseColor {
-		buffer.WriteString(fmt.Sprintf("{\033[34;4m\"time\"\033[0m:\033[36m%.3f\033[0m", float64(cur_rec.Time.UnixNano())/1e9))
-	} else {
-		buffer.WriteString(fmt.Sprintf(`{"time":%.3f`, float64(cur_rec.Time.UnixNano())/1e9))
-	}
+func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+	printer.Reset()
+	printer.BeginObject()
+	printer.PutKey("time")
+	printer.PutFloatFmt(float64(cur_rec.Time.UnixNano())/1e9, "%.3f")
 
 	if cur_rec.Cpu != nil {
-		err := showCpuStat(buffer, prev_rec, cur_rec)
+		err := showCpuStat(printer, prev_rec, cur_rec)
 		if err != nil {
 			return err
 		}
 	}
 	if cur_rec.Interrupt != nil {
-		err := showInterruptStat(buffer, prev_rec, cur_rec)
+		err := showInterruptStat(printer, prev_rec, cur_rec)
 		if err != nil {
 			return err
 		}
 	}
 	if cur_rec.Disk != nil {
-		err := showDiskStat(buffer, prev_rec, cur_rec)
+		err := showDiskStat(printer, prev_rec, cur_rec)
 		if err != nil {
 			return err
 		}
 	}
 	if cur_rec.Net != nil {
-		err := showNetStat(buffer, prev_rec, cur_rec)
+		err := showNetStat(printer, prev_rec, cur_rec)
 		if err != nil {
 			return err
 		}
 	}
-	buffer.WriteString("}\n")
+
+	printer.FinishObject()
 
 	return nil
 }
@@ -190,7 +174,7 @@ func main() {
 	}
 	curr ^= 1
 
-	buffer := bytes.NewBuffer([]byte{})
+	printer := projson.NewPrinter()
 	for {
 		prev_rec := &records[curr^1]
 		cur_rec := &records[curr]
@@ -202,21 +186,26 @@ func main() {
 			panic(err)
 		}
 
-		err = showStat(buffer, prev_rec, cur_rec)
+		err = showStat(printer, prev_rec, cur_rec)
 		if err != nil {
-			buffer.Reset()
+			printer.Reset()
 			fmt.Fprintln(os.Stderr, "skip by err")
 			continue
 		}
 
-		_, err = out.WriteString(buffer.String())
+		if str, err := printer.String(); err != nil {
+			fmt.Println("error", err)
+			fmt.Println(str)
+		} else {
+			_, err = out.WriteString(str + "\n")
+		}
 		err = out.Flush()
 		if err != nil {
 			// stdout is closed
 			break
 		}
 
-		buffer.Reset()
+		printer.Reset()
 
 		curr ^= 1
 	}

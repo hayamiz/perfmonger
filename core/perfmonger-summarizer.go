@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/gob"
 	"flag"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 
+	projson "github.com/hayamiz/go-projson"
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
@@ -137,32 +137,38 @@ func main() {
 	interval := lst_record.Time.Sub(fst_record.Time)
 
 	if option.json {
-		buf := bytes.NewBuffer([]byte{})
+		printer := projson.NewPrinter()
 
-		buf.WriteString(fmt.Sprintf(`{"exectime":%.3f`, interval.Seconds()))
+		printer.BeginObject()
+		printer.PutKey("exectime")
+		printer.PutFloatFmt(interval.Seconds(), "%.3f")
 		if cpu_usage != nil {
-			buf.WriteString(`,"cpu":`)
-			cpu_usage.WriteJsonTo(buf)
+			printer.PutKey("cpu")
+			cpu_usage.WriteJsonTo(printer)
 		}
 
 		if intr_usage != nil {
-			buf.WriteString(`,"intr":`)
-			intr_usage.WriteJsonTo(buf)
+			printer.PutKey("intr")
+			intr_usage.WriteJsonTo(printer)
 		}
 
 		if disk_usage != nil {
-			buf.WriteString(`,"disk":`)
-			disk_usage.WriteJsonTo(buf)
+			printer.PutKey("disk")
+			disk_usage.WriteJsonTo(printer)
 		}
 
 		if net_usage != nil {
-			buf.WriteString(`,"net":`)
-			net_usage.WriteJsonTo(buf)
+			printer.PutKey("net")
+			net_usage.WriteJsonTo(printer)
 		}
 
-		buf.WriteByte('}')
+		printer.FinishObject()
 
-		fmt.Println(buf.String())
+		if str, err := printer.String(); err != nil {
+			fmt.Println("skip by err")
+		} else {
+			fmt.Println(str)
+		}
 	} else {
 		if option.title == "" {
 			fmt.Println("== performance summary ==")

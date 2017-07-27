@@ -5,6 +5,7 @@
     * ...
   * Changes
     * Dropped support of i386
+    * Use go-projson for JSON output
 
 ## 2017-06-19: PerfMonger 0.10.0
   * New features
