@@ -1,7 +1,6 @@
 package subsystem
 
 import (
-	"bytes"
 	"encoding/json"
 	"math"
 	"regexp"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	projson "github.com/hayamiz/go-projson"
 )
 
 func isValidJson(byt []byte) bool {
@@ -120,10 +121,14 @@ func TestGetCoreUsage(t *testing.T) {
 		t.Errorf("usage.Sys = %v, want 25.0", usage.User)
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("Invalid JSON: %s", buf.String())
+	printer := projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	if str, err := printer.String(); err != nil {
+		t.Errorf("failed to print JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("Invalid JSON: %s", str)
+		}
 	}
 }
 
@@ -207,15 +212,20 @@ func TestGetCpuUsage(t *testing.T) {
 		t.Errorf("usage.Sys = %v, want 25.0", usage.CoreUsages[1].User)
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("Invalid JSON: %s", buf.String())
+	printer := projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	str, err := printer.String()
+	if err != nil {
+		t.Errorf("failed printing JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("Invalid JSON: %s", str)
+		}
 	}
 
 	assertHasKey := func(key_path string) {
-		if !jsonHasKey(buf.Bytes(), key_path) {
-			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		if !jsonHasKey([]byte(str), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, str)
 		}
 	}
 	assertHasKey("num_core")
@@ -291,10 +301,15 @@ func TestDiskUsage(t *testing.T) {
 		t.Errorf("sda.RdSectors = %v, want %v", (*usage)["sda"].RdSectors, 350)
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("invalid json: %s", buf.String())
+	printer := projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	str, err := printer.String()
+	if err != nil {
+		t.Errorf("failed printing JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("invalid json: %s", str)
+		}
 	}
 
 	d1.Entries = append(d1.Entries, NewDiskStatEntry())
@@ -347,15 +362,20 @@ func TestDiskUsage(t *testing.T) {
 		t.Errorf("total.RdSectors = %v, want %v", (*usage)["total"].RdSectors, 350)
 	}
 
-	buf = bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("invalid json: %s", buf.String())
+	printer = projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	str, err = printer.String()
+	if err != nil {
+		t.Errorf("failed printing JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("invalid json: %s", str)
+		}
 	}
 
 	assertHasKey := func(key_path string) {
-		if !jsonHasKey(buf.Bytes(), key_path) {
-			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		if !jsonHasKey([]byte(str), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, str)
 		}
 	}
 	assertHasKey("devices")
@@ -428,10 +448,15 @@ func TestGetNetUsage(t *testing.T) {
 		t.Errorf("lo.RxPacketsPerSec = %v, want %v", (*usage)["lo"].RxPacketsPerSec, 100.0/interval)
 	}
 
-	buf := bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("invalid json: %s", buf.String())
+	printer := projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	str, err := printer.String()
+	if err != nil {
+		t.Errorf("failed printing JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("invalid json: %s", str)
+		}
 	}
 
 	n1.Entries = append(n1.Entries, NewNetStatEntry())
@@ -483,15 +508,20 @@ func TestGetNetUsage(t *testing.T) {
 			(100.0+150.0)/interval)
 	}
 
-	buf = bytes.NewBuffer([]byte{})
-	usage.WriteJsonTo(buf)
-	if !isValidJson(buf.Bytes()) {
-		t.Errorf("invalid json: %s", buf.String())
+	printer = projson.NewPrinter()
+	usage.WriteJsonTo(printer)
+	str, err = printer.String()
+	if err != nil {
+		t.Errorf("failed printing JSON")
+	} else {
+		if !isValidJson([]byte(str)) {
+			t.Errorf("invalid json: %s", str)
+		}
 	}
 
 	assertHasKey := func(key_path string) {
-		if !jsonHasKey(buf.Bytes(), key_path) {
-			t.Errorf("%v is not present in JSON:\n%v", key_path, buf.String())
+		if !jsonHasKey([]byte(str), key_path) {
+			t.Errorf("%v is not present in JSON:\n%v", key_path, str)
 		}
 	}
 	assertHasKey("devices")
