@@ -85,6 +85,7 @@ func showNetStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec 
 
 func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	printer.Reset()
+	printer.SetStyle(projson.SmartStyle)
 	printer.BeginObject()
 	printer.PutKey("time")
 	printer.PutFloatFmt(float64(cur_rec.Time.UnixNano())/1e9, "%.3f")
