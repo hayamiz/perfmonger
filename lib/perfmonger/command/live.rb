@@ -7,10 +7,29 @@ module PerfMonger
 module Command
 
 class LiveOption < RecordOption
+  def initialize
+    super
+
+    @color = false
+    @parser.on("-c", "--color", "Use colored JSON output") do
+      @color = true
+    end
+
+    @pretty
+    @parser.on("--pretty",  "Use human readable JSON output") do
+      @pretty = true
+    end
+
+  end
+
   def make_command
     cmd = super()
     @player_bin = ::PerfMonger::Command::CoreFinder.player()
     cmd += ["-player-bin", @player_bin]
+    cmd << "-color" if @color
+    cmd << "-pretty" if @pretty
+
+    cmd
   end
 end
 

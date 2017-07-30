@@ -16,6 +16,16 @@ Usage: perfmonger play [options] LOG_FILE
 Options:
 EOS
 
+    @color = false
+    @parser.on("-c", "--color", "Use colored JSON ouptut") do
+      @color = true
+    end
+
+    @pretty = false
+    @parser.on("-p", "--pretty", "Use human readable JSON ouptut") do
+      @pretty = true
+    end
+
   end
 
   def parse_args(argv)
@@ -46,6 +56,12 @@ EOS
     end
 
     cmd = [@player_bin]
+    if @color
+      cmd << "-color"
+    end
+    if @pretty
+      cmd << "-pretty"
+    end
     cmd << @logfile
 
     Process.exec(*cmd)

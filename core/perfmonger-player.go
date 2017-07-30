@@ -5,14 +5,22 @@ package main
 import (
 	"bufio"
 	"encoding/gob"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 
 	projson "github.com/hayamiz/go-projson"
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
-	isatty "github.com/mattn/go-isatty"
 )
+
+type PlayerOption struct {
+	logfile string
+	color   bool
+	pretty  bool
+}
+
+var option PlayerOption
 
 func showCpuStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
@@ -34,11 +42,7 @@ func showInterruptStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cu
 		return err
 	}
 
-	if ss.UseColor {
-		printer.PutKey("intr")
-	} else {
-		printer.PutKey("intr")
-	}
+	printer.PutKey("intr")
 	intr_usage.WriteJsonTo(printer)
 
 	return nil
@@ -52,11 +56,7 @@ func showDiskStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec
 		return err
 	}
 
-	if ss.UseColor {
-		printer.PutKey("disk")
-	} else {
-		printer.PutKey("disk")
-	}
+	printer.PutKey("disk")
 
 	dusage.WriteJsonTo(printer)
 
@@ -72,11 +72,7 @@ func showNetStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec 
 		return err
 	}
 
-	if ss.UseColor {
-		printer.PutKey("net")
-	} else {
-		printer.PutKey("net")
-	}
+	printer.PutKey("net")
 
 	dusage.WriteJsonTo(printer)
 
@@ -85,7 +81,12 @@ func showNetStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec 
 
 func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	printer.Reset()
-	printer.SetStyle(projson.SmartStyle)
+	if option.pretty {
+		printer.SetStyle(projson.SmartStyle)
+	}
+	if option.color {
+		printer.SetColor(true)
+	}
 	printer.BeginObject()
 	printer.PutKey("time")
 	printer.PutFloatFmt(float64(cur_rec.Time.UnixNano())/1e9, "%.3f")
@@ -120,15 +121,25 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 	return nil
 }
 
+func parseArgs() {
+	flag.BoolVar(&option.color, "color", false, "Use colored JSON output")
+	flag.BoolVar(&option.pretty, "pretty", false, "Use human readable JSON output")
+
+	flag.Parse()
+
+	option.logfile = flag.Arg(0)
+}
+
 func main() {
-	args := os.Args
 	var in *os.File
 	var out *bufio.Writer
 
-	if len(args) < 2 {
+	parseArgs()
+
+	if option.logfile == "" {
 		in = os.Stdin
 	} else {
-		f, err := os.Open(args[1])
+		f, err := os.Open(option.logfile)
 		if err != nil {
 			panic(err)
 		}
@@ -139,10 +150,6 @@ func main() {
 	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)
-
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		ss.SetUseColor(true)
-	}
 
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader

@@ -43,6 +43,8 @@ type RecorderOption struct {
 	targetDisks         *map[string]bool
 	background          bool
 	gzip                bool
+	color               bool
+	pretty              bool
 }
 
 var option RecorderOption
@@ -86,6 +88,10 @@ func parseArgs() {
 		"", "Run perfmonger-player to show JSON output")
 	flag.BoolVar(&option.gzip, "gzip",
 		false, "Save a logfile in gzipped format")
+	flag.BoolVar(&option.color, "color",
+		false, "Colored output (for live subcmd)")
+	flag.BoolVar(&option.pretty, "pretty",
+		false, "Pretty output (for live subcmd)")
 
 	flag.Parse()
 
@@ -206,7 +212,15 @@ func main() {
 	var player_stdout io.ReadCloser = nil
 
 	if option.player_bin != "" {
-		player_cmd = exec.Command(option.player_bin)
+		if option.color {
+			if option.pretty {
+				player_cmd = exec.Command(option.player_bin, "-color", "-pretty")
+			} else {
+				player_cmd = exec.Command(option.player_bin, "-color")
+			}
+		} else {
+			player_cmd = exec.Command(option.player_bin)
+		}
 		player_stdin, err = player_cmd.StdinPipe()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s", option.player_bin)

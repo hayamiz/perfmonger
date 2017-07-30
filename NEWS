@@ -1,6 +1,9 @@
 ## XXXX-XX-XX: PerfMonger 0.11.0
   * New features
-    * ...
+    * [play] subcommand:
+      * Add --color, --pretty option for pretty JSON output
+    * [live] subcommand:
+      * Add --color, --pretty option for pretty JSON output
   * Bug fixes
     * ...
   * Changes
