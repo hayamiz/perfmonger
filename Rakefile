@@ -10,7 +10,7 @@ RSpec::Core::RakeTask.new(:spec)
 task :spec => [:cross_build_core]
 
 desc "Cross build core recorder/player"
-task :cross_build_core do
+task :cross_build_core => [:go_get] do
   puts "Buildling binaries for each platform"
   Dir.chdir("./core") do
     sh "./build.sh"
@@ -19,6 +19,14 @@ task :cross_build_core do
 end
 
 task :build => :cross_build_core
+
+desc "Install Golang libraries"
+task :go_get do
+  sh "go get github.com/hayamiz/go-projson"
+  sh "go get github.com/hayamiz/perfmonger/core/subsystem"
+  sh "go get golang.org/x/crypto/ssh/terminal"
+  sh "go get github.com/mattn/go-isatty"
+end
 
 desc "Run tests of core recorder/player"
 task :test_core do
