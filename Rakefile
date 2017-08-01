@@ -29,7 +29,7 @@ task :go_get do
 end
 
 desc "Run tests of core recorder/player"
-task :test_core do
+task :test_core => [:cross_build_core] do
   Dir.chdir("./core/subsystem") do
     sh "go test -v -cover"
 
