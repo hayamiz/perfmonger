@@ -21,6 +21,7 @@ type PlayerOption struct {
 }
 
 var option PlayerOption
+var init_rec ss.StatRecord
 
 func showCpuStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	cusage, err := ss.GetCpuUsage(prev_rec.Cpu, cur_rec.Cpu)
@@ -90,6 +91,9 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 	printer.BeginObject()
 	printer.PutKey("time")
 	printer.PutFloatFmt(float64(cur_rec.Time.UnixNano())/1e9, "%.3f")
+	printer.PutKey("elapsed_time")
+	printer.PutFloatFmt((float64(cur_rec.Time.UnixNano())-float64(init_rec.Time.UnixNano()))/1e9,
+		"%.3f")
 
 	if cur_rec.Cpu != nil {
 		err := showCpuStat(printer, prev_rec, cur_rec)
@@ -180,6 +184,7 @@ func main() {
 	} else if err != nil {
 		panic(err)
 	}
+	init_rec = records[curr]
 	curr ^= 1
 
 	printer := projson.NewPrinter()
