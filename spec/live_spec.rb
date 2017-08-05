@@ -9,7 +9,6 @@ RSpec.describe '[live] subcommand' do
     cmd = "#{perfmonger_bin} live --timeout 3"
     run(cmd, 5)
     expect(last_command_started).to be_successfully_executed
-    expect(last_command_started.stdout.lines.to_a.size).to eq 3
 
     run(cmd)
     last_command_started.stdout.each_line do |line|
