@@ -9,6 +9,8 @@
   * Changes
     * Dropped support of i386
     * Use go-projson for JSON output
+    * [plot] subcommand:
+      * Stacked graphs layout in allcpu.pdf
 
 ## 2017-06-19: PerfMonger 0.10.0
   * New features

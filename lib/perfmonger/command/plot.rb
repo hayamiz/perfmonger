@@ -389,10 +389,10 @@ EOS
       nr_cols = nr_cpu_factors.select do |x|
         x <= Math.sqrt(nr_cpu)
       end.max
-      nr_cols ||= Math.sqrt(nr_cpu).ceil
+      nr_cols = 1
       nr_rows = nr_cpu / nr_cols
 
-      plot_height = 8
+      plot_height = ([nr_cpu, 8].min) + ([nr_cpu - 8, 0].max) * 0.5
 
       if nr_rows == 1
         plot_height /= 2.0
@@ -422,14 +422,14 @@ EOS
         end
 
         all_gpfile.puts <<EOS
-set title 'cpu #{cpu_idx}' offset 0.0,-0.7 font 'Arial,16'
+set title 'cpu #{cpu_idx}' offset -61,-3 font 'Arial,16'
 unset key
 set origin #{xpos}, #{ypos}
 set size #{1.0/nr_cols}, #{(1.0 - legend_height)/nr_rows}
-set rmargin 0.5
-set lmargin 3.5
-set tmargin 1.3
-set bmargin 1.3
+set rmargin 2
+set lmargin 12
+set tmargin 0.5
+set bmargin 0.5
 set xtics offset 0.0,0.5
 set ytics offset 0.5,0
 set style fill noborder
