@@ -22,10 +22,10 @@ task :build => :cross_build_core
 
 desc "Install Golang libraries"
 task :go_get do
-  sh "go get github.com/hayamiz/go-projson"
-  sh "go get github.com/hayamiz/perfmonger/core/subsystem"
-  sh "go get golang.org/x/crypto/ssh/terminal"
-  sh "go get github.com/mattn/go-isatty"
+  sh "go get -u github.com/hayamiz/go-projson"
+  sh "go get -u github.com/hayamiz/perfmonger/core/subsystem"
+  sh "go get -u golang.org/x/crypto/ssh/terminal"
+  sh "go get -u github.com/mattn/go-isatty"
 end
 
 desc "Run tests of core recorder/player"
