@@ -147,7 +147,6 @@ EOS
       cmd << "-disk-only"
       cmd << @disk_only
     end
-    p cmd
     IO.popen(cmd, "r") do |io|
       meta_json = io.read
     end
