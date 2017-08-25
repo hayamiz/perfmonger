@@ -11,29 +11,41 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sort"
 
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
 type CmdOption struct {
-	DiskFile       string
-	CpuFile        string
-	PerfmongerFile string
+	DiskFile        string
+	CpuFile         string
+	PerfmongerFile  string
+	disk_only       string
+	disk_only_regex *regexp.Regexp
 }
 
 func parseArgs() *CmdOption {
+	var err error
+
 	opt := new(CmdOption)
 
 	flag.StringVar(&opt.DiskFile, "diskfile", "./disk.dat", "Disk performance data file")
 	flag.StringVar(&opt.CpuFile, "cpufile", "./cpu.dat", "CPU performance data file")
 	flag.StringVar(&opt.PerfmongerFile, "perfmonger", "", "Perfmonger log file")
+	flag.StringVar(&opt.disk_only, "disk-only",
+		"", "Select disk devices by regex")
 
 	flag.Parse()
 
 	if opt.PerfmongerFile == "" {
 		os.Stderr.WriteString("[ERROR] perfmonger log file is required.\n")
 		os.Exit(1)
+	}
+
+	opt.disk_only_regex, err = regexp.Compile(opt.disk_only)
+	if err != nil {
+		panic(err)
 	}
 
 	return opt
@@ -192,7 +204,9 @@ func main() {
 		}
 
 		// Disk usage
-		dusage, err := ss.GetDiskUsage(prev_rec.Time, prev_rec.Disk, cur_rec.Time, cur_rec.Disk)
+		dusage, err := ss.GetDiskUsage1(prev_rec.Time, prev_rec.Disk,
+			cur_rec.Time, cur_rec.Disk,
+			opt.disk_only_regex)
 		if err != nil {
 			panic(err)
 		}

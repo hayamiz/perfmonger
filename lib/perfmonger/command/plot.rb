@@ -24,6 +24,7 @@ EOS
     @output_type = 'pdf'
     @output_prefix = ''
     @save_gpfiles = false
+    @disk_only = nil
     @disk_only_regex = nil
     @disk_plot_read = true
     @disk_plot_write = true
@@ -78,6 +79,7 @@ EOS
     end
 
     @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX") do |regex|
+      @disk_only = regex
       @disk_only_regex = Regexp.compile(regex)
     end
 
@@ -139,7 +141,14 @@ EOS
     @cpu_dat = File.expand_path("cpu.dat", @tmpdir)
 
     meta_json = nil
-    IO.popen([formatter_bin, "-perfmonger", @data_file, "-cpufile", @cpu_dat, "-diskfile", @disk_dat], "r") do |io|
+    cmd = [formatter_bin, "-perfmonger", @data_file, "-cpufile", @cpu_dat,
+      "-diskfile", @disk_dat]
+    if @disk_only_regex
+      cmd << "-disk-only"
+      cmd << @disk_only
+    end
+    p cmd
+    IO.popen(cmd, "r") do |io|
       meta_json = io.read
     end
     if $?.exitstatus != 0

@@ -5,7 +5,8 @@
     * [live] subcommand:
       * Add --color, --pretty option for pretty JSON output
   * Bug fixes
-    * ...
+    * [plot] subcommand:
+      * Correctly filter out disk usages by --disk-only option
   * Changes
     * Dropped support of i386
     * Use go-projson for JSON output
