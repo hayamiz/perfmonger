@@ -15,6 +15,7 @@ build:
             name: run rspec
             code: |
               bundle exec rake clean
+              bundle exec rake go_get
               bundle exec rake spec
 
         - script:

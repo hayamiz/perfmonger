@@ -10,7 +10,7 @@ RSpec::Core::RakeTask.new(:spec)
 task :spec => [:cross_build_core]
 
 desc "Cross build core recorder/player"
-task :cross_build_core => [:go_get] do
+task :cross_build_core do
   puts "Buildling binaries for each platform"
   Dir.chdir("./core") do
     sh "./build.sh"
