@@ -1,3 +1,6 @@
+## 2017-09-08: PerfMonger 0.10.1
+  * Yanked wrongly shipped v0.10.0 and pushed up-to-date code
+
 ## 2017-06-19: PerfMonger 0.10.0
   * New features
     * [record] subcommand:
