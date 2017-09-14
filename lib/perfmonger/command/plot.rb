@@ -151,6 +151,8 @@ EOS
     plot_disk(meta)
     plot_cpu(meta)
 
+    FileUtils.rm_rf(@tmpdir)
+
     true
   end
 
