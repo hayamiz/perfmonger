@@ -19,7 +19,7 @@ class RecordCommand < BaseCommand
   def run(argv)
     @argv, @option = PerfMonger::Command::RecordOption.parse(argv)
 
-    session_file = File.expand_path(sprintf("perfmonger-%s-session.pid", Etc.getlogin),
+    session_file = File.expand_path(sprintf("perfmonger-%s-session.pid", Etc.getpwuid.name),
                                     Dir.tmpdir)
     begin
       session_pid = File.read(session_file).to_i
