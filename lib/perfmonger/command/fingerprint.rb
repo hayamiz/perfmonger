@@ -57,6 +57,10 @@ EOS
         save_proc_info()
       end
 
+      do_with_message("Saving numactl info") do
+        save_numactl_info()
+      end
+
       do_with_message("Saving IRQ info") do
         save_irq_info()
       end
@@ -109,9 +113,14 @@ EOS
         save_nvme_info()
       end
 
-
       ## Collect vendor specific info
 
+      # https://aws.amazon.com/jp/code/ec2-instance-metadata-query-tool/
+      if find_executable("ec2-metadata")
+        do_with_message("Saving EC2 metadata info") do
+          save_ec2metadata_info()
+        end
+      end
 
       # LSI MegaRAID
       megacli_bin = "/opt/MegaRAID/MegaCli/MegaCli64"
@@ -238,6 +247,22 @@ EOS
 
     File.open("#{@output_dir}/fdisk.log", "w") do |f|
       f.puts(`#{fdisk_bin} -l`)
+    end
+  end
+
+  def save_numactl_info()
+    numactl_bin = find_executable("numactl")
+
+    File.open("#{@output_dir}/numactl.log", "w") do |f|
+      f.puts(`#{numactl_bin} --hardware`)
+    end
+  end
+
+  def save_ec2metadata_info()
+    ec2metadata_bin = find_executable("ec2-metadata")
+
+    File.open("#{@output_dir}/ec2-metadata.log", "w") do |f|
+      f.puts(`#{ec2metadata_bin} --all`)
     end
   end
 

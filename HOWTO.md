@@ -3,7 +3,6 @@
 ## TODO in release
 
 1. Make a commit for changing version number
-  * Update version number in configure.ac
   * Add a new version number and release date to NEWS
 2. Tag the commit with name `v<VERSION>` ex) `v0.3.0`
 3. Push tags to the github repository
