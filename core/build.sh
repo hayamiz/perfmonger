@@ -57,7 +57,7 @@ for idx in $(seq 0 $((${#TARGET[@]}-1))); do
     export var_GOOS=$1
     export var_GOARCH=$2
 
-    for subcmd in recorder player summarizer plot-formatter; do
+    for subcmd in recorder player viewer summarizer plot-formatter; do
         TARGETS+=(../lib/exec/perfmonger-${subcmd}_${var_GOOS}_${var_GOARCH})
 
         cat <<EOF >> $makefile
