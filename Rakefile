@@ -26,6 +26,8 @@ task :go_get do
   sh "go get -u github.com/hayamiz/perfmonger/core/subsystem"
   sh "go get -u golang.org/x/crypto/ssh/terminal"
   sh "go get -u github.com/mattn/go-isatty"
+  sh "go get -u github.com/nsf/termbox-go"
+  sh "go get -u github.com/jroimartin/gocui"
 end
 
 desc "Run tests of core recorder/player"

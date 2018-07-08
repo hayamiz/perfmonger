@@ -11,16 +11,13 @@ install:
   - export GOPATH="$HOME/go"
   - export PATH="$PATH:$GOPATH/bin"
   - mkdir -p "$HOME/go/{src,pkg,bin}"
-  - go get -u github.com/mattn/go-isatty
-  - go get -u github.com/hayamiz/go-projson
-  - go get -u golang.org/x/crypto/ssh/terminal
-  - go get -u github.com/hayamiz/perfmonger/core/subsystem
 rvm:
   - 1.9.3
   - 2.0.0
   - 2.1.5
   - 2.2.0
 script:
+  - rake go_get
   - rake spec
   - rake test_core
 notifications:
