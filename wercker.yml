@@ -49,6 +49,18 @@ build:
               bundle exec rake spec
 
         - script:
+            name: switch ruby to 2.5.3
+            code: |
+              source /etc/profile.d/rvm.sh
+              rvm use 2.5.3
+        - bundle-install
+        - script:
+            name: run rspec
+            code: |
+              bundle exec rake clean
+              bundle exec rake spec
+
+        - script:
             name: run go test
             code: |
               bundle exec rake test_core
