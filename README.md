@@ -26,7 +26,7 @@ You need gnuplot 4.6.0 or later build with cairo terminals for plotting measurem
 
 ### Build from source
 
-You need Ruby 1.9.3 or later, and Go 1.8 or later to build perfmonger.
+You need Ruby 2.2 or later, and Go 1.8 or later to build perfmonger.
 
     bundle
     rake build

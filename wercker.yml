@@ -6,35 +6,17 @@ build:
     # http://devcenter.wercker.com/articles/languages/ruby.html
     steps:
         - script:
-            name: switch ruby to 1.9.3
+            name: prepare perfmonger go subsystem
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 1.9.3
-        - bundle-install
-        - script:
-            name: run rspec
-            code: |
-              bundle exec rake clean
-              bundle exec rake go_get
-              bundle exec rake spec
+              rvm use 2.2.10
+              rake go_get
 
         - script:
-            name: switch ruby to 2.0.0
+            name: switch ruby to 2.2.10
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.0.0
-        - bundle-install
-        - script:
-            name: run rspec
-            code: |
-              bundle exec rake clean
-              bundle exec rake spec
-        - script:
-            name: switch ruby to 2.1.10
-            code: |
-
-              source /etc/profile.d/rvm.sh
-              rvm use 2.1.10
+              rvm use 2.2.10
         - bundle-install
         - script:
             name: run rspec
@@ -43,10 +25,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.2.5
+            name: switch ruby to 2.3.8
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.2.5
+              rvm use 2.3.8
         - bundle-install
         - script:
             name: run rspec
@@ -55,22 +37,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.3.1
+            name: switch ruby to 2.4.5
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.3.1
-        - bundle-install
-        - script:
-            name: run rspec
-            code: |
-              bundle exec rake clean
-              bundle exec rake spec
-
-        - script:
-            name: switch ruby to 2.4.0
-            code: |
-              source /etc/profile.d/rvm.sh
-              rvm use 2.4.0
+              rvm use 2.4.5
         - bundle-install
         - script:
             name: run rspec
