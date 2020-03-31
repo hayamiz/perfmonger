@@ -1,4 +1,4 @@
-box: hayamiz/go-rvm:wercker-env
+box: hayamiz/go-rvm:wercker-env-0.11.2
 # Build definition
 build:
     # The steps that will be executed on build
@@ -13,10 +13,10 @@ build:
               rake go_get
 
         - script:
-            name: switch ruby to 2.2.10
+            name: switch ruby to 2.4.9
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.2.10
+              rvm use 2.4.9
         - bundle-install
         - script:
             name: run rspec
@@ -25,10 +25,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.3.8
+            name: switch ruby to 2.5.7
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.3.8
+              rvm use 2.5.7
         - bundle-install
         - script:
             name: run rspec
@@ -37,10 +37,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.4.5
+            name: switch ruby to 2.6.5
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.4.5
+              rvm use 2.6.5
         - bundle-install
         - script:
             name: run rspec
@@ -49,10 +49,10 @@ build:
               bundle exec rake spec
 
         - script:
-            name: switch ruby to 2.5.3
+            name: switch ruby to 2.7.0
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.5.3
+              rvm use 2.7.0
         - bundle-install
         - script:
             name: run rspec

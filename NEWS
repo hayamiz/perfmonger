@@ -4,6 +4,11 @@
   * Bug fixes
     * [plot] subcommand:
       * Remove temporary directory correctly
+  * Changes
+    * CI environment
+      * Changed golang version to 1.14
+      * Dropped support of ruby older than 2.4
+      * Added ruby 2.6 and 2.7
 
 ## 2018-05-15: PerfMonger 0.11.1
   * Bug fixes
