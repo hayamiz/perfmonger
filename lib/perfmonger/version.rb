@@ -1,3 +1,3 @@
 module PerfMonger
-  VERSION = "0.12.0"
+  VERSION = "0.11.2"
 end
