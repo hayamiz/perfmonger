@@ -9,7 +9,7 @@ build:
             name: prepare perfmonger go subsystem
             code: |
               source /etc/profile.d/rvm.sh
-              rvm use 2.2.10
+              rvm use 2.4.9
               rake go_get
 
         - script:
