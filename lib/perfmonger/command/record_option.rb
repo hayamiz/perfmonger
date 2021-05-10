@@ -63,6 +63,12 @@ class RecordOption
     if @no_intr
       cmd << "-no-intr"
     end
+    if @no_net
+      cmd << "-no-net"
+    end
+    if @no_mem
+      cmd << "-no-mem"
+    end
     if @devices.size > 0
       cmd << "-disks"
       cmd << @devices.join(",")
@@ -98,6 +104,8 @@ class RecordOption
     @no_cpu            = false
     @no_disk           = false
     @no_intr           = true
+    @no_net            = true
+    @no_mem            = false
     @devices           = []
     @logfile           = "perfmonger.pgr"
     @logfile_set       = false
@@ -139,6 +147,14 @@ class RecordOption
 
     @parser.on('--no-cpu', 'Suppress recording CPU usage.') do
       @no_cpu = true
+    end
+
+    @parser.on('--no-net', 'Suppress recording network usage') do
+      @no_net = false
+    end
+
+    @parser.on('--no-mem', 'Suppress recording memory usage') do
+      @no_mem = true
     end
 
     @parser.on('-l', '--logfile FILE') do |file|

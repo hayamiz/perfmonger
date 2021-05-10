@@ -582,6 +582,8 @@ func (musage *MemUsage) WriteJsonTo(printer *projson.JsonPrinter) {
 
 	printer.PutKey("mem_total")
 	printer.PutInt64(musage.mem.MemTotal)
+	printer.PutKey("mem_used")
+	printer.PutInt64(musage.mem.MemTotal - musage.mem.MemFree - musage.mem.Buffers - musage.mem.Cached)
 	printer.PutKey("mem_free")
 	printer.PutInt64(musage.mem.MemFree)
 	printer.PutKey("buffers")

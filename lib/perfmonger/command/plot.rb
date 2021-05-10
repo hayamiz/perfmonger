@@ -30,6 +30,7 @@ EOS
     @disk_plot_write = true
     @disk_numkey_threshold = 10
     @plot_iops_max = nil
+    @gnuplot_bin = `which gnuplot`
   end
 
   def parse_args(argv)
@@ -45,6 +46,10 @@ EOS
       end
 
       @output_dir = dir
+    end
+
+    @parser.on('--with-gnuplot GNUPLOT_BIN') do |gnuplot_bin|
+      @gnuplot_bin = gnuplot_bin
     end
 
     @parser.on('-T', '--output-type TYPE', 'Available: pdf, png') do |typ|
@@ -119,12 +124,13 @@ EOS
   end
 
   def run(argv)
-    parse_args(argv)
     unless system('which gnuplot >/dev/null 2>&1')
       puts("ERROR: gnuplot not found")
       puts(@parser.help)
       exit(false)
     end
+
+    parse_args(argv)
 
     unless system('gnuplot -e "set terminal" < /dev/null 2>&1 | grep pdfcairo >/dev/null 2>&1')
       puts("ERROR: pdfcairo is not supported by installed gnuplot")

@@ -80,6 +80,19 @@ func showNetStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec 
 	return nil
 }
 
+func showMemStat(printer *projson.JsonPrinter, cur_rec *ss.StatRecord) error {
+	musage, err := ss.GetMemUsage(cur_rec.Mem)
+	if err != nil {
+		return err
+	}
+
+	printer.PutKey("mem")
+
+	musage.WriteJsonTo(printer)
+
+	return nil
+}
+
 func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	printer.Reset()
 	if option.pretty {
@@ -115,6 +128,12 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 	}
 	if cur_rec.Net != nil {
 		err := showNetStat(printer, prev_rec, cur_rec)
+		if err != nil {
+			return err
+		}
+	}
+	if cur_rec.Mem != nil {
+		err := showMemStat(printer, cur_rec)
 		if err != nil {
 			return err
 		}
