@@ -1,4 +1,15 @@
 ## 20XX-XX-XX: PerfMonger 0.12.0
+  * New features
+    * [record] subcommand:
+      * Add memory usage collection
+
+## 2021-02-10: PerfMonger 0.11.3
+  * Bug fixes
+    * [plot] subcommand:
+      * Fall back to available gnuplot terminal
+  * Changes
+    * [plot] subcommand:
+      * Added --with-gnuplot option for specifying gnuplot binary
 
 ## 2020-03-31: PerfMonger 0.11.2
   * Bug fixes

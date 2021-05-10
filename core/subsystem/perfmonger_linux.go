@@ -429,3 +429,88 @@ func ReadNetStat(record *StatRecord) error {
 
 	return nil
 }
+
+func ReadMemStat(record *StatRecord) error {
+	if record == nil {
+		return errors.New("Valid *StatRecord is required.")
+	}
+
+	mem_stat := NewMemStat()
+
+	f, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		var key string
+		var val int64
+		line := scanner.Text()
+
+		n, err := fmt.Sscanf(line, "%s %d", &key, &val)
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		if n != 2 {
+			continue
+		}
+
+		switch key {
+		case "HugePages_Surp:":
+			mem_stat.HugePages_Surp = val
+		case "HugePages_Rsvd:":
+			mem_stat.HugePages_Rsvd = val
+		case "HugePages_Free:":
+			mem_stat.HugePages_Free = val
+		case "HugePages_Total:":
+			mem_stat.HugePages_Total = val
+		case "AnonHugePages:":
+			mem_stat.AnonHugePages = val
+		case "Committed_AS:":
+			mem_stat.Committed_AS = val
+		case "CommitLimit:":
+			mem_stat.CommitLimit = val
+		case "Bounce:":
+			mem_stat.Bounce = val
+		case "NFS_Unstable:":
+			mem_stat.NFS_Unstable = val
+		case "Shmem:":
+			mem_stat.Shmem = val
+		case "Mapped:":
+			mem_stat.Mapped = val
+		case "AnonPages:":
+			mem_stat.AnonPages = val
+		case "Writeback:":
+			mem_stat.Writeback = val
+		case "Dirty:":
+			mem_stat.Dirty = val
+		case "SwapFree:":
+			mem_stat.SwapFree = val
+		case "SwapTotal:":
+			mem_stat.SwapTotal = val
+		case "Inactive:":
+			mem_stat.Inactive = val
+		case "Active:":
+			mem_stat.Active = val
+		case "SwapCached:":
+			mem_stat.SwapCached = val
+		case "Cached:":
+			mem_stat.Cached = val
+		case "Buffers:":
+			mem_stat.Buffers = val
+		case "MemFree:":
+			mem_stat.MemFree = val
+		case "MemTotal:":
+			mem_stat.MemTotal = val
+		}
+	}
+
+	record.Mem = mem_stat
+
+	return nil
+}

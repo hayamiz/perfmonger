@@ -85,6 +85,10 @@ type NetUsageEntry struct {
 
 type NetUsage map[string]*NetUsageEntry
 
+type MemUsage struct {
+	mem *MemStat
+}
+
 var UseColor = false
 
 func SetUseColor(use_color bool) {
@@ -558,6 +562,70 @@ func (nusage *NetUsage) WriteJsonTo(printer *projson.JsonPrinter) {
 		printer.PutKey(device)
 		usage.WriteJsonTo(printer)
 	}
+
+	printer.FinishObject()
+}
+
+func GetMemUsage(mem *MemStat) (*MemUsage, error) {
+	if mem == nil {
+		return nil, errors.New("invalid memstat")
+	}
+
+	musage := new(MemUsage)
+	musage.mem = mem
+
+	return musage, nil
+}
+
+func (musage *MemUsage) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+
+	printer.PutKey("MemTotal")
+	printer.PutInt(musage.mem.MemTotal)
+	printer.PutKey("MemFree")
+	printer.PutInt(musage.mem.MemFree)
+	printer.PutKey("Buffers")
+	printer.PutInt(musage.mem.Buffers)
+	printer.PutKey("Cached")
+	printer.PutInt(musage.mem.Cached)
+	printer.PutKey("SwapCached")
+	printer.PutInt(musage.mem.SwapCached)
+	printer.PutKey("Active")
+	printer.PutInt(musage.mem.Active)
+	printer.PutKey("Inactive")
+	printer.PutInt(musage.mem.Inactive)
+	printer.PutKey("SwapTotal")
+	printer.PutInt(musage.mem.SwapTotal)
+	printer.PutKey("SwapFree")
+	printer.PutInt(musage.mem.SwapFree)
+	printer.PutKey("Dirty")
+	printer.PutInt(musage.mem.Dirty)
+	printer.PutKey("Writeback")
+	printer.PutInt(musage.mem.Writeback)
+	printer.PutKey("AnonPages")
+	printer.PutInt(musage.mem.AnonPages)
+	printer.PutKey("Mapped")
+	printer.PutInt(musage.mem.Mapped)
+	printer.PutKey("Shmem")
+	printer.PutInt(musage.mem.Shmem)
+	printer.PutKey("NFS_Unstable")
+	printer.PutInt(musage.mem.NFS_Unstable)
+	printer.PutKey("Bounce")
+	printer.PutInt(musage.mem.Bounce)
+	printer.PutKey("CommitLimit")
+	printer.PutInt(musage.mem.CommitLimit)
+	printer.PutKey("Committed_AS")
+	printer.PutInt(musage.mem.Committed_AS)
+	printer.PutKey("AnonHugePages")
+	printer.PutInt(musage.mem.AnonHugePages)
+	printer.PutKey("HugePages_Total")
+	printer.PutInt(musage.mem.HugePages_Total)
+	printer.PutKey("HugePages_Free")
+	printer.PutInt(musage.mem.HugePages_Free)
+	printer.PutKey("HugePages_Rsvd")
+	printer.PutInt(musage.mem.HugePages_Rsvd)
+	printer.PutKey("HugePages_Surp")
+	printer.PutInt(musage.mem.HugePages_Surp)
 
 	printer.FinishObject()
 }

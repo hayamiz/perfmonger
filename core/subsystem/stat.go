@@ -102,6 +102,33 @@ type NetStat struct {
 	Entries []*NetStatEntry
 }
 
+// all values are recorded in KB
+type MemStat struct {
+	MemTotal        int64
+	MemFree         int64
+	Buffers         int64
+	Cached          int64
+	SwapCached      int64
+	Active          int64
+	Inactive        int64
+	SwapTotal       int64
+	SwapFree        int64
+	Dirty           int64
+	Writeback       int64
+	AnonPages       int64
+	Mapped          int64
+	Shmem           int64
+	NFS_Unstable    int64
+	Bounce          int64
+	CommitLimit     int64
+	Committed_AS    int64
+	AnonHugePages   int64
+	HugePages_Total int64
+	HugePages_Free  int64
+	HugePages_Rsvd  int64
+	HugePages_Surp  int64
+}
+
 type StatRecord struct {
 	Time      time.Time
 	Cpu       *CpuStat
@@ -110,6 +137,7 @@ type StatRecord struct {
 	Disk      *DiskStat
 	Softirq   *SoftIrqStat
 	Net       *NetStat
+	Mem       *MemStat
 }
 
 func (core_stat *CpuCoreStat) Clear() {
@@ -219,9 +247,40 @@ func NewNetStat() *NetStat {
 	return new(NetStat)
 }
 
+func NewMemStat() *MemStat {
+	return new(MemStat)
+}
+
+func (entry *MemStat) Clear() {
+	entry.MemTotal = 0
+	entry.MemFree = 0
+	entry.Buffers = 0
+	entry.Cached = 0
+	entry.SwapCached = 0
+	entry.Active = 0
+	entry.Inactive = 0
+	entry.SwapTotal = 0
+	entry.SwapFree = 0
+	entry.Dirty = 0
+	entry.Writeback = 0
+	entry.AnonPages = 0
+	entry.Mapped = 0
+	entry.Shmem = 0
+	entry.NFS_Unstable = 0
+	entry.Bounce = 0
+	entry.CommitLimit = 0
+	entry.Committed_AS = 0
+	entry.AnonHugePages = 0
+	entry.HugePages_Total = 0
+	entry.HugePages_Free = 0
+	entry.HugePages_Rsvd = 0
+	entry.HugePages_Surp = 0
+}
+
 func NewStatRecord() *StatRecord {
 	return &StatRecord{
 		time.Now(),
+		nil,
 		nil,
 		nil,
 		nil,

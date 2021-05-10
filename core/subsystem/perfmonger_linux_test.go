@@ -1,6 +1,7 @@
 package subsystem
 
 import (
+	"log"
 	"os"
 	"testing"
 )
@@ -69,5 +70,44 @@ func TestReadNetStat(t *testing.T) {
 	}
 	if !lo_found {
 		t.Error("Device 'lo' not found.")
+	}
+}
+
+func TestReadMemStat(t *testing.T) {
+	var err error
+	var stat_record *StatRecord = nil
+
+	err = ReadMemStat(stat_record)
+	if err == nil {
+		t.Errorf("Error should not be returned with non-nil *StatRecord.")
+	}
+
+	_, err = os.Stat("/proc/meminfo")
+	if err != nil {
+		t.Skip("/proc/meminfo is not present.")
+	}
+
+	stat_record = NewStatRecord()
+	err = ReadMemStat(stat_record)
+	if err != nil {
+		log.Print(err)
+		t.Error("Error should not be returned with valid *StatRecord.")
+		return
+	}
+	if stat_record.Mem == nil {
+		t.Error("stat_record.Mem should not be nil")
+		return
+	}
+
+	if stat_record.Mem.MemTotal == 0 {
+		t.Error("Cannot read MemTotal correctly")
+		return
+	}
+
+	mem := stat_record.Mem
+
+	if (mem.MemFree + mem.Cached + mem.Buffers) > mem.MemTotal {
+		t.Error("Inconsistent meminfo values")
+		return
 	}
 }

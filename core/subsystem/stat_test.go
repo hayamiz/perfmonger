@@ -262,6 +262,14 @@ func TestNewNetStat(t *testing.T) {
 	}
 }
 
+func TestNewMemStat(t *testing.T) {
+	memstat := NewMemStat()
+
+	if memstat == nil {
+		t.Error("failed to create MemStat")
+	}
+}
+
 func TestNewStatRecord(t *testing.T) {
 	stat_record := NewStatRecord()
 
@@ -278,4 +286,5 @@ func TestNewStatRecord(t *testing.T) {
 	checkFieldIsNil("Disk")
 	checkFieldIsNil("Softirq")
 	checkFieldIsNil("Net")
+	checkFieldIsNil("Mem")
 }
