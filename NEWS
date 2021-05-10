@@ -1,4 +1,6 @@
-## 20XX-XX-XX: PerfMonger 0.12.0
+## 20XX-XX-XX: PerfMonger 0.13.0
+
+## 2021-05-10: PerfMonger 0.12.0
   * New features
     * [record] subcommand:
       * Add memory usage collection
