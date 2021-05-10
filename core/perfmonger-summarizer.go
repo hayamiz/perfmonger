@@ -128,7 +128,7 @@ func main() {
 			option.disk_only_regex)
 	}
 
-	if fst_record.Disk != nil && lst_record.Disk != nil {
+	if fst_record.Net != nil && lst_record.Net != nil {
 		net_usage, err = ss.GetNetUsage(
 			fst_record.Time, fst_record.Net,
 			lst_record.Time, lst_record.Net)
