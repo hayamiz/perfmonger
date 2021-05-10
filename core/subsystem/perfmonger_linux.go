@@ -481,6 +481,16 @@ func ReadMemStat(record *StatRecord) error {
 			mem_stat.NFS_Unstable = val
 		case "Shmem:":
 			mem_stat.Shmem = val
+		case "Slab:":
+			mem_stat.Slab = val
+		case "SReclaimable:":
+			mem_stat.SReclaimable = val
+		case "SUnreclaim:":
+			mem_stat.SUnreclaim = val
+		case "KernelStack:":
+			mem_stat.KernelStack = val
+		case "PageTables:":
+			mem_stat.PageTables = val
 		case "Mapped:":
 			mem_stat.Mapped = val
 		case "AnonPages:":

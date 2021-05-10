@@ -118,6 +118,11 @@ type MemStat struct {
 	AnonPages       int64
 	Mapped          int64
 	Shmem           int64
+	Slab            int64
+	SReclaimable    int64
+	SUnreclaim      int64
+	KernelStack     int64
+	PageTables      int64
 	NFS_Unstable    int64
 	Bounce          int64
 	CommitLimit     int64
@@ -266,6 +271,12 @@ func (entry *MemStat) Clear() {
 	entry.AnonPages = 0
 	entry.Mapped = 0
 	entry.Shmem = 0
+	entry.Slab = 0
+	entry.SReclaimable = 0
+	entry.NFS_Unstable = 0
+	entry.SUnreclaim = 0
+	entry.KernelStack = 0
+	entry.PageTables = 0
 	entry.NFS_Unstable = 0
 	entry.Bounce = 0
 	entry.CommitLimit = 0
