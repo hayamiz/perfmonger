@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func newPerfmongerLogReader(source io.Reader) io.Reader {
+func NewPerfmongerLogReader(source io.Reader) io.Reader {
 	var ret io.Reader
 	reader := bufio.NewReader(source)
 

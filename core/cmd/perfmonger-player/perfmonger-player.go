@@ -12,6 +12,7 @@ import (
 
 	projson "github.com/hayamiz/go-projson"
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
+    core "github.com/hayamiz/perfmonger/core"
 )
 
 type PlayerOption struct {
@@ -169,7 +170,7 @@ func main() {
 		in = f
 		defer f.Close()
 	}
-	input_reader := newPerfmongerLogReader(in)
+	input_reader := core.NewPerfmongerLogReader(in)
 	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)
