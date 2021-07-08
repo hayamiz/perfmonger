@@ -31,7 +31,8 @@ class RecordCommand < BaseCommand
     if @option.kill
       unless session_pid
         # There is nothing to be killed
-        return true
+        $stderr.puts("[ERROR] No perfmonger record session is running.")
+        return false
       end
 
       begin
@@ -44,12 +45,32 @@ class RecordCommand < BaseCommand
           f.flock(File::LOCK_UN)
         end
       end
+
+      # wait until the process surely exits
+      sleeptime = 0.05
+      try = 0
+      while true
+        begin
+          Process.kill(:INT, session_pid)
+        rescue Errno::ESRCH
+          # no such process
+          break
+        end
+        sleep(sleeptime)
+        sleeptime *= 2
+        try += 1
+        if try >= 5
+          $stderr.puts("[ERROR] Cannot stop perfmonger record session correctly. PID=#{session_pid}")
+          return false
+        end
+      end
+
       return true
     end
 
     if @option.status
       unless session_pid
-        puts "[ERROR] No perfmonger-recorder is running."
+        puts "[ERROR] No perfmonger record session is running."
         return false
       end
 
