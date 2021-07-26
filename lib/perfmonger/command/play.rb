@@ -26,6 +26,10 @@ EOS
       @pretty = true
     end
 
+    @disk_only_regex = nil
+    @parser.on('--disk-only REGEX', "Select disk devices that matches REGEX (Ex. 'sd[b-d]')") do |regex|
+      @disk_only_regex = regex
+    end
   end
 
   def parse_args(argv)
@@ -62,6 +66,12 @@ EOS
     if @pretty
       cmd << "-pretty"
     end
+
+    if @disk_only_regex
+      cmd << "-disk-only"
+      cmd << @disk_only_regex
+    end
+
     cmd << @logfile
 
     Process.exec(*cmd)

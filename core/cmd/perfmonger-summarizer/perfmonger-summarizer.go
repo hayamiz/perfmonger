@@ -12,8 +12,8 @@ import (
 	"sort"
 
 	projson "github.com/hayamiz/go-projson"
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
 	"github.com/hayamiz/perfmonger/core"
+	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
 type SummaryOption struct {
@@ -39,6 +39,7 @@ func parseArgs() {
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
+		fmt.Fprintln(os.Stderr, "Insufficient argument")
 		os.Exit(1)
 	}
 

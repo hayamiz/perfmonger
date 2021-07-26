@@ -9,16 +9,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 
 	projson "github.com/hayamiz/go-projson"
+	core "github.com/hayamiz/perfmonger/core"
 	ss "github.com/hayamiz/perfmonger/core/subsystem"
-    core "github.com/hayamiz/perfmonger/core"
 )
 
 type PlayerOption struct {
-	logfile string
-	color   bool
-	pretty  bool
+	logfile         string
+	color           bool
+	pretty          bool
+	disk_only       string
+	disk_only_regex *regexp.Regexp
 }
 
 var option PlayerOption
@@ -50,10 +53,11 @@ func showInterruptStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cu
 	return nil
 }
 
-func showDiskStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
-	dusage, err := ss.GetDiskUsage(
+func showDiskStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord, disk_only_regex *regexp.Regexp) error {
+	dusage, err := ss.GetDiskUsage1(
 		prev_rec.Time, prev_rec.Disk,
-		cur_rec.Time, cur_rec.Disk)
+		cur_rec.Time, cur_rec.Disk,
+		option.disk_only_regex)
 	if err != nil {
 		return err
 	}
@@ -94,7 +98,9 @@ func showMemStat(printer *projson.JsonPrinter, cur_rec *ss.StatRecord) error {
 	return nil
 }
 
-func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
+func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord,
+	disk_only_regex *regexp.Regexp) error {
+
 	printer.Reset()
 	if option.pretty {
 		printer.SetStyle(projson.SmartStyle)
@@ -102,6 +108,7 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 	if option.color {
 		printer.SetColor(true)
 	}
+
 	printer.BeginObject()
 	printer.PutKey("time")
 	printer.PutFloatFmt(float64(cur_rec.Time.UnixNano())/1e9, "%.3f")
@@ -122,7 +129,7 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 		}
 	}
 	if cur_rec.Disk != nil {
-		err := showDiskStat(printer, prev_rec, cur_rec)
+		err := showDiskStat(printer, prev_rec, cur_rec, disk_only_regex)
 		if err != nil {
 			return err
 		}
@@ -148,8 +155,24 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 func parseArgs() {
 	flag.BoolVar(&option.color, "color", false, "Use colored JSON output")
 	flag.BoolVar(&option.pretty, "pretty", false, "Use human readable JSON output")
+	flag.StringVar(&option.disk_only, "disk-only", "", "Select disk devices by regex")
 
 	flag.Parse()
+
+	if len(flag.Args()) < 1 {
+		fmt.Fprintln(os.Stderr, "Insufficient argument")
+		os.Exit(1)
+	}
+
+	option.disk_only_regex = nil
+
+	if option.disk_only != "" {
+		var err error
+		option.disk_only_regex, err = regexp.Compile(option.disk_only)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	option.logfile = flag.Arg(0)
 }
@@ -219,7 +242,7 @@ func main() {
 			panic(err)
 		}
 
-		err = showStat(printer, prev_rec, cur_rec)
+		err = showStat(printer, prev_rec, cur_rec, option.disk_only_regex)
 		if err != nil {
 			printer.Reset()
 			fmt.Fprintln(os.Stderr, "skip by err")
