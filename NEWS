@@ -1,9 +1,10 @@
 ## 2021-XX-XX: PerfMonger 0.14.0
 
-## 2021-07-26: PerfMonger 0.13.0
+## 2021-07-26: PerfMonger 0.13.1
   * New features
     * [play] subcommand:
       * Added --disk-only option to filter results of not interesting disks
+  * Note: v0.13.0 is yanked from rubygems.org
 
 ## 2021-07-08: PerfMonger 0.12.1
   * Bug fixes
