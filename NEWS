@@ -1,4 +1,12 @@
-## 2021-XX-XX: PerfMonger 0.14.0
+## 2021-XX-XX: PerfMonger 0.15.0
+
+## 2021-07-27: PerfMonger 0.14.0
+  * New features
+    * [plot] subcommand:
+      * Added memory usage plot
+  * Changes
+    * [record] subcommand:
+      * Additionaly record 'Hugepagesize' in memory usage
 
 ## 2021-07-26: PerfMonger 0.13.1
   * New features

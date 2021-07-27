@@ -145,10 +145,13 @@ EOS
 
     @disk_dat = File.expand_path("disk.dat", @tmpdir)
     @cpu_dat = File.expand_path("cpu.dat", @tmpdir)
+    @mem_dat = File.expand_path("mem.dat", @tmpdir)
 
     meta_json = nil
-    cmd = [formatter_bin, "-perfmonger", @data_file, "-cpufile", @cpu_dat,
-      "-diskfile", @disk_dat]
+    cmd = [formatter_bin, "-perfmonger", @data_file,
+           "-cpufile", @cpu_dat,
+           "-diskfile", @disk_dat,
+           "-memfile", @mem_dat]
     if @disk_only_regex
       cmd << "-disk-only"
       cmd << @disk_only
@@ -164,6 +167,7 @@ EOS
 
     plot_disk(meta)
     plot_cpu(meta)
+    plot_mem(meta)
 
     FileUtils.rm_rf(@tmpdir)
 
@@ -501,6 +505,139 @@ EOS
       copy_targets << gp_filename
       copy_targets << dat_filename
       copy_targets << all_gp_filename
+    end
+
+    copy_targets.each do |target|
+      FileUtils.copy(File.join(@tmpdir, target), @output_dir)
+    end
+  end # def
+
+  def plot_mem(meta)
+    pdf_filename = @output_prefix + 'mem.pdf'
+    gp_filename  = @output_prefix + 'mem.gp'
+    dat_filename = @output_prefix + 'mem.dat'
+
+    if @output_type != 'pdf'
+      img_filename = @output_prefix + 'cpu.' + @output_type
+    else
+      img_filename = nil
+    end
+
+    start_time = meta["start_time"]
+    end_time = meta["end_time"]
+
+    mem_scaling = 2.0**20 # KB -> GB
+
+# "elapsed_time",     // 1
+# "mem_total",        // 2
+# "mem_used",         // 3
+# "mem_free",         // 4
+# "buffers",          // 5
+# "cached",           // 6
+# "swap_cached",      // 7
+# "active",           // 8
+# "inactive",         // 9
+# "swap_total",       // 10
+# "swap_free",        // 11
+# "dirty",            // 12
+# "writeback",        // 13
+# "anon_pages",       // 14
+# "mapped",           // 15
+# "shmem",            // 16
+# "slab",             // 17
+# "s_reclaimable",    // 18
+# "s_unreclaim",      // 19
+# "kernel_stack",     // 20
+# "page_tables",      // 21
+# "nfs_unstable",     // 22
+# "bounce",           // 23
+# "commit_limit",     // 24
+# "committed_as",     // 25
+# "anon_huge_pages",  // 26
+# "huge_pages_total", // 27
+# "huge_pages_free",  // 28
+# "huge_pages_rsvd",  // 29
+# "huge_pages_surp"}, // 30
+# "hugepagesize"},    // 31
+
+    Dir.chdir(@tmpdir) do
+      total = `tail -n+2 #{dat_filename}|head -n1`.split[1].to_f
+      if total == 0.0
+        raise RuntimeError.new("Failed to get MemTotal value from mem.dat file: #{dat_filename}")
+      end
+
+      gpfile = File.open(gp_filename, 'w')
+
+      pdf_file = File.join(@output_dir, "mem.pdf")
+      gpfile.puts <<EOS
+set term pdfcairo enhanced color size 6in,2.5in
+set title "Memory usage"
+set output "#{pdf_filename}"
+set key outside center bottom horizontal
+set size 1.0, 1.0
+
+set xlabel "elapsed time [sec]"
+set ylabel "memory usage [GB]"
+
+# scaling
+s = #{mem_scaling}
+
+set grid
+set xrange [#{@offset_time}:#{end_time - start_time}]
+set yrange [0:#{total * 1.2}/s]
+
+# line styles
+set style line 1 lt 1 lc rgb '#66C2A5' # teal
+set style line 2 lt 1 lc rgb '#FC8D62' # orange
+set style line 3 lt 1 lc rgb '#8DA0CB' # lilac
+set style line 4 lt 1 lc rgb '#E78AC3' # magentat
+set style line 5 lt 1 lc rgb '#A6D854' # lime green
+set style line 6 lt 1 lc rgb '#FFD92F' # banana
+set style line 7 lt 1 lc rgb '#E5C494' # tan
+set style line 8 lt 1 lc rgb '#B3B3B3' # grey
+
+# palette
+set palette maxcolors 8
+set palette defined ( 0 '#66C2A5',\
+    	    	      1 '#FC8D62',\
+		      2 '#8DA0CB',\
+		      3 '#E78AC3',\
+		      4 '#A6D854',\
+		      5 '#FFD92F',\
+		      6 '#E5C494',\
+		      7 '#B3B3B3' )
+
+used(total, free, cached, buffers, srecl) = \\
+  ( (total - free - cache(cached, srecl) - buffers < 0) ? \\
+    (total - free) : \\
+    (total - free - cache(cached, srecl) - buffers) )
+
+cache(cached, srecl) = cached + srecl
+
+plot "#{dat_filename}" usi 1:($4/s+$5/s+cache($6, $18)/s+$16/s+used($2, $4, $6, $5, $18)/s) wi filledcurves x1 ls 8 ti "free", \\
+     "#{dat_filename}" usi 1:($5/s+cache($6, $18)/s+$16/s+used($2, $4, $6, $5, $18)/s) wi filledcurves x1 ls 3 ti "buffers", \\
+     "#{dat_filename}" usi 1:(cache($6, $18)/s+$16/s+used($2, $4, $6, $5, $18)/s) wi filledcurves x1 ls 5 ti "cached", \\
+     "#{dat_filename}" usi 1:($16/s+used($2, $4, $6, $5, $18)/s) wi filledcurves x1 ls 6 ti "shared", \\
+     "#{dat_filename}" usi 1:(used($2, $4, $6, $5, $18)/s) wi filledcurves x1 ls 2 ti "used", \\
+     "#{dat_filename}" usi 1:(($27-$28)*$31/s) wi lines dt (4,4) lc rgb 'black' lw 2.5 ti 'used (hugepage)'
+
+EOS
+
+      gpfile.close
+      system("gnuplot #{gpfile.path}")
+
+      if @output_type != 'pdf'
+        system("convert -density 150 -background white #{pdf_filename} #{img_filename}")
+      end
+    end # chdir
+
+    copy_targets = []
+    copy_targets << pdf_filename
+    copy_targets << img_filename if img_filename
+
+    if @save_gpfiles
+      copy_targets << gp_filename
+      copy_targets << dat_filename
     end
 
     copy_targets.each do |target|

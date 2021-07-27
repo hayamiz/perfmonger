@@ -469,6 +469,8 @@ func ReadMemStat(record *StatRecord) error {
 			mem_stat.HugePages_Free = val
 		case "HugePages_Total:":
 			mem_stat.HugePages_Total = val
+		case "Hugepagesize:":
+			mem_stat.Hugepagesize = val
 		case "AnonHugePages:":
 			mem_stat.AnonHugePages = val
 		case "Committed_AS:":

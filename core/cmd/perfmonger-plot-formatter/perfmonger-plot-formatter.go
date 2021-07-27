@@ -13,14 +13,16 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
 	"github.com/hayamiz/perfmonger/core"
+	ss "github.com/hayamiz/perfmonger/core/subsystem"
 )
 
 type CmdOption struct {
 	DiskFile        string
 	CpuFile         string
+	MemFile         string
 	PerfmongerFile  string
 	disk_only       string
 	disk_only_regex *regexp.Regexp
@@ -31,8 +33,9 @@ func parseArgs() *CmdOption {
 
 	opt := new(CmdOption)
 
-	flag.StringVar(&opt.DiskFile, "diskfile", "./disk.dat", "Disk performance data file")
-	flag.StringVar(&opt.CpuFile, "cpufile", "./cpu.dat", "CPU performance data file")
+	flag.StringVar(&opt.DiskFile, "diskfile", "./disk.dat", "Disk usage data file for gnuplot")
+	flag.StringVar(&opt.CpuFile, "cpufile", "./cpu.dat", "CPU usage data file for gnuplot")
+	flag.StringVar(&opt.MemFile, "memfile", "./mem.dat", "Memory usage data file for gnuplot")
 	flag.StringVar(&opt.PerfmongerFile, "perfmonger", "", "Perfmonger log file")
 	flag.StringVar(&opt.disk_only, "disk-only",
 		"", "Select disk devices by regex")
@@ -80,6 +83,13 @@ type DiskDatTmpFile struct {
 	Idx    int
 }
 
+type MemDatTmpFile struct {
+	Name   string
+	Path   string
+	File   *os.File
+	Writer *bufio.Writer
+}
+
 type CpuDatTmpFile struct {
 	CoreId int
 	Path   string
@@ -118,6 +128,20 @@ func makeCpuDatTmpFile(coreid int) *CpuDatTmpFile {
 	return ret
 }
 
+func makeMemDatTmpFile() *MemDatTmpFile {
+	ret := new(MemDatTmpFile)
+
+	f, err := ioutil.TempFile("", "perfmonger-mem")
+	if err != nil {
+		panic(err)
+	}
+	ret.File = f
+	ret.Path = f.Name()
+	ret.Writer = bufio.NewWriter(f)
+
+	return ret
+}
+
 func printCoreUsage(writer *bufio.Writer, elapsed_time float64, coreusage *ss.CpuCoreUsage) {
 	writer.WriteString(
 		fmt.Sprintf("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
@@ -131,6 +155,80 @@ func printCoreUsage(writer *bufio.Writer, elapsed_time float64, coreusage *ss.Cp
 			coreusage.Steal,
 			coreusage.Guest,
 			coreusage.Idle))
+}
+
+func printMemUsage(writer *bufio.Writer, elapsed_time float64, mem *ss.MemStat) {
+	if mem == nil {
+		writer.WriteString("#")
+		writer.WriteString(
+			strings.Join([]string{
+				"elapsed_time",     // 1
+				"mem_total",        // 2
+				"mem_used",         // 3
+				"mem_free",         // 4
+				"buffers",          // 5
+				"cached",           // 6
+				"swap_cached",      // 7
+				"active",           // 8
+				"inactive",         // 9
+				"swap_total",       // 10
+				"swap_free",        // 11
+				"dirty",            // 12
+				"writeback",        // 13
+				"anon_pages",       // 14
+				"mapped",           // 15
+				"shmem",            // 16
+				"slab",             // 17
+				"s_reclaimable",    // 18
+				"s_unreclaim",      // 19
+				"kernel_stack",     // 20
+				"page_tables",      // 21
+				"nfs_unstable",     // 22
+				"bounce",           // 23
+				"commit_limit",     // 24
+				"committed_as",     // 25
+				"anon_huge_pages",  // 26
+				"huge_pages_total", // 27
+				"huge_pages_free",  // 28
+				"huge_pages_rsvd",  // 29
+				"huge_pages_surp",  // 30
+				"hugepagesize"},    // 31
+				"\t"))
+		writer.WriteString("\n")
+	} else {
+		writer.WriteString(fmt.Sprintf("%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			elapsed_time,
+			mem.MemTotal,
+			mem.MemTotal-mem.MemFree-mem.Buffers-mem.Cached-mem.SReclaimable,
+			mem.MemFree,
+			mem.Buffers,
+			mem.Cached,
+			mem.SwapCached,
+			mem.Active,
+			mem.Inactive,
+			mem.SwapTotal,
+			mem.SwapFree,
+			mem.Dirty,
+			mem.Writeback,
+			mem.AnonPages,
+			mem.Mapped,
+			mem.Shmem,
+			mem.Slab,
+			mem.SReclaimable,
+			mem.SUnreclaim,
+			mem.KernelStack,
+			mem.PageTables,
+			mem.NFS_Unstable,
+			mem.Bounce,
+			mem.CommitLimit,
+			mem.Committed_AS,
+			mem.AnonHugePages,
+			mem.HugePages_Total,
+			mem.HugePages_Free,
+			mem.HugePages_Rsvd,
+			mem.HugePages_Surp,
+			mem.Hugepagesize))
+	}
 }
 
 func main() {
@@ -192,6 +290,13 @@ func main() {
 
 	cpu_writer.WriteString("# All cpu usage\n")
 	cpu_writer.WriteString("# elapsed_time	%usr	%nice	%sys	%iowait	%hardirq	%softirq	%steal	%guest	%idle\n")
+
+	f, err = os.Create(opt.MemFile)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	mem_writer := bufio.NewWriter(f)
 
 	for {
 		prev_rec := &records[curr^1]
@@ -284,6 +389,12 @@ func main() {
 		}
 		printCoreUsage(cpu_writer, prev_rec.Time.Sub(t0).Seconds(), cusage.All)
 
+		if !meta_set {
+			// print column labels
+			printMemUsage(mem_writer, prev_rec.Time.Sub(t0).Seconds(), nil)
+		}
+		printMemUsage(mem_writer, prev_rec.Time.Sub(t0).Seconds(), cur_rec.Mem)
+
 		curr ^= 1
 		meta_set = true
 	}
@@ -332,6 +443,7 @@ func main() {
 		os.Remove(cpu_dat.Path)
 	}
 	cpu_writer.Flush()
+	mem_writer.Flush()
 
 	json_enc := json.NewEncoder(os.Stdout)
 	json_enc.Encode(meta)

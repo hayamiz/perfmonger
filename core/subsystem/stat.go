@@ -132,6 +132,7 @@ type MemStat struct {
 	HugePages_Free  int64
 	HugePages_Rsvd  int64
 	HugePages_Surp  int64
+	Hugepagesize    int64
 }
 
 type StatRecord struct {
@@ -286,6 +287,7 @@ func (entry *MemStat) Clear() {
 	entry.HugePages_Free = 0
 	entry.HugePages_Rsvd = 0
 	entry.HugePages_Surp = 0
+	entry.Hugepagesize = 0
 }
 
 func NewStatRecord() *StatRecord {
