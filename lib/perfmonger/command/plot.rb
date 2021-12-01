@@ -517,6 +517,11 @@ EOS
     gp_filename  = @output_prefix + 'mem.gp'
     dat_filename = @output_prefix + 'mem.dat'
 
+    unless File.exists?(dat_filename)
+      $stderr.puts("WARN: memory usage info is not available.")
+      return
+    end
+
     if @output_type != 'pdf'
       img_filename = @output_prefix + 'cpu.' + @output_type
     else

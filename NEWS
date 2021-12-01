@@ -1,5 +1,10 @@
 ## 2021-XX-XX: PerfMonger 0.15.0
 
+## 2021-12-01: PerfMonger 0.14.1
+  * Changes
+    * [plot] subcommand:
+      * Skip plotting memory usage if it is not recorded
+
 ## 2021-07-27: PerfMonger 0.14.0
   * New features
     * [plot] subcommand:
