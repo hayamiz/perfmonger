@@ -1,5 +1,10 @@
 ## 2021-XX-XX: PerfMonger 0.15.0
 
+## 2021-12-01: PerfMonger 0.14.3
+  * Bugfix
+    * [plot] subcommand:
+      * Plot mem info usage correctly
+
 ## 2021-12-01: PerfMonger 0.14.2
   * Bugfix
     * [player] subcommand:

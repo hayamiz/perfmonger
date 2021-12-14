@@ -517,7 +517,7 @@ EOS
     gp_filename  = @output_prefix + 'mem.gp'
     dat_filename = @output_prefix + 'mem.dat'
 
-    unless File.exists?(dat_filename)
+    unless File.exists?(@mem_dat)
       $stderr.puts("WARN: memory usage info is not available.")
       return
     end
