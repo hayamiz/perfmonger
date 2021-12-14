@@ -159,11 +159,6 @@ func parseArgs() {
 
 	flag.Parse()
 
-	if len(flag.Args()) < 1 {
-		fmt.Fprintln(os.Stderr, "Insufficient argument")
-		os.Exit(1)
-	}
-
 	option.disk_only_regex = nil
 
 	if option.disk_only != "" {
@@ -174,7 +169,11 @@ func parseArgs() {
 		}
 	}
 
-	option.logfile = flag.Arg(0)
+	if len(flag.Args()) < 1 {
+		option.logfile = "-"
+	} else {
+		option.logfile = flag.Arg(0)
+	}
 }
 
 func main() {
@@ -183,7 +182,7 @@ func main() {
 
 	parseArgs()
 
-	if option.logfile == "" {
+	if option.logfile == "-" {
 		in = os.Stdin
 	} else {
 		f, err := os.Open(option.logfile)
