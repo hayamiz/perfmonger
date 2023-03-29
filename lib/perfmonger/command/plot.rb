@@ -517,13 +517,13 @@ EOS
     gp_filename  = @output_prefix + 'mem.gp'
     dat_filename = @output_prefix + 'mem.dat'
 
-    unless File.exists?(dat_filename)
+    unless File.exists?(File.expand_path("mem.dat", @tmpdir))
       $stderr.puts("WARN: memory usage info is not available.")
       return
     end
 
     if @output_type != 'pdf'
-      img_filename = @output_prefix + 'cpu.' + @output_type
+      img_filename = @output_prefix + 'mem.' + @output_type
     else
       img_filename = nil
     end
