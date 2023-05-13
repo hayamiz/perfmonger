@@ -1,5 +1,8 @@
 ## 2023-XX-XX: PerfMonger 0.15.0
 
+## 2023-05-13: PerfMonger 0.14.4
+  * Yanked release 0.14.3 and repushed release binary.
+
 ## 2023-03-30: PerfMonger 0.14.3
   * Bugfix
     * [plot] subcommand:
