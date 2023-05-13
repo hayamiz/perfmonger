@@ -1,9 +1,9 @@
-## 2021-XX-XX: PerfMonger 0.15.0
+## 2023-XX-XX: PerfMonger 0.15.0
 
-## 2021-12-01: PerfMonger 0.14.3
+## 2023-03-30: PerfMonger 0.14.3
   * Bugfix
     * [plot] subcommand:
-      * Plot mem info usage correctly
+      * Plot memory usage info correctly when available.
 
 ## 2021-12-01: PerfMonger 0.14.2
   * Bugfix

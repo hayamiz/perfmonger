@@ -523,7 +523,7 @@ EOS
     end
 
     if @output_type != 'pdf'
-      img_filename = @output_prefix + 'cpu.' + @output_type
+      img_filename = @output_prefix + 'mem.' + @output_type
     else
       img_filename = nil
     end

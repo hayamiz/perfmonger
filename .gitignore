@@ -14,3 +14,7 @@
 /.wercker/
 /spec/examples.txt
 /perfmonger.pgr.gz
+/*.pdf
+/*.png
+/*.gp
+/*.dat
