@@ -32,7 +32,7 @@ end
 
 desc "Run tests of golang core library"
 task :test_core => [:cross_build_core] do
-  Dir.chdir("./core/subsystem") do
+  Dir.chdir("./core/internal/perfmonger") do
     # check coverage
     sh "go test -v -cover"
   end
@@ -41,9 +41,9 @@ end
 desc "Run static-analysis of golang core library"
 task :analyze_core => [:cross_build_core] do
   # running static analysis
-  Dir.chdir("./core/subsystem") do
+  Dir.chdir("./core/internal/perfmonger") do
     ["linux"].each do |platform|
-      puts "* ./core/subsystem"
+      puts "* ./core/internal/perfmonger"
       sh "go vet perfmonger_#{platform}.go $(ls *.go | grep -v perfmonger_)"
     end
   end

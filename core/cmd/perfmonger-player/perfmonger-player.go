@@ -12,8 +12,7 @@ import (
 	"regexp"
 
 	projson "github.com/hayamiz/go-projson"
-	core "github.com/hayamiz/perfmonger/core"
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
 type PlayerOption struct {
@@ -192,7 +191,7 @@ func main() {
 		in = f
 		defer f.Close()
 	}
-	input_reader := core.NewPerfmongerLogReader(in)
+	input_reader := ss.NewPerfmongerLogReader(in)
 	dec := gob.NewDecoder(input_reader)
 
 	out = bufio.NewWriter(os.Stdout)

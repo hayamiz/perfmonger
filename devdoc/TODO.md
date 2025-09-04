@@ -18,20 +18,20 @@
 
 ### タスク2: パッケージ構造のリファクタリング
 
-- [ ] `core/subsystem` 以下のパッケージを、`core/cmd` 以下から参照するときに `github.com/hayamiz/perfmonger/core/subsystem` として参照する方式をやめて、`core/subsystem` 以下のパッケージを `core/cmd` 以下に移動して、直接参照する方式に変更
-  - [ ] 現在の import 構造の確認（4つの cmd が subsystem を参照）:
+- [x] `core/subsystem` 以下のパッケージを、`core/cmd` 以下から参照するときに `github.com/hayamiz/perfmonger/core/subsystem` として参照する方式をやめて、`core/subsystem` 以下のパッケージを `core/cmd` 以下に移動して、直接参照する方式に変更
+  - [x] 現在の import 構造の確認（4つの cmd が subsystem を参照）:
     - `perfmonger-player`: subsystem.StatRecord を使用
     - `perfmonger-plot-formatter`: subsystem.StatRecord を使用  
     - `perfmonger-recorder`: subsystem.NewPerfMonger を使用
     - `perfmonger-summarizer`: subsystem.StatRecord を使用
-  - [ ] `core/internal/perfmonger` ディレクトリを作成
-  - [ ] `core/subsystem/*.go` を `core/internal/perfmonger/` に移動（テストファイル含む）
-  - [ ] 各 cmd の import を更新:
-    - `"github.com/hayamiz/perfmonger/core/subsystem"` → `"../internal/perfmonger"`
-  - [ ] `core/utils.go` を `core/internal/perfmonger/utils.go` に移動
-  - [ ] `go.mod` の module path は変更せず維持（外部からの参照は不要のため）
-  - [ ] `Rakefile` の test_core, analyze_core タスクのパスを更新
-  - [ ] ビルドとテストを実行して正常動作を確認
+  - [x] `core/internal/perfmonger` ディレクトリを作成
+  - [x] `core/subsystem/*.go` を `core/internal/perfmonger/` に移動（テストファイル含む）
+  - [x] 各 cmd の import を更新:
+    - `"github.com/hayamiz/perfmonger/core/subsystem"` → `"github.com/hayamiz/perfmonger/core/internal/perfmonger"`
+  - [x] `core/utils.go` を `core/internal/perfmonger/utils.go` に移動
+  - [x] `go.mod` の module path は変更せず維持（外部からの参照は不要のため）
+  - [x] `Rakefile` の test_core, analyze_core タスクのパスを更新
+  - [x] ビルドとテストを実行して正常動作を確認
 
 ## 段階1: core を単一バイナリ化（`perfmonger-core`）
 

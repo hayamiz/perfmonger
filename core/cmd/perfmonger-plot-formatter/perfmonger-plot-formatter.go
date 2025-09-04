@@ -15,8 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hayamiz/perfmonger/core"
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
 type CmdOption struct {
@@ -240,7 +239,7 @@ func main() {
 	}
 	defer f.Close()
 
-	input_reader := core.NewPerfmongerLogReader(f)
+	input_reader := ss.NewPerfmongerLogReader(f)
 	dec := gob.NewDecoder(input_reader)
 
 	var cheader ss.CommonHeader

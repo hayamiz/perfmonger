@@ -84,3 +84,8 @@ cd core/cmd/<tool> && go vet *.go
 # Test live monitoring
 ./exe/perfmonger live
 ```
+
+## Development Documentation
+
+- `devdoc/TODO.md`: Contains implementation tasks to be completed
+- `devdoc/DONE.md`: Stores completed tasks moved from TODO.md for record keeping

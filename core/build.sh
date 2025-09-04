@@ -34,7 +34,7 @@ fi
 
 set -e
 
-GO_DEPS=$(ls subsystem/*.go utils.go)
+GO_DEPS=$(ls internal/perfmonger/*.go)
 
 makefile=`mktemp`
 

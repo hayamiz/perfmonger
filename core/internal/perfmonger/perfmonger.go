@@ -1,4 +1,4 @@
-package subsystem
+package perfmonger
 
 import (
 	"time"
