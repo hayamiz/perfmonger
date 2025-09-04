@@ -42,7 +42,7 @@ desc "Run static-analysis of golang core library"
 task :analyze_core => [:cross_build_core] do
   # running static analysis
   Dir.chdir("./core/subsystem") do
-    ["linux", "darwin"].each do |platform|
+    ["linux"].each do |platform|
       puts "* ./core/subsystem"
       sh "go vet perfmonger_#{platform}.go $(ls *.go | grep -v perfmonger_)"
     end

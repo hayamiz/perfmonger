@@ -1,4 +1,7 @@
-## 2023-XX-XX: PerfMonger 0.15.0
+## 2025-XX-XX: PerfMonger 0.15.0
+
+  * Changes
+    * Dropped support of Darwin (Mac OS X) which was already deprecated.
 
 ## 2023-05-13: PerfMonger 0.14.4
   * Yanked release 0.14.3 and repushed release binary.

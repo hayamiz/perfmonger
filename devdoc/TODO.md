@@ -4,8 +4,34 @@
 
 ## 段階0: 不要な機能の整理、コード構造の整理
 
-- [ ] `core/subsystem` 以下の darwin サポートを廃止して、darwin関連のコードを削除
+### タスク1: Darwin サポートの廃止
+
+- [x] `core/subsystem` 以下の darwin サポートを廃止して、darwin関連のコードを削除
+  - [x] `core/subsystem/perfmonger_darwin.go` を削除
+  - [x] `core/subsystem/perfmonger.go` から Darwin 関連の条件分岐を削除
+  - [x] `core/build.sh` から Darwin ビルドターゲットを削除（30行目の "darwin amd64" を削除）
+  - [x] `core/Makefile` から Darwin ビルドターゲットを削除（自動生成されるため build.sh の修正で対応）
+  - [x] `Rakefile` の analyze_core タスク（45行目）から "darwin" を削除
+  - [x] `lib/perfmonger/command/core.rb` の CoreFinder から Darwin 関連のロジックを削除
+  - [x] `README.md` から Mac OS X サポートの記述を削除（19行目）
+  - [x] テストを実行して Linux ビルドが正常に動作することを確認
+
+### タスク2: パッケージ構造のリファクタリング
+
 - [ ] `core/subsystem` 以下のパッケージを、`core/cmd` 以下から参照するときに `github.com/hayamiz/perfmonger/core/subsystem` として参照する方式をやめて、`core/subsystem` 以下のパッケージを `core/cmd` 以下に移動して、直接参照する方式に変更
+  - [ ] 現在の import 構造の確認（4つの cmd が subsystem を参照）:
+    - `perfmonger-player`: subsystem.StatRecord を使用
+    - `perfmonger-plot-formatter`: subsystem.StatRecord を使用  
+    - `perfmonger-recorder`: subsystem.NewPerfMonger を使用
+    - `perfmonger-summarizer`: subsystem.StatRecord を使用
+  - [ ] `core/internal/perfmonger` ディレクトリを作成
+  - [ ] `core/subsystem/*.go` を `core/internal/perfmonger/` に移動（テストファイル含む）
+  - [ ] 各 cmd の import を更新:
+    - `"github.com/hayamiz/perfmonger/core/subsystem"` → `"../internal/perfmonger"`
+  - [ ] `core/utils.go` を `core/internal/perfmonger/utils.go` に移動
+  - [ ] `go.mod` の module path は変更せず維持（外部からの参照は不要のため）
+  - [ ] `Rakefile` の test_core, analyze_core タスクのパスを更新
+  - [ ] ビルドとテストを実行して正常動作を確認
 
 ## 段階1: core を単一バイナリ化（`perfmonger-core`）
 

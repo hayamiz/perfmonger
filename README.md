@@ -16,7 +16,6 @@ PerfMonger is a system performance monitor which enables high-resolution and hol
 ## Target platform
 
   * GNU/Linux
-  * Mac OS X (experimental support)
 
 ## How to installation
 
