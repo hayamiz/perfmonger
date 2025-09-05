@@ -13,12 +13,14 @@ import (
 	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
+// PlayerOption represents all options for the player component
+// This struct is now public for direct use by cobra commands
 type PlayerOption struct {
-	logfile         string
-	color           bool
-	pretty          bool
-	disk_only       string
-	disk_only_regex *regexp.Regexp
+	Logfile       string
+	Color         bool
+	Pretty        bool
+	DiskOnly      string
+	DiskOnlyRegex *regexp.Regexp
 }
 
 var init_rec ss.StatRecord
@@ -53,7 +55,7 @@ func showDiskStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec
 	dusage, err := ss.GetDiskUsage1(
 		prev_rec.Time, prev_rec.Disk,
 		cur_rec.Time, cur_rec.Disk,
-		option.disk_only_regex)
+		option.DiskOnlyRegex)
 	if err != nil {
 		return err
 	}
@@ -98,10 +100,10 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 	disk_only_regex *regexp.Regexp, option *PlayerOption) error {
 
 	printer.Reset()
-	if option.pretty {
+	if option.Pretty {
 		printer.SetStyle(projson.SmartStyle)
 	}
-	if option.color {
+	if option.Color {
 		printer.SetColor(true)
 	}
 
@@ -151,40 +153,76 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 func parseArgs(args []string, option *PlayerOption) {
 	fs := flag.NewFlagSet("player", flag.ExitOnError)
 	
-	fs.BoolVar(&option.color, "color", false, "Use colored JSON output")
-	fs.BoolVar(&option.pretty, "pretty", false, "Use human readable JSON output")
-	fs.StringVar(&option.disk_only, "disk-only", "", "Select disk devices by regex")
+	fs.BoolVar(&option.Color, "color", false, "Use colored JSON output")
+	fs.BoolVar(&option.Pretty, "pretty", false, "Use human readable JSON output")
+	fs.StringVar(&option.DiskOnly, "disk-only", "", "Select disk devices by regex")
 
 	fs.Parse(args)
 
-	option.disk_only_regex = nil
+	option.DiskOnlyRegex = nil
 
-	if option.disk_only != "" {
+	if option.DiskOnly != "" {
 		var err error
-		option.disk_only_regex, err = regexp.Compile(option.disk_only)
+		option.DiskOnlyRegex, err = regexp.Compile(option.DiskOnly)
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	if len(fs.Args()) < 1 {
-		option.logfile = "-"
+		option.Logfile = "-"
 	} else {
-		option.logfile = fs.Arg(0)
+		option.Logfile = fs.Arg(0)
 	}
 }
 
+// NewPlayerOption creates a PlayerOption with default values
+func NewPlayerOption() *PlayerOption {
+	return &PlayerOption{
+		Logfile:       "-",
+		Color:         false,
+		Pretty:        false,
+		DiskOnly:      "",
+		DiskOnlyRegex: nil,
+	}
+}
+
+// RunWithOption executes the player with the provided options
+// This is the new preferred API that avoids double argument parsing
+func RunWithOption(option *PlayerOption) {
+	// Create command line arguments from the option struct
+	args := make([]string, 0, 10)
+	
+	if option.Color {
+		args = append(args, "-color")
+	}
+	if option.Pretty {
+		args = append(args, "-pretty")
+	}
+	if option.DiskOnly != "" {
+		args = append(args, "-disk-only", option.DiskOnly)
+	}
+	
+	// Add logfile as positional argument if not stdin
+	if option.Logfile != "-" {
+		args = append(args, option.Logfile)
+	}
+	
+	// Call the existing Run function with generated args
+	Run(args)
+}
+
 func Run(args []string) {
-	var option PlayerOption
+	option := NewPlayerOption()
 	var in *os.File
 	var out *bufio.Writer
 
-	parseArgs(args, &option)
+	parseArgs(args, option)
 
-	if option.logfile == "-" {
+	if option.Logfile == "-" {
 		in = os.Stdin
 	} else {
-		f, err := os.Open(option.logfile)
+		f, err := os.Open(option.Logfile)
 		if err != nil {
 			panic(err)
 		}
@@ -240,7 +278,7 @@ func Run(args []string) {
 			panic(err)
 		}
 
-		err = showStat(printer, prev_rec, cur_rec, option.disk_only_regex, &option)
+		err = showStat(printer, prev_rec, cur_rec, option.DiskOnlyRegex, option)
 		if err != nil {
 			printer.Reset()
 			fmt.Fprintln(os.Stderr, "skip by err")

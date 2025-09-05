@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// plotOptions represents all options for the plot command
-type plotOptions struct {
+// plotCommand represents the plot command with direct field setting
+type plotCommand struct {
 	// Input data file
 	DataFile string
 
@@ -40,9 +40,9 @@ type plotOptions struct {
 	GnuplotBin         string
 }
 
-// newPlotOptions creates plotOptions with Ruby-compatible defaults
-func newPlotOptions() *plotOptions {
-	return &plotOptions{
+// newPlotCommandStruct creates plotCommand with Ruby-compatible defaults
+func newPlotCommandStruct() *plotCommand {
+	return &plotCommand{
 		DataFile:            "",
 		OffsetTime:          0.0,
 		OutputDir:           ".",
@@ -62,117 +62,127 @@ func newPlotOptions() *plotOptions {
 	}
 }
 
-// parseArgs validates and processes the parsed arguments
-func (opts *plotOptions) parseArgs(args []string, cmd *cobra.Command) error {
+// validateAndSetDataFile validates the data file argument using cobra's PreRunE approach
+func (cmd *plotCommand) validateAndSetDataFile(args []string) error {
 	// Validate data file argument
 	if len(args) == 0 {
 		return fmt.Errorf("LOG_FILE argument is required")
 	}
 
-	opts.DataFile = args[0]
+	cmd.DataFile = args[0]
 
 	// Check if data file exists
-	if _, err := os.Stat(opts.DataFile); os.IsNotExist(err) {
-		return fmt.Errorf("data file %q does not exist", opts.DataFile)
+	if _, err := os.Stat(cmd.DataFile); os.IsNotExist(err) {
+		return fmt.Errorf("data file %q does not exist", cmd.DataFile)
 	}
 
+	return nil
+}
+
+// validateOptions performs validation using cobra's PreRunE approach
+func (cmd *plotCommand) validateOptions() error {
 	// Validate output type
-	if opts.OutputType != "pdf" && opts.OutputType != "png" {
-		return fmt.Errorf("output-type must be 'pdf' or 'png', got %q", opts.OutputType)
+	if cmd.OutputType != "pdf" && cmd.OutputType != "png" {
+		return fmt.Errorf("output-type must be 'pdf' or 'png', got %q", cmd.OutputType)
 	}
 
 	// Compile disk-only regex if provided
-	if opts.DiskOnly != "" {
-		regex, err := regexp.Compile(opts.DiskOnly)
+	if cmd.DiskOnly != "" {
+		regex, err := regexp.Compile(cmd.DiskOnly)
 		if err != nil {
 			return fmt.Errorf("invalid disk-only regex: %v", err)
 		}
-		opts.DiskOnlyRegex = regex
+		cmd.DiskOnlyRegex = regex
 	}
 
 	// Handle plot mode flags
-	if opts.PlotReadOnly {
-		opts.DiskPlotRead = true
-		opts.DiskPlotWrite = false
-	} else if opts.PlotWriteOnly {
-		opts.DiskPlotRead = false
-		opts.DiskPlotWrite = true
-	} else if opts.PlotReadWrite {
-		opts.DiskPlotRead = true
-		opts.DiskPlotWrite = true
+	if cmd.PlotReadOnly {
+		cmd.DiskPlotRead = true
+		cmd.DiskPlotWrite = false
+	} else if cmd.PlotWriteOnly {
+		cmd.DiskPlotRead = false
+		cmd.DiskPlotWrite = true
+	} else if cmd.PlotReadWrite {
+		cmd.DiskPlotRead = true
+		cmd.DiskPlotWrite = true
 	}
 
 	// Validate plot options
-	if !opts.DiskPlotRead && !opts.DiskPlotWrite {
+	if !cmd.DiskPlotRead && !cmd.DiskPlotWrite {
 		return fmt.Errorf("at least one of read or write plotting must be enabled")
 	}
 
 	// Validate IOPS max
-	if opts.PlotIOPSMax < 0 {
+	if cmd.PlotIOPSMax < 0 {
 		return fmt.Errorf("plot-iops-max cannot be negative")
 	}
 
 	// Validate disk numkey threshold
-	if opts.DiskNumkeyThreshold < 0 {
+	if cmd.DiskNumkeyThreshold < 0 {
 		return fmt.Errorf("plot-numkey-threshold cannot be negative")
 	}
 
 	return nil
 }
 
-// run executes the plot command logic
-func (opts *plotOptions) run() error {
+// run executes the plot command with direct field access
+func (cmd *plotCommand) run() error {
 	if os.Getenv("PERFMONGER_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[debug] running plot command with file: %s\n", opts.DataFile)
+		fmt.Fprintf(os.Stderr, "[debug] running plot command with file: %s\n", cmd.DataFile)
 	}
 
-	return runPlotCommand(opts)
+	return runPlotCommand(cmd)
 }
 
-// newPlotCommand creates the plot subcommand with Ruby-compatible options
+// newPlotCommand creates the plot subcommand with direct cobra setting
 func newPlotCommand() *cobra.Command {
-	opts := newPlotOptions()
+	plotCmd := newPlotCommandStruct()
 
 	cmd := &cobra.Command{
 		Use:   "plot [options] LOG_FILE",
 		Short: "Plot system performance graphs",
 		Long:  `Plot system performance graphs from recorded performance data.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.parseArgs(args, cmd); err != nil {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validation moved to PreRunE for cobra integration
+			if err := plotCmd.validateAndSetDataFile(args); err != nil {
 				return err
 			}
-			return opts.run()
+			return plotCmd.validateOptions()
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Direct execution - no additional validation needed
+			return plotCmd.run()
 		},
 	}
 
-	// Ruby-compatible flags
-	cmd.Flags().Float64Var(&opts.OffsetTime, "offset-time", opts.OffsetTime,
+	// Direct cobra flag setting to plotCommand fields (no conversion needed)
+	cmd.Flags().Float64Var(&plotCmd.OffsetTime, "offset-time", plotCmd.OffsetTime,
 		"Offset time in seconds")
-	cmd.Flags().StringVarP(&opts.OutputDir, "output-dir", "o", opts.OutputDir,
+	cmd.Flags().StringVarP(&plotCmd.OutputDir, "output-dir", "o", plotCmd.OutputDir,
 		"Output directory")
-	cmd.Flags().StringVarP(&opts.OutputType, "output-type", "T", opts.OutputType,
+	cmd.Flags().StringVarP(&plotCmd.OutputType, "output-type", "T", plotCmd.OutputType,
 		"Output type: pdf, png")
-	cmd.Flags().StringVarP(&opts.OutputPrefix, "prefix", "p", opts.OutputPrefix,
+	cmd.Flags().StringVarP(&plotCmd.OutputPrefix, "prefix", "p", plotCmd.OutputPrefix,
 		"Output file name prefix")
-	cmd.Flags().BoolVarP(&opts.SaveGpfiles, "save", "s", opts.SaveGpfiles,
+	cmd.Flags().BoolVarP(&plotCmd.SaveGpfiles, "save", "s", plotCmd.SaveGpfiles,
 		"Save GNUPLOT and data files")
-	cmd.Flags().StringVar(&opts.DiskOnly, "disk-only", opts.DiskOnly,
+	cmd.Flags().StringVar(&plotCmd.DiskOnly, "disk-only", plotCmd.DiskOnly,
 		"Select disk devices that match REGEX")
 
 	// Plot mode flags
-	cmd.Flags().BoolVar(&opts.PlotReadOnly, "plot-read-only", opts.PlotReadOnly,
+	cmd.Flags().BoolVar(&plotCmd.PlotReadOnly, "plot-read-only", plotCmd.PlotReadOnly,
 		"Plot only READ performance for disks")
-	cmd.Flags().BoolVar(&opts.PlotWriteOnly, "plot-write-only", opts.PlotWriteOnly,
+	cmd.Flags().BoolVar(&plotCmd.PlotWriteOnly, "plot-write-only", plotCmd.PlotWriteOnly,
 		"Plot only WRITE performance for disks")
-	cmd.Flags().BoolVar(&opts.PlotReadWrite, "plot-read-write", opts.PlotReadWrite,
+	cmd.Flags().BoolVar(&plotCmd.PlotReadWrite, "plot-read-write", plotCmd.PlotReadWrite,
 		"Plot READ and WRITE performance for disks")
 
 	// Advanced options
-	cmd.Flags().IntVar(&opts.DiskNumkeyThreshold, "plot-numkey-threshold", opts.DiskNumkeyThreshold,
+	cmd.Flags().IntVar(&plotCmd.DiskNumkeyThreshold, "plot-numkey-threshold", plotCmd.DiskNumkeyThreshold,
 		"Turn off legends if disk count exceeds this")
-	cmd.Flags().Float64Var(&opts.PlotIOPSMax, "plot-iops-max", opts.PlotIOPSMax,
+	cmd.Flags().Float64Var(&plotCmd.PlotIOPSMax, "plot-iops-max", plotCmd.PlotIOPSMax,
 		"Maximum of IOPS plot range (0=auto)")
-	cmd.Flags().StringVar(&opts.GnuplotBin, "with-gnuplot", opts.GnuplotBin,
+	cmd.Flags().StringVar(&plotCmd.GnuplotBin, "with-gnuplot", plotCmd.GnuplotBin,
 		"Path to gnuplot binary")
 
 	cmd.SetUsageTemplate(subCommandUsageTemplate)
@@ -180,21 +190,21 @@ func newPlotCommand() *cobra.Command {
 }
 
 // runPlotCommand implements the actual plot functionality
-func runPlotCommand(opts *plotOptions) error {
+func runPlotCommand(cmd *plotCommand) error {
 	// Check if gnuplot is available
-	if err := checkGnuplotAvailable(opts.GnuplotBin); err != nil {
+	if err := checkGnuplotAvailable(cmd.GnuplotBin); err != nil {
 		return err
 	}
 
 	// Check if pdfcairo terminal is supported
-	if opts.OutputType == "pdf" {
-		if err := checkPdfCairoSupported(opts.GnuplotBin); err != nil {
+	if cmd.OutputType == "pdf" {
+		if err := checkPdfCairoSupported(cmd.GnuplotBin); err != nil {
 			return err
 		}
 	}
 
 	// Check if ImageMagick convert is available for non-PDF output
-	if opts.OutputType != "pdf" {
+	if cmd.OutputType != "pdf" {
 		if err := checkConvertAvailable(); err != nil {
 			return err
 		}
@@ -212,13 +222,13 @@ func runPlotCommand(opts *plotOptions) error {
 	cpuDat := filepath.Join(tmpDir, "cpu.dat") 
 	memDat := filepath.Join(tmpDir, "mem.dat")
 
-	meta, err := runPlotFormatter(opts.DataFile, diskDat, cpuDat, memDat, opts.DiskOnly)
+	meta, err := runPlotFormatter(cmd.DataFile, diskDat, cpuDat, memDat, cmd.DiskOnly)
 	if err != nil {
 		return err
 	}
 
 	// Generate plots
-	if err := generatePlots(opts, tmpDir, meta); err != nil {
+	if err := generatePlots(cmd, tmpDir, meta); err != nil {
 		return err
 	}
 
@@ -311,17 +321,17 @@ func findPlotFormatterBinary() (string, error) {
 }
 
 // generatePlots generates the actual plot files (placeholder implementation)
-func generatePlots(opts *plotOptions, tmpDir string, meta *PlotMeta) error {
+func generatePlots(cmd *plotCommand, tmpDir string, meta *PlotMeta) error {
 	// This is a major simplification. The full implementation would:
 	// 1. Generate gnuplot scripts for disk IOPS, disk transfer, CPU usage, memory usage
 	// 2. Execute gnuplot to create PDF files
 	// 3. Optionally convert to PNG using ImageMagick
-	// 4. Save or cleanup temporary files based on opts.SaveGpfiles
+	// 4. Save or cleanup temporary files based on cmd.SaveGpfiles
 	
 	fmt.Printf("Plot generation completed (simplified implementation)\n")
-	fmt.Printf("Data file: %s\n", opts.DataFile)
-	fmt.Printf("Output directory: %s\n", opts.OutputDir)
-	fmt.Printf("Output type: %s\n", opts.OutputType)
+	fmt.Printf("Data file: %s\n", cmd.DataFile)
+	fmt.Printf("Output directory: %s\n", cmd.OutputDir)
+	fmt.Printf("Output type: %s\n", cmd.OutputType)
 	fmt.Printf("Time range: %.2f - %.2f seconds\n", meta.StartTime, meta.EndTime)
 	fmt.Printf("CPU cores: %d\n", meta.Cpu.NumCore)
 	fmt.Printf("Disk devices: %d\n", len(meta.Disk.Devices))

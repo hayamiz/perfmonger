@@ -464,10 +464,12 @@ func newFingerprintCommand() *cobra.Command {
 		Use:   "fingerprint [options] OUTPUT_TARBALL",
 		Short: "Gather all possible system config information",
 		Long:  `Gather all possible system config information and create a tarball.`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validation moved to PreRunE for consistency
+			return opts.parseArgs(args, cmd)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.parseArgs(args, cmd); err != nil {
-				return err
-			}
+			// Direct execution - no additional parsing needed
 			return opts.run()
 		},
 	}

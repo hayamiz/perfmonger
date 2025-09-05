@@ -1,72 +1,143 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"strings"
+	
 	"github.com/spf13/cobra"
 	"github.com/hayamiz/perfmonger/core/cmd/perfmonger-core/recorder"
 )
 
-// liveOptions represents all options for the live command
-// It extends recordOptions with color and pretty options for live display
-type liveOptions struct {
-	*recordOptions
+// liveCommand represents the live command with direct RecorderOption setting
+type liveCommand struct {
+	// Direct field (no embedding) for maximum efficiency
+	RecorderOpt *recorder.RecorderOption
+	
+	// Ruby-specific options only (inherited from record command)
+	Kill       bool
+	Status     bool
+	RecordIntr bool
+	NoGzip     bool
+	Verbose    bool
+	
+	// Live-specific options
 	Color  bool
 	Pretty bool
 }
 
-// newLiveOptions creates liveOptions with Ruby-compatible defaults
-func newLiveOptions() *liveOptions {
-	return &liveOptions{
-		recordOptions: newRecordOptions(),
-		Color:         false,
+// newLiveCommandStruct creates liveCommand with Ruby-compatible defaults
+func newLiveCommandStruct() *liveCommand {
+	opt := recorder.NewRecorderOption()
+	// Ruby defaults differ from recorder defaults
+	opt.Output = "perfmonger.pgr"  // Ruby default logfile name
+	opt.NoNet = true               // Ruby default: don't record network
+	opt.Gzip = true                // Ruby default: use gzip
+	
+	return &liveCommand{
+		RecorderOpt: opt,
+		Kill:        false,
+		Status:      false,
+		RecordIntr:  false,
+		NoGzip:      false,
+		Verbose:     false,
+		Color:       false,
 		Pretty:        false,
 	}
 }
 
-// parseArgs validates and processes the parsed arguments
-func (opts *liveOptions) parseArgs(args []string, cmd *cobra.Command) error {
-	// First parse the record options
-	if err := opts.recordOptions.parseArgs(args, cmd); err != nil {
-		return err
+// validateOptions performs validation using cobra's PreRunE approach
+func (cmd *liveCommand) validateOptions() error {
+	// Validate mutually exclusive options (inherited from record)
+	if cmd.Kill && cmd.Status {
+		return fmt.Errorf("--kill and --status cannot be used together")
 	}
 	
-	// Live mode always outputs to stdout (will be piped to player)
-	opts.recordOptions.Logfile = "-"
+	// If kill or status, no other validation needed
+	if cmd.Kill || cmd.Status {
+		return nil
+	}
+	
+	// Validate timing parameters (inherited from record)
+	if cmd.RecorderOpt.Timeout < 0 {
+		return fmt.Errorf("timeout cannot be negative")
+	}
+	
+	if cmd.RecorderOpt.StartDelay < 0 {
+		return fmt.Errorf("start-delay cannot be negative")
+	}
+	
+	// Validate interval last (since it's always set)
+	if cmd.RecorderOpt.Interval <= 0 {
+		return fmt.Errorf("interval must be positive")
+	}
 	
 	return nil
 }
 
-// run executes the live command logic
-func (opts *liveOptions) run() error {
-	// Build the recorder command arguments
-	recorderArgs := opts.recordOptions.buildRecorderArgs()
+// run executes the live command logic with direct API calls
+func (cmd *liveCommand) run() error {
+	// Handle kill/status commands (inherited from record)
+	if cmd.Kill {
+		return cmd.killSession()
+	}
 	
-	// Find the player binary
+	if cmd.Status {
+		return cmd.showStatus()
+	}
+	
+	// Apply Ruby-specific logic (inherited from record)
+	cmd.applyRubySpecificLogic()
+	
+	// Live mode always outputs to stdout (will be piped to player)
+	cmd.RecorderOpt.Output = "-"
+	
+	// Find the player binary for live mode
 	playerBin, err := findPlayerBinary()
 	if err != nil {
 		return err
 	}
 	
-	// Add player-bin argument for live mode
-	recorderArgs = append(recorderArgs, "-player-bin", playerBin)
+	// Set player binary for live mode
+	cmd.RecorderOpt.PlayerBin = playerBin
 	
-	// Add color option if specified
-	if opts.Color {
-		recorderArgs = append(recorderArgs, "-color")
-	}
+	// Set color and pretty options for live display
+	cmd.RecorderOpt.Color = cmd.Color
+	cmd.RecorderOpt.Pretty = cmd.Pretty
 	
-	// Add pretty option if specified  
-	if opts.Pretty {
-		recorderArgs = append(recorderArgs, "-pretty")
-	}
-	
-	// Execute the recorder with live mode
-	return runRecorderWithArgs(recorderArgs)
+	// Direct API call - no conversion needed
+	recorder.RunWithOption(cmd.RecorderOpt)
+	return nil
 }
 
-// runRecorderWithArgs executes the recorder with given arguments
-func runRecorderWithArgs(args []string) error {
-	recorder.Run(args)
-	return nil
+// killSession kills a running background session (Ruby-compatible, inherited from record)
+func (cmd *liveCommand) killSession() error {
+	fmt.Fprintln(os.Stderr, "kill functionality not yet implemented")
+	return fmt.Errorf("not implemented")
+}
+
+// showStatus shows status of running session (Ruby-compatible, inherited from record)
+func (cmd *liveCommand) showStatus() error {
+	fmt.Fprintln(os.Stderr, "status functionality not yet implemented") 
+	return fmt.Errorf("not implemented")
+}
+
+// applyRubySpecificLogic applies minimal Ruby-specific logic (inherited from record)
+func (cmd *liveCommand) applyRubySpecificLogic() {
+	// Convert DevsParts slice to comma-separated Disks string (only if needed)
+	if len(cmd.RecorderOpt.DevsParts) > 0 {
+		cmd.RecorderOpt.Disks = strings.Join(cmd.RecorderOpt.DevsParts, ",")
+	}
+	
+	// Handle Ruby-specific logic (minimal processing)
+	if cmd.NoGzip {
+		cmd.RecorderOpt.Gzip = false
+	}
+	
+	// Handle record interrupts (Ruby --record-intr vs Go --no-intr)
+	if !cmd.RecordIntr {
+		cmd.RecorderOpt.NoIntr = true
+	}
 }
 
 // findPlayerBinary finds the player binary (using same logic as Ruby CoreFinder)
@@ -75,57 +146,65 @@ func findPlayerBinary() (string, error) {
 	return "perfmonger-core", nil
 }
 
-// newLiveCommand creates the live subcommand with Ruby-compatible options
+// newLiveCommand creates the live subcommand with direct cobra setting
 func newLiveCommand() *cobra.Command {
-	opts := newLiveOptions()
+	liveCmd := newLiveCommandStruct()
 	
 	cmd := &cobra.Command{
 		Use:   "live [options]",
 		Short: "Monitor live system performance",
 		Long:  `Record and play system performance information in real-time with JSON output.`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validation moved to PreRunE for cobra integration
+			return liveCmd.validateOptions()
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.parseArgs(args, cmd); err != nil {
-				return err
-			}
-			return opts.run()
+			// Direct execution - no additional validation needed
+			return liveCmd.run()
 		},
 	}
 	
-	// Add all record options (disk, interval, etc.) 
-	addRecordFlags(cmd, opts.recordOptions)
+	// Direct cobra flag setting to RecorderOption fields (no conversion needed) - same as record
+	cmd.Flags().StringSliceVarP(&liveCmd.RecorderOpt.DevsParts, "disk", "d", liveCmd.RecorderOpt.DevsParts, 
+		"Device name to be monitored (e.g. sda, sdb, md0, dm-1).")
 	
-	// Add live-specific options
-	cmd.Flags().BoolVarP(&opts.Color, "color", "c", opts.Color,
+	// Ruby-compatible duration setting (accepts both float64 seconds and duration format)
+	cmd.Flags().VarP(&secondsDurationValue{target: &liveCmd.RecorderOpt.Interval}, "interval", "i", 
+		"Amount of time between each measurement report. Floating point is o.k.")
+	cmd.Flags().VarP(&secondsDurationValue{target: &liveCmd.RecorderOpt.StartDelay}, "start-delay", "s", 
+		"Amount of wait time before starting measurement. Floating point is o.k.")
+	cmd.Flags().VarP(&secondsDurationValue{target: &liveCmd.RecorderOpt.Timeout}, "timeout", "t", 
+		"Amount of measurement time. Floating point is o.k.")
+	
+	// Control flags (Ruby-specific)
+	cmd.Flags().BoolVar(&liveCmd.Kill, "kill", liveCmd.Kill, 
+		"Stop currently running perfmonger-record")
+	cmd.Flags().BoolVar(&liveCmd.Status, "status", liveCmd.Status, 
+		"Show currently running perfmonger-record status")
+	
+	// Feature flags (direct setting to RecorderOption) - same as record
+	cmd.Flags().BoolVar(&liveCmd.RecordIntr, "record-intr", liveCmd.RecordIntr, 
+		"Record per core interrupts count (experimental)")
+	cmd.Flags().BoolVar(&liveCmd.RecorderOpt.NoCPU, "no-cpu", liveCmd.RecorderOpt.NoCPU, 
+		"Suppress recording CPU usage.")
+	cmd.Flags().BoolVar(&liveCmd.RecorderOpt.NoNet, "no-net", liveCmd.RecorderOpt.NoNet, 
+		"Suppress recording network usage")
+	cmd.Flags().BoolVar(&liveCmd.RecorderOpt.NoMem, "no-mem", liveCmd.RecorderOpt.NoMem, 
+		"Suppress recording memory usage")
+	cmd.Flags().BoolVar(&liveCmd.NoGzip, "no-gzip", liveCmd.NoGzip, 
+		"Do not save a logfile in gzipped format")
+		
+	// Live-specific options
+	cmd.Flags().BoolVarP(&liveCmd.Color, "color", "c", liveCmd.Color,
 		"Use colored JSON output")
-	cmd.Flags().BoolVar(&opts.Pretty, "pretty", opts.Pretty,
+	cmd.Flags().BoolVar(&liveCmd.Pretty, "pretty", liveCmd.Pretty,
 		"Use human readable JSON output")
 	
-	cmd.SetUsageTemplate(subCommandUsageTemplate)
+	// Debug flags  
+	cmd.Flags().BoolVarP(&liveCmd.Verbose, "verbose", "v", liveCmd.Verbose, 
+		"Verbose output")
 	
+	cmd.SetUsageTemplate(subCommandUsageTemplate)
 	return cmd
 }
 
-// addRecordFlags adds the common record flags to the command
-// This reuses the same flag definitions as the record command
-func addRecordFlags(cmd *cobra.Command, opts *recordOptions) {
-	cmd.Flags().StringSliceVarP(&opts.Disks, "disk", "d", opts.Disks,
-		"Device name to be monitored (e.g. sda, sdb, md0, dm-1)")
-	cmd.Flags().Float64VarP(&opts.Interval, "interval", "i", opts.Interval,
-		"Amount of time between each measurement report. Floating point is o.k.")
-	
-	// Note: We don't add -l/--logfile flag for live mode as it always outputs to stdout
-	
-	// Add other record options that make sense for live mode
-	cmd.Flags().BoolVar(&opts.NoCPU, "no-cpu", opts.NoCPU,
-		"Do not record CPU usage")
-	cmd.Flags().BoolVar(&opts.NoDisk, "no-disk", opts.NoDisk,
-		"Do not record disk usage")
-	cmd.Flags().BoolVar(&opts.NoNet, "no-net", opts.NoNet,
-		"Do not record network usage")
-	cmd.Flags().BoolVar(&opts.NoMem, "no-mem", opts.NoMem,
-		"Do not record memory usage")
-		
-	// Timeout can be useful for live mode
-	cmd.Flags().Float64VarP(&opts.Timeout, "timeout", "t", opts.Timeout,
-		"Timeout in seconds")
-}

@@ -4,7 +4,7 @@
 GO_DEPS := internal/perfmonger/perfmonger.go internal/perfmonger/perfmonger_linux.go internal/perfmonger/perfmonger_linux_test.go internal/perfmonger/stat.go internal/perfmonger/stat_test.go internal/perfmonger/usage.go internal/perfmonger/usage_test.go internal/perfmonger/utils.go
 
 GOPATH := /home/haya/haya-dev001/gitrepos/github.com/hayamiz/perfmonger/godevenv/gopath
-GOROOT := 
+GOROOT := /usr/local/go1.22.2
 
 .PHONY: all build clean
 

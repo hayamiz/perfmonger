@@ -222,10 +222,12 @@ func newInitShellCommand() *cobra.Command {
 		Use:   "init-shell",
 		Short: "Initialize shell integration",
 		Long:  `Generate shell script to init shell completion for bash and zsh.`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validation moved to PreRunE for consistency
+			return opts.parseArgs(args, cmd)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.parseArgs(args, cmd); err != nil {
-				return err
-			}
+			// Direct execution - no additional parsing needed
 			return opts.run()
 		},
 	}

@@ -8,104 +8,75 @@ import (
 	"github.com/hayamiz/perfmonger/core/cmd/perfmonger-core/player"
 )
 
-// playOptions represents all options for the play command
-type playOptions struct {
-	// Basic options
-	Color     bool
-	Pretty    bool
-	DiskOnly  string
+// playCommand represents the play command with direct PlayerOption setting
+type playCommand struct {
+	// Direct field (no embedding) for maximum efficiency
+	PlayerOpt *player.PlayerOption
 	
-	// Positional argument
-	LogFile   string
+	// No Ruby-specific options for play command
 }
 
-// newPlayOptions creates playOptions with Ruby-compatible defaults
-func newPlayOptions() *playOptions {
-	return &playOptions{
-		Color:    false,
-		Pretty:   false,
-		DiskOnly: "",
-		LogFile:  "",
+// newPlayCommandStruct creates playCommand with Ruby-compatible defaults
+func newPlayCommandStruct() *playCommand {
+	return &playCommand{
+		PlayerOpt: player.NewPlayerOption(),
 	}
 }
 
-// parseArgs validates and processes the parsed arguments
-func (opts *playOptions) parseArgs(args []string, cmd *cobra.Command) error {
+// validateAndSetLogfile validates the logfile argument using cobra's PreRunE approach
+func (cmd *playCommand) validateAndSetLogfile(args []string) error {
 	// Validate that log file is provided
 	if len(args) == 0 {
 		return fmt.Errorf("PerfMonger log file is required")
 	}
 	
 	// Take the first argument as log file
-	opts.LogFile = args[0]
+	cmd.PlayerOpt.Logfile = args[0]
 	
 	// Check if file exists
-	if _, err := os.Stat(opts.LogFile); os.IsNotExist(err) {
-		return fmt.Errorf("no such file: %s", opts.LogFile)
+	if _, err := os.Stat(cmd.PlayerOpt.Logfile); os.IsNotExist(err) {
+		return fmt.Errorf("no such file: %s", cmd.PlayerOpt.Logfile)
 	}
 	
 	return nil
 }
 
-// run executes the play command logic
-func (opts *playOptions) run() error {
-	// Build arguments for the existing player
-	args := opts.buildPlayerArgs()
-	
+// run executes the play command with direct API calls
+func (cmd *playCommand) run() error {
 	if os.Getenv("PERFMONGER_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[debug] running player with args: %v\n", args)
+		fmt.Fprintf(os.Stderr, "[debug] running player with options: %+v\n", cmd.PlayerOpt)
 	}
 	
-	// Call the existing player.Run function
-	player.Run(args)
+	// Direct API call - no conversion needed
+	player.RunWithOption(cmd.PlayerOpt)
 	return nil
 }
 
-// buildPlayerArgs creates arguments for the existing player
-func (opts *playOptions) buildPlayerArgs() []string {
-	var args []string
-	
-	// Add options
-	if opts.Color {
-		args = append(args, "-color")
-	}
-	
-	if opts.Pretty {
-		args = append(args, "-pretty")
-	}
-	
-	if opts.DiskOnly != "" {
-		args = append(args, "-disk-only", opts.DiskOnly)
-	}
-	
-	// Add log file as the last argument
-	args = append(args, opts.LogFile)
-	
-	return args
-}
 
-// newPlayCommand creates the play subcommand with Ruby-compatible options
+// newPlayCommand creates the play subcommand with direct cobra setting
 func newPlayCommand() *cobra.Command {
-	opts := newPlayOptions()
+	playCmd := newPlayCommandStruct()
 	
 	cmd := &cobra.Command{
 		Use:   "play [options] LOG_FILE",
 		Short: "Play a recorded perfmonger session",
 		Long:  `Play a perfmonger log file in JSON`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Validation moved to PreRunE for cobra integration
+			return playCmd.validateAndSetLogfile(args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.parseArgs(args, cmd); err != nil {
-				return err
-			}
-			return opts.run()
+			// Direct execution - no additional validation needed
+			return playCmd.run()
 		},
 	}
 	
-	// Ruby-compatible flags with both short and long forms
-	cmd.Flags().BoolVarP(&opts.Color, "color", "c", opts.Color,
+	// Direct cobra flag setting to PlayerOption fields (no conversion needed)
+	cmd.Flags().BoolVarP(&playCmd.PlayerOpt.Color, "color", "c", playCmd.PlayerOpt.Color,
 		"Use colored JSON output")
-	cmd.Flags().BoolVarP(&opts.Pretty, "pretty", "p", opts.Pretty,
+	cmd.Flags().BoolVarP(&playCmd.PlayerOpt.Pretty, "pretty", "p", playCmd.PlayerOpt.Pretty,
 		"Use human readable JSON output")
-	cmd.Flags().StringVar(&opts.DiskOnly, "disk-only", opts.DiskOnly,
+	cmd.Flags().StringVar(&playCmd.PlayerOpt.DiskOnly, "disk-only", playCmd.PlayerOpt.DiskOnly,
 		"Select disk devices that matches REGEX (Ex. 'sd[b-d]')")
 	
 	cmd.SetUsageTemplate(subCommandUsageTemplate)

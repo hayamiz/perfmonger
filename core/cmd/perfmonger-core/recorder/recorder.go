@@ -23,27 +23,29 @@ import (
 	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
+// RecorderOption represents all options for the recorder component
+// This struct is now public for direct use by cobra commands
 type RecorderOption struct {
-	interval            time.Duration
-	no_interval_backoff bool
-	timeout             time.Duration
-	start_delay         time.Duration
-	devsParts           []string
-	output              string
-	no_cpu              bool
-	no_intr             bool
-	no_disk             bool
-	no_net              bool
-	no_mem              bool
-	debug               bool
-	listDevices         bool
-	player_bin          string
-	disks               string
-	targetDisks         *map[string]bool
-	background          bool
-	gzip                bool
-	color               bool
-	pretty              bool
+	Interval           time.Duration
+	NoIntervalBackoff  bool
+	Timeout            time.Duration
+	StartDelay         time.Duration
+	DevsParts          []string
+	Output             string
+	NoCPU              bool
+	NoIntr             bool
+	NoDisk             bool
+	NoNet              bool
+	NoMem              bool
+	Debug              bool
+	ListDevices        bool
+	PlayerBin          string
+	Disks              string
+	TargetDisks        *map[string]bool
+	Background         bool
+	Gzip               bool
+	Color              bool
+	Pretty             bool
 }
 
 // By default, measurement interval backoff is enabled.
@@ -58,62 +60,62 @@ func parseArgs(args []string, option *RecorderOption) {
 	fs := flag.NewFlagSet("recorder", flag.ExitOnError)
 	
 	// set options
-	fs.DurationVar(&option.interval, "interval",
+	fs.DurationVar(&option.Interval, "interval",
 		time.Second, "Measurement interval")
-	fs.BoolVar(&option.no_interval_backoff, "no-interval-backoff",
+	fs.BoolVar(&option.NoIntervalBackoff, "no-interval-backoff",
 		false, "Disable interval backoff")
-	fs.DurationVar(&option.timeout, "timeout",
+	fs.DurationVar(&option.Timeout, "timeout",
 		time.Second*0, "Measurement timeout")
-	fs.DurationVar(&option.start_delay, "start-delay",
+	fs.DurationVar(&option.StartDelay, "start-delay",
 		time.Second*0, "Wait time before measurement")
-	fs.StringVar(&option.output, "output",
+	fs.StringVar(&option.Output, "output",
 		"-", "Output file name")
-	fs.BoolVar(&option.no_cpu, "no-cpu",
+	fs.BoolVar(&option.NoCPU, "no-cpu",
 		false, "Do not record CPU usage")
-	fs.BoolVar(&option.no_intr, "no-intr",
+	fs.BoolVar(&option.NoIntr, "no-intr",
 		false, "Do not record interrupts count")
-	fs.BoolVar(&option.no_disk, "no-disk",
+	fs.BoolVar(&option.NoDisk, "no-disk",
 		false, "Do not record disk usage")
-	fs.BoolVar(&option.no_net, "no-net",
+	fs.BoolVar(&option.NoNet, "no-net",
 		false, "Do not record net usage")
-	fs.BoolVar(&option.no_mem, "no-mem",
+	fs.BoolVar(&option.NoMem, "no-mem",
 		false, "Do not record memory usage")
-	fs.BoolVar(&option.debug, "debug",
+	fs.BoolVar(&option.Debug, "debug",
 		false, "Enable debug mode")
-	fs.BoolVar(&option.listDevices, "list-devices",
+	fs.BoolVar(&option.ListDevices, "list-devices",
 		false, "List devices and exits")
-	fs.BoolVar(&option.background, "background",
+	fs.BoolVar(&option.Background, "background",
 		false, "Run in background mode")
-	fs.StringVar(&option.disks, "disks",
+	fs.StringVar(&option.Disks, "disks",
 		"", "Disk devices to be monitored")
-	fs.StringVar(&option.player_bin, "player-bin",
+	fs.StringVar(&option.PlayerBin, "player-bin",
 		"", "Run perfmonger-player to show JSON output")
-	fs.BoolVar(&option.gzip, "gzip",
+	fs.BoolVar(&option.Gzip, "gzip",
 		false, "Save a logfile in gzipped format")
-	fs.BoolVar(&option.color, "color",
+	fs.BoolVar(&option.Color, "color",
 		false, "Colored output (for live subcmd)")
-	fs.BoolVar(&option.pretty, "pretty",
+	fs.BoolVar(&option.Pretty, "pretty",
 		false, "Pretty output (for live subcmd)")
 
 	fs.Parse(args)
 
-	if option.player_bin == "" && terminal.IsTerminal(int(os.Stdout.Fd())) &&
-		option.output == "-" {
+	if option.PlayerBin == "" && terminal.IsTerminal(int(os.Stdout.Fd())) &&
+		option.Output == "-" {
 		fmt.Fprintf(os.Stderr, "[recording to data.pgr]\n")
-		option.output = "data.pgr"
+		option.Output = "data.pgr"
 	}
 
-	if option.disks == "" {
-		option.targetDisks = nil
+	if option.Disks == "" {
+		option.TargetDisks = nil
 	} else {
-		option.targetDisks = new(map[string]bool)
-		*option.targetDisks = make(map[string]bool)
-		for _, dev := range strings.Split(option.disks, ",") {
-			(*option.targetDisks)[dev] = true
+		option.TargetDisks = new(map[string]bool)
+		*option.TargetDisks = make(map[string]bool)
+		for _, dev := range strings.Split(option.Disks, ",") {
+			(*option.TargetDisks)[dev] = true
 		}
 	}
 
-	if option.debug {
+	if option.Debug {
 		os.Stderr.WriteString(
 			fmt.Sprintf(
 				`== option
@@ -122,19 +124,113 @@ func parseArgs(args []string, option *RecorderOption) {
   - debug    : %t
   - remainings: %s
 `,
-				option.output,
-				option.interval.String(),
-				option.debug,
+				option.Output,
+				option.Interval.String(),
+				option.Debug,
 				fmt.Sprint(fs.Args())))
 	}
 }
 
-func Run(args []string) {
-	var option RecorderOption
-	var enc *gob.Encoder
-	var out *bufio.Writer
-	var err error
+// NewRecorderOption creates a RecorderOption with default values
+func NewRecorderOption() *RecorderOption {
+	return &RecorderOption{
+		Interval:           time.Second,
+		NoIntervalBackoff:  false,
+		Timeout:            time.Second * 0,
+		StartDelay:         time.Second * 0,
+		DevsParts:          []string{},
+		Output:             "-",
+		NoCPU:              false,
+		NoIntr:             false,
+		NoDisk:             false,
+		NoNet:              false,
+		NoMem:              false,
+		Debug:              false,
+		ListDevices:        false,
+		PlayerBin:          "",
+		Disks:              "",
+		TargetDisks:        nil,
+		Background:         false,
+		Gzip:               false,
+		Color:              false,
+		Pretty:             false,
+	}
+}
 
+// RunWithOption executes the recorder with the provided options
+// This is the preferred API that uses direct execution (no double argument parsing)
+func RunWithOption(option *RecorderOption) {
+	// Handle background mode session management if needed
+	if option.Background {
+		if !handleBackgroundSession() {
+			// Another session is running, exit early
+			return
+		}
+	}
+	
+	// Call the direct execution function (no args conversion needed)
+	RunDirect(option)
+}
+
+// handleBackgroundSession manages background session detection and creation
+// Returns true if it's safe to proceed with recording, false if another session exists
+func handleBackgroundSession() bool {
+	// Find existing session, or create new one
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	session_file := path.Join(os.TempDir(),
+		fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
+
+	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
+
+	// make lock file if not exists
+	session_exists := false
+	if _, err := os.Stat(lockfile); err != nil {
+		ioutil.WriteFile(lockfile, []byte(""), 0644)
+	}
+	fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
+	syscall.Flock(fd, syscall.LOCK_EX)
+
+	if _, err := os.Stat(session_file); err == nil {
+		pidstr, err := ioutil.ReadFile(session_file)
+		pid, err := strconv.Atoi(string(pidstr))
+		if err != nil {
+			goto MakeNewSession
+		}
+
+		// check if PID in session file is valid
+		proc, err := os.FindProcess(pid)
+		err = proc.Signal(syscall.Signal(0))
+
+		if err == nil {
+			session_exists = true
+			goto Unlock
+		}
+	}
+MakeNewSession:
+	err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer os.Remove(session_file)
+
+Unlock:
+	syscall.Flock(fd, syscall.LOCK_UN)
+	syscall.Close(fd)
+
+	if session_exists {
+		fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running in background mode\n")
+		return false
+	}
+	
+	return true
+}
+
+func Run(args []string) {
+	option := NewRecorderOption()
+	
 	// Need to check '-background' before parsing args
 	is_background := false
 	for _, arg := range args {
@@ -144,66 +240,31 @@ func Run(args []string) {
 	}
 
 	if is_background {
-		// Find existing session, or create new one
-		user, err := user.Current()
-		if err != nil {
-			panic(err)
-		}
-		session_file := path.Join(os.TempDir(),
-			fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
-
-		lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
-
-		// make lock file if not exists
-		session_exists := false
-
-		if _, err := os.Stat(lockfile); err != nil {
-			ioutil.WriteFile(lockfile, []byte(""), 0644)
-		}
-		fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
-		syscall.Flock(fd, syscall.LOCK_EX)
-
-		if _, err := os.Stat(session_file); err == nil {
-			pidstr, err := ioutil.ReadFile(session_file)
-			pid, err := strconv.Atoi(string(pidstr))
-			if err != nil {
-				goto MakeNewSession
-			}
-
-			// check if PID in session file is valid
-			proc, err := os.FindProcess(pid)
-			err = proc.Signal(syscall.Signal(0))
-
-			if err == nil {
-				session_exists = true
-				goto Unlock
-			}
-		}
-	MakeNewSession:
-		err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
-		if err != nil {
-			panic(err)
-		}
-		defer os.Remove(session_file)
-
-	Unlock:
-		syscall.Flock(fd, syscall.LOCK_UN)
-		syscall.Close(fd)
-
-		if session_exists {
-			fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running in background mode\n")
+		if !handleBackgroundSession() {
+			// Another session is running, exit early
 			return
 		}
 	}
 
-	parseArgs(args, &option)
+	parseArgs(args, option)
+	
+	// Call the direct execution function
+	RunDirect(option)
+}
+
+// RunDirect executes the recorder with the provided RecorderOption directly
+// This avoids the double conversion: RecorderOption -> args -> parseArgs -> RecorderOption
+func RunDirect(option *RecorderOption) {
+	var out *bufio.Writer
+	var enc *gob.Encoder
+	var err error
 
 	hostname, _ := os.Hostname()
 	cheader := &ss.CommonHeader{Platform: ss.Linux, Hostname: hostname, StartTime: time.Now()}
 
 	platform_header := ss.NewPlatformHeader()
 
-	if option.listDevices {
+	if option.ListDevices {
 		for _, name := range platform_header.DevsParts {
 			os.Stderr.WriteString(name + "\n")
 		}
@@ -214,25 +275,25 @@ func Run(args []string) {
 	var player_stdin io.WriteCloser = nil
 	var player_stdout io.ReadCloser = nil
 
-	if option.player_bin != "" {
-		if option.color {
-			if option.pretty {
-				player_cmd = exec.Command(option.player_bin, "-color", "-pretty")
+	if option.PlayerBin != "" {
+		if option.Color {
+			if option.Pretty {
+				player_cmd = exec.Command(option.PlayerBin, "-color", "-pretty")
 			} else {
-				player_cmd = exec.Command(option.player_bin, "-color")
+				player_cmd = exec.Command(option.PlayerBin, "-color")
 			}
 		} else {
-			player_cmd = exec.Command(option.player_bin)
+			player_cmd = exec.Command(option.PlayerBin)
 		}
 		player_stdin, err = player_cmd.StdinPipe()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s", option.player_bin)
+			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s", option.PlayerBin)
 			player_cmd = nil
 			player_stdin = nil
 		}
 		player_stdout, err = player_cmd.StdoutPipe()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get stdout of %s", option.player_bin)
+			fmt.Fprintf(os.Stderr, "Failed to get stdout of %s", option.PlayerBin)
 			player_cmd = nil
 			player_stdin = nil
 			player_stdout = nil
@@ -240,7 +301,7 @@ func Run(args []string) {
 
 		err = player_cmd.Start()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to start %s", option.player_bin)
+			fmt.Fprintf(os.Stderr, "Failed to start %s", option.PlayerBin)
 			player_cmd = nil
 			player_stdin = nil
 			player_stdout = nil
@@ -265,13 +326,13 @@ func Run(args []string) {
 		}()
 	}
 
-	if option.output == "-" {
+	if option.Output == "-" {
 		out = bufio.NewWriter(os.Stdout)
 		if player_stdin != nil {
 			out = bufio.NewWriter(player_stdin)
 		}
 	} else {
-		file, err := os.Create(option.output)
+		file, err := os.Create(option.Output)
 		if err != nil {
 			panic(err)
 		}
@@ -280,7 +341,7 @@ func Run(args []string) {
 		if player_stdin != nil {
 			out = bufio.NewWriter(io.MultiWriter(file, player_stdin))
 		} else {
-			if option.gzip {
+			if option.Gzip {
 				gzwriter := gzip.NewWriter(file)
 				defer gzwriter.Close()
 
@@ -305,17 +366,17 @@ func Run(args []string) {
 	}
 
 	// start delay
-	time.Sleep(option.start_delay)
+	time.Sleep(option.StartDelay)
 
 	var timeout_ch <-chan time.Time
 	var timeout_time time.Time
-	if option.timeout == time.Second*0 {
+	if option.Timeout == time.Second*0 {
 		// dummy channel
 		timeout_ch = make(<-chan time.Time)
 		timeout_time = time.Now()
 	} else {
-		timeout_ch = time.After(option.timeout)
-		timeout_time = time.Now().Add(option.timeout)
+		timeout_ch = time.After(option.Timeout)
+		timeout_time = time.Now().Add(option.Timeout)
 	}
 
 	// Loops
@@ -331,19 +392,19 @@ func Run(args []string) {
 	for {
 		record.Time = time.Now()
 
-		if !option.no_cpu {
+		if !option.NoCPU {
 			ss.ReadCpuStat(record)
 		}
-		if !option.no_intr {
+		if !option.NoIntr {
 			ss.ReadInterruptStat(record)
 		}
-		if !option.no_disk {
-			ss.ReadDiskStats(record, option.targetDisks)
+		if !option.NoDisk {
+			ss.ReadDiskStats(record, option.TargetDisks)
 		}
-		if !option.no_net {
+		if !option.NoNet {
 			ss.ReadNetStat(record)
 		}
-		if !option.no_mem {
+		if !option.NoMem {
 			ss.ReadMemStat(record)
 		}
 
@@ -357,19 +418,19 @@ func Run(args []string) {
 			break
 		}
 
-		if !option.no_interval_backoff {
+		if !option.NoIntervalBackoff {
 			backoff_counter++
 			if backoff_counter >= BACKOFF_THRESH {
 				backoff_counter -= BACKOFF_THRESH
 
-				option.interval *= BACKOFF_RATIO
-				if option.interval.Seconds() > 3600.0 {
-					option.interval = time.Hour
+				option.Interval *= BACKOFF_RATIO
+				if option.Interval.Seconds() > 3600.0 {
+					option.Interval = time.Hour
 				}
 			}
 		}
 
-		next_time = next_time.Add(option.interval)
+		next_time = next_time.Add(option.Interval)
 
 		// wait for next iteration
 		select {
@@ -385,7 +446,7 @@ func Run(args []string) {
 
 		// If next_time and timeout_time is very close,
 		// avoid recording twice in a very short time
-		if option.timeout != time.Second*0 &&
+		if option.Timeout != time.Second*0 &&
 			timeout_time.Sub(next_time).Seconds() < 0.01 {
 			running = false
 		}
@@ -397,6 +458,4 @@ func Run(args []string) {
 		player_stdin.Close()
 		_ = player_cmd.Wait()
 	}
-
-	return
 }

@@ -13,12 +13,14 @@ import (
 	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
+// SummaryOption represents all options for the summarizer component
+// This struct is now public for direct use by cobra commands
 type SummaryOption struct {
-	logfile         string
-	title           string
-	json            bool
-	disk_only       string
-	disk_only_regex *regexp.Regexp
+	Logfile       string
+	Title         string
+	JSON          bool
+	DiskOnly      string
+	DiskOnlyRegex *regexp.Regexp
 }
 
 func parseArgs(args []string, option *SummaryOption) {
@@ -26,11 +28,11 @@ func parseArgs(args []string, option *SummaryOption) {
 
 	fs := flag.NewFlagSet("summarizer", flag.ExitOnError)
 	
-	fs.BoolVar(&option.json, "json",
+	fs.BoolVar(&option.JSON, "json",
 		false, "Show summary in JSON")
-	fs.StringVar(&option.title, "title",
+	fs.StringVar(&option.Title, "title",
 		"", "Title of summary")
-	fs.StringVar(&option.disk_only, "disk-only",
+	fs.StringVar(&option.DiskOnly, "disk-only",
 		"", "Select disk devices by regex")
 
 	fs.Parse(args)
@@ -40,22 +42,58 @@ func parseArgs(args []string, option *SummaryOption) {
 		os.Exit(1)
 	}
 
-	option.disk_only_regex, err = regexp.Compile(option.disk_only)
+	option.DiskOnlyRegex, err = regexp.Compile(option.DiskOnly)
 	if err != nil {
 		panic(err)
 	}
 
-	option.logfile = fs.Args()[0]
+	option.Logfile = fs.Args()[0]
+}
+
+// NewSummaryOption creates a SummaryOption with default values
+func NewSummaryOption() *SummaryOption {
+	return &SummaryOption{
+		Logfile:       "",
+		Title:         "",
+		JSON:          false,
+		DiskOnly:      "",
+		DiskOnlyRegex: nil,
+	}
+}
+
+// RunWithOption executes the summarizer with the provided options
+// This is the new preferred API that avoids double argument parsing
+func RunWithOption(option *SummaryOption) {
+	// Create command line arguments from the option struct
+	args := make([]string, 0, 10)
+	
+	if option.JSON {
+		args = append(args, "-json")
+	}
+	if option.Title != "" {
+		args = append(args, "-title", option.Title)
+	}
+	if option.DiskOnly != "" {
+		args = append(args, "-disk-only", option.DiskOnly)
+	}
+	
+	// Add logfile as positional argument
+	if option.Logfile != "" {
+		args = append(args, option.Logfile)
+	}
+	
+	// Call the existing Run function with generated args
+	Run(args)
 }
 
 func Run(args []string) {
-	var option SummaryOption
+	option := NewSummaryOption()
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader
 
-	parseArgs(args, &option)
+	parseArgs(args, option)
 
-	f, err := os.Open(option.logfile)
+	f, err := os.Open(option.Logfile)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +163,7 @@ func Run(args []string) {
 		disk_usage, err = ss.GetDiskUsage1(
 			fst_record.Time, fst_record.Disk,
 			lst_record.Time, lst_record.Disk,
-			option.disk_only_regex)
+			option.DiskOnlyRegex)
 	}
 
 	if fst_record.Net != nil && lst_record.Net != nil {
@@ -136,7 +174,7 @@ func Run(args []string) {
 
 	interval := lst_record.Time.Sub(fst_record.Time)
 
-	if option.json {
+	if option.JSON {
 		printer := projson.NewPrinter()
 
 		printer.BeginObject()
@@ -170,10 +208,10 @@ func Run(args []string) {
 			fmt.Println(str)
 		}
 	} else {
-		if option.title == "" {
+		if option.Title == "" {
 			fmt.Println("== performance summary ==")
 		} else {
-			fmt.Printf("== performance summary of '%s' ==\n", option.title)
+			fmt.Printf("== performance summary of '%s' ==\n", option.Title)
 		}
 		fmt.Printf(`
 Duration: %.3f sec
