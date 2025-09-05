@@ -35,29 +35,26 @@
 
 ## 段階1: core を単一バイナリ化（`perfmonger-core`）
 
-- [ ] 設計確定: 単一バイナリでのサブコマンド/argv[0] 互換方針（ラッパースクリプトで互換、argv[0] でも解釈）
-- [ ] 新規エントリ `core/cmd/perfmonger-core` を作成し、サブコマンド `record|play|summarizer|plot-formatter|viewer` を実装（引数互換）
-- [ ] 既存各 main のロジックをパッケージ化して再利用
-  - [ ] recorder: `Run(args []string)` を公開（元: `core/cmd/perfmonger-recorder/perfmonger-recorder.go:1`）
-  - [ ] player  : `Run(args []string)` を公開（元: `core/cmd/perfmonger-player/perfmonger-player.go:1`）
-  - [ ] summarizer / plot-formatter / viewer も同様に切り出し
-- [ ] 旧各 main は一時的にビルド対象外化（既存ソースは保持）
-- [ ] `core/build.sh:1` を修正し `perfmonger-core_<os>_<arch>` のみビルド
-- [ ] `lib/exec/` に互換名を配置
-  - [ ] `perfmonger-recorder_*`, `perfmonger-player_*`, `perfmonger-summarizer_*`, `perfmonger-plot-formatter_*` のラッパー → `perfmonger-core_*`
-- [ ] Ruby 側の互換性検証（`lib/perfmonger/command/core.rb:1` 経由の解決が継続動作）
-- [ ] 既存 RSpec/Go テストが通ること（`bundle exec rake`）
-- [ ] ドキュメント更新（`AGENTS.md:1`/`README.md:1` に新構成を追記）
-
-### 補足タスク（段階1・内部参照の明確化）
-
-- [ ] `core/app/**` を `core/internal/app/**` に移動し、`perfmonger-core` からは `github.com/hayamiz/perfmonger/core/internal/app/...` を参照するように変更
+- [x] 設計確定: 単一バイナリでのサブコマンド/argv[0] 互換方針（ラッパースクリプトで互換、argv[0] でも解釈）
+- [x] 新規エントリ `core/cmd/perfmonger-core` を作成し、サブコマンド `record|play|summarizer|plot-formatter|viewer` を実装（引数互換）
+- [x] 既存各 main のロジックをパッケージ化して再利用
+  - [x] recorder: `Run(args []string)` を公開（元: `core/cmd/perfmonger-recorder/perfmonger-recorder.go:1`）
+  - [x] player  : `Run(args []string)` を公開（元: `core/cmd/perfmonger-player/perfmonger-player.go:1`）
+  - [x] summarizer / plot-formatter / viewer も同様に切り出し
+- [x] 旧各 main は一時的にビルド対象外化（既存ソースは保持）
+- [x] `core/build.sh:1` を修正し `perfmonger-core_<os>_<arch>` のみビルド
+- [x] `lib/exec/` に互換名を配置
+  - [x] `perfmonger-recorder_*`, `perfmonger-player_*`, `perfmonger-summarizer_*`, `perfmonger-plot-formatter_*` のラッパー → `perfmonger-core_*`
+- [x] Ruby 側の互換性検証（`lib/perfmonger/command/core.rb:1` 経由の解決が継続動作）
+- [x] 既存 RSpec/Go テストが通ること（`bundle exec rake`）
+- [x] ドキュメント更新（`CLAUDE.md:1`/`README.md:1` に新構成を追記）
 
 ## 段階2: Ruby を廃止し Go へ完全移行（単一 `perfmonger`）
 
 - [ ] CLI 設計: Go によるトップレベル `perfmonger` コマンドとサブコマンド群を定義
-  - live / record / play / summary / plot / stat / server / fingerprint / init-shell
-- [ ] Ruby 実装との差分洗い出し（特に `server`, `plot`, `fingerprint`, `init-shell`）
+  - live / record / play / summary / plot / stat / fingerprint / init-shell
+  - 注: server サブコマンドは廃止
+- [ ] Ruby 実装との差分洗い出し（特に `plot`, `fingerprint`, `init-shell`）
 - [ ] 実装（既存 core を活用）
   - [ ] record: 既存 recorder を統合
   - [ ] play: 既存 player を統合
@@ -65,9 +62,11 @@
   - [ ] plot: Ruby の gnuplot スクリプト生成を Go へ移植（pdfcairo 検出、ImageMagick 連携オプション）
   - [ ] live: recorder と player を内部パイプで接続
   - [ ] stat: 子プロセス実行＋記録＋サマリの統合処理
-  - [ ] server: Ruby/WEBrick + SSE を Go `net/http` + SSE で移植（`data/assets` は `embed` で内包。互換パス: `/dashboard`, `/assets`, `/faucet`）
   - [ ] fingerprint: Ruby 実装を調査・移植
   - [ ] init-shell: Ruby 実装を調査・移植
+  - [ ] server 廃止に伴う検討事項:
+    - [ ] server 機能の廃止を README/ドキュメントに明記
+    - [ ] 既存 server 関連コード（Ruby 側）の削除計画を策定
 - [ ] Go 側統合テスト追加（`spec/data/` のサンプルを golden として活用）
 - [ ] 一時的に RSpec で互換性を検証 → Go テストへ段階的移行
 - [ ] ビルド/配布を Go 単体に一本化（クロスビルド・リリース生成）

@@ -60,23 +60,15 @@ for idx in $(seq 0 $((${#TARGET[@]}-1))); do
     export var_GOOS=$1
     export var_GOARCH=$2
 
-    for subcmd in recorder player viewer summarizer plot-formatter; do
-        TARGETS+=(../lib/exec/perfmonger-${subcmd}_${var_GOOS}_${var_GOARCH})
+    # Build single perfmonger-core binary
+    TARGETS+=(../lib/exec/perfmonger-core_${var_GOOS}_${var_GOARCH})
 
-        cat <<EOF >> $makefile
+    cat <<EOF >> $makefile
 
-../lib/exec/perfmonger-${subcmd}_${var_GOOS}_${var_GOARCH}: cmd/perfmonger-${subcmd}/perfmonger-${subcmd}.go \$(GO_DEPS)
-	cd cmd/perfmonger-${subcmd} && go build -o ../../\$@ perfmonger-$subcmd.go
+../lib/exec/perfmonger-core_${var_GOOS}_${var_GOARCH}: cmd/perfmonger-core/perfmonger-core.go \$(GO_DEPS)
+	cd cmd/perfmonger-core && GOOS=${var_GOOS} GOARCH=${var_GOARCH} go build -o \$@ perfmonger-core.go
 
 EOF
-    done
-
-    # go build -o ../lib/exec/perfmonger-recorder_${var_GOOS}_${var_GOARCH} \
-    #     perfmonger-recorder.go &
-    # go build -o ../lib/exec/perfmonger-player_${var_GOOS}_${var_GOARCH} \
-    #     perfmonger-player.go &
-    # go build -o ../lib/exec/perfmonger-summarizer_${var_GOOS}_${var_GOARCH} \
-    #    perfmonger-summarizer.go &
 
 done
 
@@ -92,3 +84,22 @@ EOF
 mv $makefile ./Makefile
 
 make
+
+# Create compatibility wrappers
+echo "Creating compatibility wrappers..."
+for idx in $(seq 0 $((${#TARGET[@]}-1))); do
+    set -- ${TARGET[$idx]}
+    var_GOOS=$1
+    var_GOARCH=$2
+    
+    core_binary="../lib/exec/perfmonger-core_${var_GOOS}_${var_GOARCH}"
+    
+    if [ -f "$core_binary" ]; then
+        for subcmd in recorder player viewer summarizer plot-formatter; do
+            wrapper_name="../lib/exec/perfmonger-${subcmd}_${var_GOOS}_${var_GOARCH}"
+            
+            # Create a symlink to the core binary
+            ln -sf "perfmonger-core_${var_GOOS}_${var_GOARCH}" "$wrapper_name"
+        done
+    fi
+done

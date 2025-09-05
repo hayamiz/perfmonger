@@ -8,29 +8,30 @@ PerfMonger is a high-resolution system performance monitor written in Ruby (CLI)
 
 ## Architecture
 
-The project has a hybrid architecture:
+The project has a hybrid architecture (currently transitioning to single-binary Go implementation):
 
 1. **Ruby Layer** (`lib/`, `exe/`): CLI interface and command handling
    - Main entry point: `exe/perfmonger` → `lib/perfmonger/cli.rb`
    - Commands in `lib/perfmonger/command/`: record, play, plot, summary, live, etc.
 
-2. **Go Core** (`core/`): Performance-critical monitoring binaries
-   - `core/subsystem/`: Core monitoring logic (platform-specific implementations)
-   - `core/cmd/`: Individual tools (recorder, player, summarizer, plot-formatter, viewer)
-   - Binaries are built to `lib/exec/perfmonger-<tool>_<os>_<arch>`
+2. **Go Core** (`core/`): Performance-critical monitoring components (unified into single binary)
+   - `core/internal/perfmonger/`: Core monitoring logic (platform-specific implementations)
+   - `core/cmd/perfmonger-core/`: Unified single binary with subcommands (record, play, summarize, plot-format, view)
+   - Individual tool packages: recorder, player, summarizer, plotformatter, viewer
+   - Binaries built to `lib/exec/perfmonger-core_<os>_<arch>` with compatibility wrappers
 
-3. **Platform Support**: Linux (primary) and macOS (experimental)
-   - Platform-specific code: `perfmonger_linux.go`, `perfmonger_darwin.go`
+3. **Platform Support**: Linux only (Darwin support removed)
+   - Platform-specific code: `perfmonger_linux.go`
 
 ## Development Commands
 
 ### Building
 ```bash
-# Full build with cross-compilation for Linux/Darwin AMD64
+# Full build with Ruby CLI + unified Go core binary
 bundle install
 rake build
 
-# Build only Go core components
+# Build only Go core components (single perfmonger-core binary)
 cd core && ./build.sh
 
 # Self-build (current platform only)
@@ -51,7 +52,7 @@ rake spec
 # Run Go tests only
 rake test_core
 # or directly:
-cd core/subsystem && go test -v -cover
+cd core/internal/perfmonger && go test -v -cover
 
 # Run Go static analysis
 rake analyze_core
@@ -60,8 +61,9 @@ rake analyze_core
 ### Linting
 ```bash
 # Go static analysis (included in default rake task)
-cd core/subsystem && go vet perfmonger_<platform>.go $(ls *.go | grep -v perfmonger_)
-cd core/cmd/<tool> && go vet *.go
+cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)
+cd core/cmd/perfmonger-core && go vet *.go
+cd core/cmd/perfmonger-core/<tool> && go vet *.go
 ```
 
 ## Key Implementation Details
@@ -75,17 +77,22 @@ cd core/cmd/<tool> && go vet *.go
 ## Testing Individual Components
 
 ```bash
-# Test recording
+# Test recording (via Ruby CLI)
 ./exe/perfmonger record -i 0.1 -d sda
 
-# Test playback
+# Test playback (via Ruby CLI)
 ./exe/perfmonger play <recorded_file.pgr>
 
-# Test live monitoring
+# Test live monitoring (via Ruby CLI)
 ./exe/perfmonger live
+
+# Test core components directly (single binary with subcommands)
+./lib/exec/perfmonger-core_linux_amd64 record -i 0.1 -d sda
+./lib/exec/perfmonger-core_linux_amd64 play <recorded_file.pgr>
+./lib/exec/perfmonger-core_linux_amd64 plot-format -perfmonger <file.pgr>
 ```
 
 ## Development Documentation
 
-- `devdoc/TODO.md`: Contains implementation tasks to be completed
-- `devdoc/DONE.md`: Stores completed tasks moved from TODO.md for record keeping
+- `devdoc/TODO.md`: Contains implementation tasks to be completed. Updated this file as tasks progress.
+- `devdoc/DONE.md`: Stores completed tasks moved from TODO.md for record keeping.

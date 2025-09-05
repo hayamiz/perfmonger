@@ -11,28 +11,12 @@ GOROOT :=
 all: build
 
 
-../lib/exec/perfmonger-recorder_linux_amd64: cmd/perfmonger-recorder/perfmonger-recorder.go $(GO_DEPS)
-	cd cmd/perfmonger-recorder && go build -o ../../$@ perfmonger-recorder.go
+../lib/exec/perfmonger-core_linux_amd64: cmd/perfmonger-core/perfmonger-core.go $(GO_DEPS)
+	cd cmd/perfmonger-core && GOOS=linux GOARCH=amd64 go build -o $@ perfmonger-core.go
 
 
-../lib/exec/perfmonger-player_linux_amd64: cmd/perfmonger-player/perfmonger-player.go $(GO_DEPS)
-	cd cmd/perfmonger-player && go build -o ../../$@ perfmonger-player.go
-
-
-../lib/exec/perfmonger-viewer_linux_amd64: cmd/perfmonger-viewer/perfmonger-viewer.go $(GO_DEPS)
-	cd cmd/perfmonger-viewer && go build -o ../../$@ perfmonger-viewer.go
-
-
-../lib/exec/perfmonger-summarizer_linux_amd64: cmd/perfmonger-summarizer/perfmonger-summarizer.go $(GO_DEPS)
-	cd cmd/perfmonger-summarizer && go build -o ../../$@ perfmonger-summarizer.go
-
-
-../lib/exec/perfmonger-plot-formatter_linux_amd64: cmd/perfmonger-plot-formatter/perfmonger-plot-formatter.go $(GO_DEPS)
-	cd cmd/perfmonger-plot-formatter && go build -o ../../$@ perfmonger-plot-formatter.go
-
-
-build: ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-viewer_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64
+build: ../lib/exec/perfmonger-core_linux_amd64
 
 clean:
-	rm -f ../lib/exec/perfmonger-recorder_linux_amd64 ../lib/exec/perfmonger-player_linux_amd64 ../lib/exec/perfmonger-viewer_linux_amd64 ../lib/exec/perfmonger-summarizer_linux_amd64 ../lib/exec/perfmonger-plot-formatter_linux_amd64
+	rm -f ../lib/exec/perfmonger-core_linux_amd64
 

@@ -30,7 +30,7 @@ You need Ruby 2.2 or later, and Go 1.8 or later to build perfmonger.
     bundle
     rake build
 
-Note: The Go core now builds a single binary `perfmonger-core_<os>_<arch>` in `lib/exec/`. CLI compatibility wrappers with the former names (e.g. `perfmonger-recorder_<os>_<arch>`) dispatch to this core binary during the transition phase.
+Note: The Go core now builds a single binary `perfmonger-core_<os>_<arch>` in `lib/exec/` that contains all core functionality (record, play, summarize, plot-format, view) as subcommands. CLI compatibility wrappers with the former names (e.g. `perfmonger-recorder_<os>_<arch>`) dispatch to this unified core binary during the transition phase.
 
 ### Go Dev Environment (optional)
 

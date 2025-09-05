@@ -19,3 +19,5 @@
 /*.gp
 /*.dat
 /godevenv/
+core/cmd/lib/exec/perfmonger-core_*_*
+core/cmd/perfmonger-core/perfmonger-core
