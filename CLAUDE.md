@@ -96,3 +96,9 @@ cd core/cmd/perfmonger-core/<tool> && go vet *.go
 
 - `devdoc/TODO.md`: Contains implementation tasks to be completed. Updated this file as tasks progress.
 - `devdoc/DONE.md`: Stores completed tasks moved from TODO.md for record keeping.
+
+## Code Style Guidelines
+
+- **Comments**: ALL comments in code must be written in English only. No Japanese or other languages are allowed in code comments.
+- **Variable/Function Names**: Use descriptive English names for variables, functions, and types.
+- **Documentation**: Code documentation and docstrings should be in English to maintain consistency and readability for international contributors.

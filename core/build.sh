@@ -62,11 +62,16 @@ for idx in $(seq 0 $((${#TARGET[@]}-1))); do
 
     # Build single perfmonger-core binary
     TARGETS+=(../lib/exec/perfmonger-core_${var_GOOS}_${var_GOARCH})
+    # Build new perfmonger binary
+    TARGETS+=(../lib/exec/perfmonger_${var_GOOS}_${var_GOARCH})
 
     cat <<EOF >> $makefile
 
 ../lib/exec/perfmonger-core_${var_GOOS}_${var_GOARCH}: cmd/perfmonger-core/perfmonger-core.go \$(GO_DEPS)
 	cd cmd/perfmonger-core && GOOS=${var_GOOS} GOARCH=${var_GOARCH} go build -o \$@ perfmonger-core.go
+
+../lib/exec/perfmonger_${var_GOOS}_${var_GOARCH}: cmd/perfmonger/*.go \$(GO_DEPS)
+	cd cmd/perfmonger && GOOS=${var_GOOS} GOARCH=${var_GOARCH} go build -o ../../\$@ .
 
 EOF
 

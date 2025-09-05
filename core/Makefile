@@ -14,9 +14,12 @@ all: build
 ../lib/exec/perfmonger-core_linux_amd64: cmd/perfmonger-core/perfmonger-core.go $(GO_DEPS)
 	cd cmd/perfmonger-core && GOOS=linux GOARCH=amd64 go build -o $@ perfmonger-core.go
 
+../lib/exec/perfmonger_linux_amd64: cmd/perfmonger/*.go $(GO_DEPS)
+	cd cmd/perfmonger && GOOS=linux GOARCH=amd64 go build -o ../../$@ .
 
-build: ../lib/exec/perfmonger-core_linux_amd64
+
+build: ../lib/exec/perfmonger-core_linux_amd64 ../lib/exec/perfmonger_linux_amd64
 
 clean:
-	rm -f ../lib/exec/perfmonger-core_linux_amd64
+	rm -f ../lib/exec/perfmonger-core_linux_amd64 ../lib/exec/perfmonger_linux_amd64
 
