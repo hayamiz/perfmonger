@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build.sh -)",
+      "Bash(source:*)",
+      "Bash(go test:*)",
+      "Bash(timeout:*)",
+      "Bash(./lib/exec/perfmonger_linux_amd64 record:*)",
+      "Bash(bundle exec exe/perfmonger record:*)",
+      "Bash(./lib/exec/perfmonger_linux_amd64 play:*)",
+      "Bash(bundle exec exe/perfmonger play:*)",
+      "Bash(./lib/exec/perfmonger_linux_amd64:*)",
+      "Bash(bundle exec exe/perfmonger summary:*)",
+      "Bash(bundle exec exe/perfmonger stat:*)",
+      "Bash(PERFMONGER_DEBUG=1 ./lib/exec/perfmonger_linux_amd64 stat:*)",
+      "Bash(bundle exec exe/perfmonger plot:*)",
+      "Bash(bundle exec exe/perfmonger fingerprint:*)",
+      "Bash(bundle exec exe/perfmonger live:*)"
+    ],
+    "deny": []
+  }
+}
