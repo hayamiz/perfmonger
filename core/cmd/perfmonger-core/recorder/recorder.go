@@ -157,17 +157,39 @@ func NewRecorderOption() *RecorderOption {
 	}
 }
 
+// showRecorderOption dumps all values in RecorderOption for debugging
+func showRecorderOption(option *RecorderOption) {
+	fmt.Fprintf(os.Stderr, "=== RecorderOption ===\n")
+	fmt.Fprintf(os.Stderr, "Interval: %s\n", option.Interval.String())
+	fmt.Fprintf(os.Stderr, "NoIntervalBackoff: %t\n", option.NoIntervalBackoff)
+	fmt.Fprintf(os.Stderr, "Timeout: %s\n", option.Timeout.String())
+	fmt.Fprintf(os.Stderr, "StartDelay: %s\n", option.StartDelay.String())
+	fmt.Fprintf(os.Stderr, "DevsParts: %v\n", option.DevsParts)
+	fmt.Fprintf(os.Stderr, "Output: %s\n", option.Output)
+	fmt.Fprintf(os.Stderr, "NoCPU: %t\n", option.NoCPU)
+	fmt.Fprintf(os.Stderr, "NoIntr: %t\n", option.NoIntr)
+	fmt.Fprintf(os.Stderr, "NoDisk: %t\n", option.NoDisk)
+	fmt.Fprintf(os.Stderr, "NoNet: %t\n", option.NoNet)
+	fmt.Fprintf(os.Stderr, "NoMem: %t\n", option.NoMem)
+	fmt.Fprintf(os.Stderr, "Debug: %t\n", option.Debug)
+	fmt.Fprintf(os.Stderr, "ListDevices: %t\n", option.ListDevices)
+	fmt.Fprintf(os.Stderr, "PlayerBin: %s\n", option.PlayerBin)
+	fmt.Fprintf(os.Stderr, "Disks: %s\n", option.Disks)
+	if option.TargetDisks != nil {
+		fmt.Fprintf(os.Stderr, "TargetDisks: %v\n", *option.TargetDisks)
+	} else {
+		fmt.Fprintf(os.Stderr, "TargetDisks: nil\n")
+	}
+	fmt.Fprintf(os.Stderr, "Background: %t\n", option.Background)
+	fmt.Fprintf(os.Stderr, "Gzip: %t\n", option.Gzip)
+	fmt.Fprintf(os.Stderr, "Color: %t\n", option.Color)
+	fmt.Fprintf(os.Stderr, "Pretty: %t\n", option.Pretty)
+	fmt.Fprintf(os.Stderr, "=====================\n")
+}
+
 // RunWithOption executes the recorder with the provided options
 // This is the preferred API that uses direct execution (no double argument parsing)
 func RunWithOption(option *RecorderOption) {
-	// Handle background mode session management if needed
-	if option.Background {
-		if !handleBackgroundSession() {
-			// Another session is running, exit early
-			return
-		}
-	}
-	
 	// Call the direct execution function (no args conversion needed)
 	RunDirect(option)
 }
@@ -231,21 +253,6 @@ Unlock:
 func Run(args []string) {
 	option := NewRecorderOption()
 	
-	// Need to check '-background' before parsing args
-	is_background := false
-	for _, arg := range args {
-		if arg == "-background" {
-			is_background = true
-		}
-	}
-
-	if is_background {
-		if !handleBackgroundSession() {
-			// Another session is running, exit early
-			return
-		}
-	}
-
 	parseArgs(args, option)
 	
 	// Call the direct execution function
@@ -255,9 +262,21 @@ func Run(args []string) {
 // RunDirect executes the recorder with the provided RecorderOption directly
 // This avoids the double conversion: RecorderOption -> args -> parseArgs -> RecorderOption
 func RunDirect(option *RecorderOption) {
+	// Handle background mode session management if needed
+	if option.Background {
+		if !handleBackgroundSession() {
+			// Another session is running, exit early
+			return
+		}
+	}
+	
 	var out *bufio.Writer
 	var enc *gob.Encoder
 	var err error
+
+	if option.Debug {
+		showRecorderOption(option)
+	}
 
 	hostname, _ := os.Hostname()
 	cheader := &ss.CommonHeader{Platform: ss.Linux, Hostname: hostname, StartTime: time.Now()}

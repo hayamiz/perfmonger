@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -60,9 +61,9 @@ type recordCommand struct {
 func newRecordCommandStruct() *recordCommand {
 	opt := recorder.NewRecorderOption()
 	// Ruby defaults differ from recorder defaults
-	opt.Output = "perfmonger.pgr"  // Ruby default logfile name
-	opt.NoNet = true               // Ruby default: don't record network
-	opt.Gzip = true                // Ruby default: use gzip
+	opt.Output = "perfmonger.pgr.gz"  // default logfile name
+	opt.NoNet = true                  // default: don't record network
+	opt.Gzip = true                   // default: use gzip
 	
 	return &recordCommand{
 		RecorderOpt: opt,
@@ -149,12 +150,20 @@ func (cmd *recordCommand) executeRecord() error {
 	// Apply Ruby-specific logic (minimal processing only)
 	cmd.applyRubySpecificLogic()
 	
-	if !cmd.RecorderOpt.Background {
-		fmt.Printf("[recording to %s]\n", cmd.RecorderOpt.Output)
+	if os.Getenv("PERFMONGER_DEBUG") != "" {
+		cmd.RecorderOpt.Debug = true
 	}
 	
-	if os.Getenv("PERFMONGER_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[debug] running recorder with options: %+v\n", cmd.RecorderOpt)
+	// Handle background mode daemonization (Ruby-compatible)
+	if cmd.RecorderOpt.Background {
+		if cmd.RecorderOpt.Debug {
+			fmt.Fprintln(os.Stderr, "[DEBUG] Daemonizing process...")
+		}
+		if err := cmd.daemonize(); err != nil {
+			return fmt.Errorf("failed to daemonize: %v", err)
+		}
+	} else {
+		fmt.Printf("[recording to %s]\n", cmd.RecorderOpt.Output)
 	}
 	
 	// Direct API call - no conversion needed
@@ -178,6 +187,58 @@ func (cmd *recordCommand) applyRubySpecificLogic() {
 	if !cmd.RecordIntr {
 		cmd.RecorderOpt.NoIntr = true
 	}
+}
+
+// daemonize puts the current process into background
+func (cmd *recordCommand) daemonize() error {
+	// Fork the process using syscall.RawSyscall
+	pid, _, errno := syscall.RawSyscall(syscall.SYS_FORK, 0, 0, 0)
+	
+	if errno != 0 {
+		return fmt.Errorf("fork failed: %v", errno)
+	}
+	
+	// Parent process exits, child continues in background
+	if pid > 0 {
+		os.Exit(0)
+	}
+	
+	// Child process continues here
+	// Create new session and process group
+	_, err := syscall.Setsid()
+	if err != nil {
+		return fmt.Errorf("setsid failed: %v", err)
+	}
+	
+	// Change working directory to root to avoid keeping directories busy
+	err = os.Chdir("/")
+	if err != nil {
+		return fmt.Errorf("chdir failed: %v", err)
+	}
+	
+	// Redirect stdin, stdout, stderr to /dev/null
+	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		return fmt.Errorf("failed to open /dev/null: %v", err)
+	}
+	defer devNull.Close()
+	
+	err = syscall.Dup2(int(devNull.Fd()), int(os.Stdin.Fd()))
+	if err != nil {
+		return fmt.Errorf("dup2 stdin failed: %v", err)
+	}
+	
+	err = syscall.Dup2(int(devNull.Fd()), int(os.Stdout.Fd()))
+	if err != nil {
+		return fmt.Errorf("dup2 stdout failed: %v", err)
+	}
+	
+	err = syscall.Dup2(int(devNull.Fd()), int(os.Stderr.Fd()))
+	if err != nil {
+		return fmt.Errorf("dup2 stderr failed: %v", err)
+	}
+	
+	return nil
 }
 
 
