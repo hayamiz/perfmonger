@@ -4,34 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PerfMonger is a high-resolution system performance monitor written in Ruby (CLI) and Go (core monitoring components). It enables sub-second level monitoring of CPU, disk I/O, and network performance with JSON output for easy processing.
+PerfMonger is a high-resolution system performance monitor written in Go. It enables sub-second level monitoring of CPU, disk I/O, and network performance with JSON output for easy processing.
 
 ## Architecture
 
-The project has a hybrid architecture (currently transitioning to single-binary Go implementation):
+The project is a single-binary Go implementation:
 
-1. **Ruby Layer** (`lib/`, `exe/`): CLI interface and command handling
-   - Main entry point: `exe/perfmonger` → `lib/perfmonger/cli.rb`
-   - Commands in `lib/perfmonger/command/`: record, play, plot, summary, live, etc.
+1. **Go CLI** (`core/cmd/perfmonger/`): Top-level `perfmonger` binary with cobra subcommands
+   - Subcommands: record, play, summary, plot, live, stat, fingerprint, init-shell
+   - Built to `lib/exec/perfmonger_linux_amd64`
 
-2. **Go Core** (`core/`): Performance-critical monitoring components (unified into single binary)
-   - `core/internal/perfmonger/`: Core monitoring logic (platform-specific implementations)
-   - `core/cmd/perfmonger-core/`: Unified single binary with subcommands (record, play, summarize, plot-format, view)
-   - Individual tool packages: recorder, player, summarizer, plotformatter, viewer
-   - Binaries built to `lib/exec/perfmonger-core_<os>_<arch>` with compatibility wrappers
+2. **Go Core Packages** (`core/cmd/perfmonger-core/`): Reusable component packages
+   - `recorder/`, `player/`, `summarizer/`, `plotformatter/`, `viewer/`
+   - Each exposes `RunDirect(option)` / `RunWithOption(option)` APIs
 
-3. **Platform Support**: Linux only (Darwin support removed)
+3. **Core Monitoring Logic** (`core/internal/perfmonger/`): Platform-specific system metric collection
    - Platform-specific code: `perfmonger_linux.go`
+   - Linux only (Darwin support removed)
+
+4. **Legacy Ruby Code** (`lib/`, `exe/`, `spec/`): Not actively used; retained for reference during migration cleanup
 
 ## Development Commands
 
 ### Building
 ```bash
-# Full build with Ruby CLI + unified Go core binary
-bundle install
-rake build
+# Build the unified Go binary (perfmonger_linux_amd64)
+cd core/cmd/perfmonger && go build -o ../../../lib/exec/perfmonger_linux_amd64 .
 
-# Build only Go core components (single perfmonger-core binary)
+# Build core components (perfmonger-core binary, compatibility wrappers)
 cd core && ./build.sh
 
 # Self-build (current platform only)
@@ -43,28 +43,34 @@ source 00_LOAD_GO_DEVENV.sh
 
 ### Testing
 ```bash
-# Run all tests (Ruby specs + Go tests + static analysis)
-rake
+# Run integration tests (pytest, recommended)
+uv sync && uv run pytest -v
 
-# Run Ruby specs only
-rake spec
+# Run a specific test file
+uv run pytest tests/test_record.py -v
 
-# Run Go tests only
-rake test_core
-# or directly:
+# Run Go unit tests
 cd core/internal/perfmonger && go test -v -cover
 
 # Run Go static analysis
-rake analyze_core
+cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)
 ```
 
-### Linting
-```bash
-# Go static analysis (included in default rake task)
-cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)
-cd core/cmd/perfmonger-core && go vet *.go
-cd core/cmd/perfmonger-core/<tool> && go vet *.go
-```
+### Integration Test Framework (pytest)
+
+Integration tests live in `tests/` and use **pytest** with **uv** for dependency management.
+
+- **`pyproject.toml`**: Project config with pytest + pytest-timeout dependencies
+- **`tests/conftest.py`**: Shared fixtures (`perfmonger_bin`, `data_file`, `run_perfmonger()`)
+- **Test files**: `tests/test_*.py` — one per subcommand
+- **Test data**: `spec/data/` contains sample `.pgr` and `.pgr.gz` files used as golden fixtures
+
+Key conventions:
+- Tests that exercise known bugs use `@pytest.mark.xfail(reason="...")`
+- Tests requiring `/proc/diskstats` use `@requires_proc_diskstats` skip marker
+- Tests requiring `gnuplot` use `@requires_gnuplot` skip marker
+- `run_perfmonger(*args, cwd=...)` helper runs the Go binary and returns `CompletedProcess`
+- Background mode tests (`test_background.py`) manage session files and cleanup via fixtures
 
 ## Key Implementation Details
 
@@ -77,19 +83,19 @@ cd core/cmd/perfmonger-core/<tool> && go vet *.go
 ## Testing Individual Components
 
 ```bash
-# Test recording (via Ruby CLI)
-./exe/perfmonger record -i 0.1 -d sda
+# Record system metrics
+./lib/exec/perfmonger_linux_amd64 record -i 0.1 -d sda --timeout 5
 
-# Test playback (via Ruby CLI)
-./exe/perfmonger play <recorded_file.pgr>
+# Playback recorded data as JSON
+./lib/exec/perfmonger_linux_amd64 play <recorded_file.pgr>
 
-# Test live monitoring (via Ruby CLI)
-./exe/perfmonger live
+# Live monitoring
+./lib/exec/perfmonger_linux_amd64 live
 
-# Test core components directly (single binary with subcommands)
-./lib/exec/perfmonger-core_linux_amd64 record -i 0.1 -d sda
-./lib/exec/perfmonger-core_linux_amd64 play <recorded_file.pgr>
-./lib/exec/perfmonger-core_linux_amd64 plot-format -perfmonger <file.pgr>
+# Background recording with session management
+./lib/exec/perfmonger_linux_amd64 record --background --timeout 60
+./lib/exec/perfmonger_linux_amd64 record --status
+./lib/exec/perfmonger_linux_amd64 record --kill
 ```
 
 ## Development Documentation
