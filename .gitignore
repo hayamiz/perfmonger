@@ -22,3 +22,10 @@
 core/cmd/lib/exec/perfmonger-core_*_*
 core/cmd/perfmonger-core/perfmonger-core
 core-old/
+
+# Python / pytest
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+uv.lock
