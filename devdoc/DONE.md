@@ -346,3 +346,23 @@
 - **保守性**: 構造体層とコード複雑性の大幅削減を達成
 - **性能**: 二重変換処理の完全排除による効率化
 - **型安全性**: cobra直接設定による実行時エラー削減を実現
+
+## 互換ラッパー **[完了]**
+
+- [x] 旧コマンド名での互換ラッパー（シンボリックリンク）を `lib/exec/` に配置
+  - `perfmonger-recorder_linux_amd64` → `perfmonger-core_linux_amd64`
+  - `perfmonger-player_linux_amd64` → `perfmonger-core_linux_amd64`
+  - `perfmonger-summarizer_linux_amd64` → `perfmonger-core_linux_amd64`
+  - `perfmonger-plot-formatter_linux_amd64` → `perfmonger-core_linux_amd64`
+  - `perfmonger-viewer_linux_amd64` → `perfmonger-core_linux_amd64`
+  - `core/build.sh` により自動生成
+
+## マイルストーン達成状況
+
+- ✅ **段階0完了**: Darwin サポート廃止、パッケージ構造リファクタリング完了
+- ✅ **段階1完了**: Ruby CLI + `CoreFinder` で全サブコマンドが旧名で動作し、RSpec/Go テストがパス。`lib/exec` は単一バイナリ由来。
+- ✅ **段階2完了**: Ruby 依存が無く、`perfmonger` 単一バイナリで同等機能（server廃止、plot含む）。Go テストがパスし、Ruby版互換性を維持。cobra/pflag 移行完了。
+- ✅ **段階2.5完了**: オプション管理の効率化とアーキテクチャ改善。二重引数解析排除、構造体ベース統一API、メモリ効率とパフォーマンス最適化完了。
+- ✅ **段階2.6完了**: record サブコマンドの完全直接設定方式への移行完了。
+- ✅ **段階2.7完了**: recorder コアコンポーネントの RunDirect API 実装完了。
+- ✅ **段階2.8完了**: 全サブコマンドへの直接設定方式の展開完了。
