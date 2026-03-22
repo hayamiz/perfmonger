@@ -194,60 +194,50 @@ func RunWithOption(option *RecorderOption) {
 	RunDirect(option)
 }
 
-// handleBackgroundSession manages background session detection and creation
-// Returns true if it's safe to proceed with recording, false if another session exists
-func handleBackgroundSession() bool {
-	// Find existing session, or create new one
-	user, err := user.Current()
+// SessionFilePath returns the path to the background session PID file.
+func SessionFilePath() string {
+	u, err := user.Current()
 	if err != nil {
 		panic(err)
 	}
-	session_file := path.Join(os.TempDir(),
-		fmt.Sprintf("perfmonger-%s-session.pid", user.Username))
+	return path.Join(os.TempDir(),
+		fmt.Sprintf("perfmonger-%s-session.pid", u.Username))
+}
 
+// WriteSessionFile atomically writes the current PID to the session file
+// under flock protection. Returns the session file path for deferred cleanup.
+func WriteSessionFile() string {
+	sf := SessionFilePath()
 	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
 
-	// make lock file if not exists
-	session_exists := false
 	if _, err := os.Stat(lockfile); err != nil {
 		ioutil.WriteFile(lockfile, []byte(""), 0644)
 	}
 	fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
 	syscall.Flock(fd, syscall.LOCK_EX)
 
-	if _, err := os.Stat(session_file); err == nil {
-		pidstr, err := ioutil.ReadFile(session_file)
-		pid, err := strconv.Atoi(string(pidstr))
-		if err != nil {
-			goto MakeNewSession
-		}
+	ioutil.WriteFile(sf, []byte(strconv.Itoa(os.Getpid())), 0644)
 
-		// check if PID in session file is valid
-		proc, err := os.FindProcess(pid)
-		err = proc.Signal(syscall.Signal(0))
-
-		if err == nil {
-			session_exists = true
-			goto Unlock
-		}
-	}
-MakeNewSession:
-	err = ioutil.WriteFile(session_file, []byte(strconv.Itoa(os.Getpid())), 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer os.Remove(session_file)
-
-Unlock:
 	syscall.Flock(fd, syscall.LOCK_UN)
 	syscall.Close(fd)
 
-	if session_exists {
-		fmt.Fprintf(os.Stderr, "[ERROR] another perfmonger is already running in background mode\n")
-		return false
+	return sf
+}
+
+// RemoveSessionFile removes the session PID file under flock protection.
+func RemoveSessionFile() {
+	sf := SessionFilePath()
+	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
+
+	fd, err := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
+	if err == nil {
+		syscall.Flock(fd, syscall.LOCK_EX)
+		os.Remove(sf)
+		syscall.Flock(fd, syscall.LOCK_UN)
+		syscall.Close(fd)
+	} else {
+		os.Remove(sf)
 	}
-	
-	return true
 }
 
 func Run(args []string) {
@@ -262,14 +252,14 @@ func Run(args []string) {
 // RunDirect executes the recorder with the provided RecorderOption directly
 // This avoids the double conversion: RecorderOption -> args -> parseArgs -> RecorderOption
 func RunDirect(option *RecorderOption) {
-	// Handle background mode session management if needed
+	// Session file management for background mode.
+	// The CLI layer handles duplicate-session detection before launching;
+	// here we just write and clean up the PID file.
 	if option.Background {
-		if !handleBackgroundSession() {
-			// Another session is running, exit early
-			return
-		}
+		WriteSessionFile()
+		defer RemoveSessionFile()
 	}
-	
+
 	var out *bufio.Writer
 	var enc *gob.Encoder
 	var err error

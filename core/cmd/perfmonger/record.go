@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -11,6 +14,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/hayamiz/perfmonger/core/cmd/perfmonger-core/recorder"
 )
+
+// Environment variable used as a sentinel for the re-exec daemonization pattern.
+// When set, the process knows it is the background child and should not fork again.
+const daemonEnvKey = "PERFMONGER_DAEMON_CHILD"
 
 // secondsDurationValue is a custom flag value that accepts float64 seconds (Ruby-compatible)
 type secondsDurationValue struct {
@@ -127,45 +134,163 @@ func (cmd *recordCommand) run() error {
 	return cmd.executeRecord()
 }
 
-// killSession kills a running background session (Ruby-compatible)
-func (cmd *recordCommand) killSession() error {
-	fmt.Fprintln(os.Stderr, "kill functionality not yet implemented")
-	return fmt.Errorf("not implemented")
+// sessionFilePath returns the path to the session PID file
+func sessionFilePath() (string, error) {
+	u, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current user: %v", err)
+	}
+	return filepath.Join(os.TempDir(), fmt.Sprintf("perfmonger-%s-session.pid", u.Username)), nil
 }
 
-// showStatus shows status of running session (Ruby-compatible)  
+// lockFilePath returns the path to the lock file
+func lockFilePath() string {
+	return filepath.Join(os.TempDir(), ".perfmonger.lock")
+}
+
+// killSession kills a running background session (Ruby-compatible)
+func (cmd *recordCommand) killSession() error {
+	pid := cmd.getRunningSessionPID()
+	if pid == 0 {
+		fmt.Fprintln(os.Stderr, "[ERROR] No perfmonger record session is running.")
+		return fmt.Errorf("no session running")
+	}
+
+	// Send SIGINT and wait with exponential backoff (Ruby-compatible)
+	sleepTime := 50 * time.Millisecond
+	for try := 0; try < 5; try++ {
+		if err := syscall.Kill(pid, syscall.SIGINT); err != nil {
+			// Process already gone — success
+			break
+		}
+		time.Sleep(sleepTime)
+		sleepTime *= 2
+	}
+
+	// Final check: is the process still alive?
+	if err := syscall.Kill(pid, 0); err == nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] Cannot stop perfmonger record session correctly. PID=%d\n", pid)
+		return fmt.Errorf("failed to stop session PID=%d", pid)
+	}
+
+	// Clean up session file
+	sf, err := sessionFilePath()
+	if err == nil {
+		os.Remove(sf)
+	}
+
+	return nil
+}
+
+// showStatus shows status of running session (Ruby-compatible)
 func (cmd *recordCommand) showStatus() error {
-	fmt.Fprintln(os.Stderr, "status functionality not yet implemented")
-	return fmt.Errorf("not implemented")
+	pid := cmd.getRunningSessionPID()
+	if pid == 0 {
+		fmt.Fprintln(os.Stderr, "[ERROR] No perfmonger record session is running.")
+		return fmt.Errorf("no session running")
+	}
+
+	// Read /proc/<PID>/cmdline
+	cmdlineBytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[ERROR] No perfmonger-recorder is running.")
+		return fmt.Errorf("cannot read process info")
+	}
+
+	parts := strings.Split(string(cmdlineBytes), "\x00")
+	exe := ""
+	args := ""
+	if len(parts) > 0 {
+		exe = parts[0]
+	}
+	if len(parts) > 1 {
+		args = strings.Join(parts[1:], " ")
+	}
+
+	// Get start time from /proc/<PID> mtime
+	procInfo, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "[ERROR] No perfmonger-recorder is running.")
+		return fmt.Errorf("cannot stat process")
+	}
+	startTime := procInfo.ModTime()
+	elapsed := int(time.Since(startTime).Seconds())
+
+	fmt.Printf("==== perfmonger record is running (PID: %d) ====\n\n", pid)
+	fmt.Printf("* Running executable: %s\n", exe)
+	fmt.Printf("* Arguments: %s\n", args)
+	fmt.Printf("* Started at %s (running %d sec)\n\n", startTime.Format(time.RFC3339), elapsed)
+
+	return nil
 }
 
 // getRunningSessionPID returns PID of running session, 0 if none
 func (cmd *recordCommand) getRunningSessionPID() int {
-	// TODO: Implement Ruby-compatible session detection
-	return 0
+	sf, err := sessionFilePath()
+	if err != nil {
+		return 0
+	}
+
+	data, err := os.ReadFile(sf)
+	if err != nil {
+		return 0
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+
+	// Check if the process is actually alive
+	if err := syscall.Kill(pid, 0); err != nil {
+		// Process is dead — clean up stale session file
+		lf := lockFilePath()
+		fd, err := syscall.Open(lf, syscall.O_RDONLY|syscall.O_CREAT, 0644)
+		if err == nil {
+			syscall.Flock(fd, syscall.LOCK_EX)
+			os.Remove(sf)
+			syscall.Flock(fd, syscall.LOCK_UN)
+			syscall.Close(fd)
+		}
+		return 0
+	}
+
+	return pid
 }
 
 // executeRecord runs the actual recording using direct API with minimal processing
 func (cmd *recordCommand) executeRecord() error {
 	// Apply Ruby-specific logic (minimal processing only)
 	cmd.applyRubySpecificLogic()
-	
+
 	if os.Getenv("PERFMONGER_DEBUG") != "" {
 		cmd.RecorderOpt.Debug = true
 	}
-	
-	// Handle background mode daemonization (Ruby-compatible)
+
+	// Resolve output path to absolute BEFORE daemonize (which changes cwd to /)
+	if cmd.RecorderOpt.Output != "-" && !filepath.IsAbs(cmd.RecorderOpt.Output) {
+		absPath, err := filepath.Abs(cmd.RecorderOpt.Output)
+		if err != nil {
+			return fmt.Errorf("failed to resolve output path: %v", err)
+		}
+		cmd.RecorderOpt.Output = absPath
+	}
+
+	// Handle background mode: re-exec as a detached child process.
+	// Go's runtime is not fork-safe (goroutines, GC), so we use the
+	// re-exec pattern: the parent launches a copy of itself with a
+	// sentinel env var, then exits. The child detects the sentinel,
+	// skips daemonization, and runs the recorder directly.
 	if cmd.RecorderOpt.Background {
-		if cmd.RecorderOpt.Debug {
-			fmt.Fprintln(os.Stderr, "[DEBUG] Daemonizing process...")
+		if os.Getenv(daemonEnvKey) == "" {
+			// Parent: launch child and exit
+			return cmd.launchDaemonChild()
 		}
-		if err := cmd.daemonize(); err != nil {
-			return fmt.Errorf("failed to daemonize: %v", err)
-		}
+		// Child: continue to recording (don't print banner)
 	} else {
 		fmt.Printf("[recording to %s]\n", cmd.RecorderOpt.Output)
 	}
-	
+
 	// Direct API call - no conversion needed
 	recorder.RunWithOption(cmd.RecorderOpt)
 	return nil
@@ -189,55 +314,60 @@ func (cmd *recordCommand) applyRubySpecificLogic() {
 	}
 }
 
-// daemonize puts the current process into background
-func (cmd *recordCommand) daemonize() error {
-	// Fork the process using syscall.RawSyscall
-	pid, _, errno := syscall.RawSyscall(syscall.SYS_FORK, 0, 0, 0)
-	
-	if errno != 0 {
-		return fmt.Errorf("fork failed: %v", errno)
+// launchDaemonChild re-execs the current binary as a detached background process.
+// The parent returns nil after launching the child; the caller should then exit.
+func (cmd *recordCommand) launchDaemonChild() error {
+	// Build argument list that mirrors the current invocation but with the
+	// output path already resolved to absolute.
+	args := []string{"record", "--background"}
+	args = append(args, "--timeout", fmt.Sprintf("%g", cmd.RecorderOpt.Timeout.Seconds()))
+	args = append(args, "--interval", fmt.Sprintf("%g", cmd.RecorderOpt.Interval.Seconds()))
+	if cmd.RecorderOpt.StartDelay > 0 {
+		args = append(args, "--start-delay", fmt.Sprintf("%g", cmd.RecorderOpt.StartDelay.Seconds()))
 	}
-	
-	// Parent process exits, child continues in background
-	if pid > 0 {
-		os.Exit(0)
+	args = append(args, "-l", cmd.RecorderOpt.Output)
+	if cmd.RecorderOpt.NoCPU {
+		args = append(args, "--no-cpu")
 	}
-	
-	// Child process continues here
-	// Create new session and process group
-	_, err := syscall.Setsid()
+	if cmd.RecorderOpt.NoNet {
+		args = append(args, "--no-net")
+	}
+	if cmd.RecorderOpt.NoMem {
+		args = append(args, "--no-mem")
+	}
+	if cmd.RecorderOpt.NoIntr || !cmd.RecordIntr {
+		args = append(args, "--record-intr=false")
+	}
+	if cmd.RecorderOpt.NoIntervalBackoff {
+		args = append(args, "--no-interval-backoff")
+	}
+	if cmd.NoGzip {
+		args = append(args, "--no-gzip")
+	}
+	for _, d := range cmd.RecorderOpt.DevsParts {
+		args = append(args, "-d", d)
+	}
+
+	selfBin, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("setsid failed: %v", err)
+		return fmt.Errorf("failed to find own executable: %v", err)
 	}
-	
-	// Change working directory to root to avoid keeping directories busy
-	err = os.Chdir("/")
-	if err != nil {
-		return fmt.Errorf("chdir failed: %v", err)
+
+	child := exec.Command(selfBin, args...)
+	child.Dir = "/"
+	child.Env = append(os.Environ(), daemonEnvKey+"=1")
+	// Detach stdin/stdout/stderr → /dev/null
+	child.Stdin = nil
+	child.Stdout = nil
+	child.Stderr = nil
+	// Create new process group / session so the child survives parent exit
+	child.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+
+	if err := child.Start(); err != nil {
+		return fmt.Errorf("failed to start background process: %v", err)
 	}
-	
-	// Redirect stdin, stdout, stderr to /dev/null
-	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open /dev/null: %v", err)
-	}
-	defer devNull.Close()
-	
-	err = syscall.Dup2(int(devNull.Fd()), int(os.Stdin.Fd()))
-	if err != nil {
-		return fmt.Errorf("dup2 stdin failed: %v", err)
-	}
-	
-	err = syscall.Dup2(int(devNull.Fd()), int(os.Stdout.Fd()))
-	if err != nil {
-		return fmt.Errorf("dup2 stdout failed: %v", err)
-	}
-	
-	err = syscall.Dup2(int(devNull.Fd()), int(os.Stderr.Fd()))
-	if err != nil {
-		return fmt.Errorf("dup2 stderr failed: %v", err)
-	}
-	
+
+	// Parent is done — the child runs independently
 	return nil
 }
 

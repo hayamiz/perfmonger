@@ -4,9 +4,11 @@
 
 ## Known Bugs
 
-- [ ] record コマンドの --background オプションが正しく動作しない
-  - `daemonize()` で `os.Chdir("/")` するが、ログファイルパスを事前に絶対パスに変換していない
-  - 相対パス（例: `perfmonger.pgr`）が `/perfmonger.pgr` に書き込まれてしまう
+- [x] record コマンドの --background オプションが正しく動作しない → **修正済み**
+  - fork() を re-exec パターンに置き換え（Go ランタイムは fork 非対応）
+  - 出力パスをデーモン化前に絶対パスに変換
+  - セッション管理（session file 作成/削除）を recorder.go から record.go CLI 層に移動
+  - --kill / --status を Ruby 版互換で実装
 
   ### Ruby版の --background / --kill / --status 仕様（修正時の参考）
 
@@ -73,10 +75,9 @@
 
 ## 段階2: 残タスク
 
-- [ ] Ruby 互換セッション管理機能実装（kill/status）
-  - `record.go` の `killSession()` / `showStatus()` が "not yet implemented" のスタブ状態
-  - `stat.go` / `live.go` も同様
-  - `getRunningSessionPID()` も未実装（常に 0 を返す）
+- [x] Ruby 互換セッション管理機能実装（kill/status） → **修正済み**
+  - `record.go` の `killSession()` / `showStatus()` / `getRunningSessionPID()` を実装
+  - `stat.go` / `live.go` は未対応（別途対応予定）
 - [ ] Go 側統合テスト追加（`spec/data/` のサンプルを golden として活用）
 - [ ] ビルド/配布を Go 単体に一本化（クロスビルド・リリース生成）
   - Go バイナリは動作するが、Rakefile のビルド/テスト実行が Ruby 依存
