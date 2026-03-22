@@ -306,6 +306,10 @@ func (cmd *recordCommand) applyRubySpecificLogic() {
 	// Handle Ruby-specific logic (minimal processing)
 	if cmd.NoGzip {
 		cmd.RecorderOpt.Gzip = false
+		// Strip .gz suffix from default output filename
+		if strings.HasSuffix(cmd.RecorderOpt.Output, ".gz") {
+			cmd.RecorderOpt.Output = strings.TrimSuffix(cmd.RecorderOpt.Output, ".gz")
+		}
 	}
 	
 	// Handle record interrupts (Ruby --record-intr vs Go --no-intr)

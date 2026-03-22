@@ -92,14 +92,13 @@ func (cmd *liveCommand) run() error {
 	// Live mode always outputs to stdout (will be piped to player)
 	cmd.RecorderOpt.Output = "-"
 	
-	// Find the player binary for live mode
-	playerBin, err := findPlayerBinary()
+	// Use our own binary with "play" subcommand as the player
+	selfBin, err := os.Executable()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find own executable: %v", err)
 	}
-	
-	// Set player binary for live mode
-	cmd.RecorderOpt.PlayerBin = playerBin
+	cmd.RecorderOpt.PlayerBin = selfBin
+	cmd.RecorderOpt.PlayerArgs = []string{"play"}
 	
 	// Set color and pretty options for live display
 	cmd.RecorderOpt.Color = cmd.Color
@@ -138,12 +137,6 @@ func (cmd *liveCommand) applyRubySpecificLogic() {
 	if !cmd.RecordIntr {
 		cmd.RecorderOpt.NoIntr = true
 	}
-}
-
-// findPlayerBinary finds the player binary (using same logic as Ruby CoreFinder)
-func findPlayerBinary() (string, error) {
-	// In the unified binary approach, we use perfmonger-core with play subcommand
-	return "perfmonger-core", nil
 }
 
 // newLiveCommand creates the live subcommand with direct cobra setting

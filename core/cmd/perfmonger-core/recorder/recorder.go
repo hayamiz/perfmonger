@@ -40,12 +40,14 @@ type RecorderOption struct {
 	Debug              bool
 	ListDevices        bool
 	PlayerBin          string
+	PlayerArgs         []string
 	Disks              string
 	TargetDisks        *map[string]bool
 	Background         bool
 	Gzip               bool
 	Color              bool
 	Pretty             bool
+	StopCh             chan struct{} // External stop signal (closed to stop recording)
 }
 
 // By default, measurement interval backoff is enabled.
@@ -148,6 +150,7 @@ func NewRecorderOption() *RecorderOption {
 		Debug:              false,
 		ListDevices:        false,
 		PlayerBin:          "",
+		PlayerArgs:         []string{},
 		Disks:              "",
 		TargetDisks:        nil,
 		Background:         false,
@@ -285,54 +288,60 @@ func RunDirect(option *RecorderOption) {
 	var player_stdout io.ReadCloser = nil
 
 	if option.PlayerBin != "" {
+		// Build player command arguments: base args + color/pretty flags
+		playerArgs := append([]string{}, option.PlayerArgs...)
 		if option.Color {
-			if option.Pretty {
-				player_cmd = exec.Command(option.PlayerBin, "-color", "-pretty")
-			} else {
-				player_cmd = exec.Command(option.PlayerBin, "-color")
-			}
-		} else {
-			player_cmd = exec.Command(option.PlayerBin)
+			playerArgs = append(playerArgs, "--color")
 		}
+		if option.Pretty {
+			playerArgs = append(playerArgs, "--pretty")
+		}
+		player_cmd = exec.Command(option.PlayerBin, playerArgs...)
 		player_stdin, err = player_cmd.StdinPipe()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s", option.PlayerBin)
+			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s\n", option.PlayerBin)
 			player_cmd = nil
 			player_stdin = nil
 		}
-		player_stdout, err = player_cmd.StdoutPipe()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get stdout of %s", option.PlayerBin)
-			player_cmd = nil
-			player_stdin = nil
-			player_stdout = nil
-		}
-
-		err = player_cmd.Start()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to start %s", option.PlayerBin)
-			player_cmd = nil
-			player_stdin = nil
-			player_stdout = nil
-		}
-
-		// read stdout of player and write to stdout
-		go func() {
-			var buf = make([]byte, 4096)
-			for {
-				n, err := player_stdout.Read(buf)
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					panic(err)
-				}
-
-				if n == 0 {
-					continue
-				}
-				os.Stdout.Write(buf[0:n])
+		if player_cmd != nil {
+			player_stdout, err = player_cmd.StdoutPipe()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get stdout of %s\n", option.PlayerBin)
+				player_cmd = nil
+				player_stdin = nil
+				player_stdout = nil
 			}
-		}()
+		}
+
+		if player_cmd != nil {
+			err = player_cmd.Start()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to start %s\n", option.PlayerBin)
+				player_cmd = nil
+				player_stdin = nil
+				player_stdout = nil
+			}
+		}
+
+		if player_stdout != nil {
+			// read stdout of player and write to stdout
+			go func() {
+				var buf = make([]byte, 4096)
+				for {
+					n, err := player_stdout.Read(buf)
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						panic(err)
+					}
+
+					if n == 0 {
+						continue
+					}
+					os.Stdout.Write(buf[0:n])
+				}
+			}()
+		}
 	}
 
 	if option.Output == "-" {
@@ -441,12 +450,21 @@ func RunDirect(option *RecorderOption) {
 
 		next_time = next_time.Add(option.Interval)
 
+		// Build a nil-safe stop channel (nil channels block forever in select)
+		var stopCh <-chan struct{}
+		if option.StopCh != nil {
+			stopCh = option.StopCh
+		}
+
 		// wait for next iteration
 		select {
 		case <-sigint_ch:
 			running = false
 			break
 		case <-timeout_ch:
+			running = false
+			break
+		case <-stopCh:
 			running = false
 			break
 		case <-time.After(next_time.Sub(time.Now())):

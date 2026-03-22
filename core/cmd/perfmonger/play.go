@@ -25,19 +25,19 @@ func newPlayCommandStruct() *playCommand {
 
 // validateAndSetLogfile validates the logfile argument using cobra's PreRunE approach
 func (cmd *playCommand) validateAndSetLogfile(args []string) error {
-	// Validate that log file is provided
 	if len(args) == 0 {
-		return fmt.Errorf("PerfMonger log file is required")
+		// No file argument: read from stdin (default Logfile is "-")
+		return nil
 	}
-	
+
 	// Take the first argument as log file
 	cmd.PlayerOpt.Logfile = args[0]
-	
+
 	// Check if file exists
 	if _, err := os.Stat(cmd.PlayerOpt.Logfile); os.IsNotExist(err) {
 		return fmt.Errorf("no such file: %s", cmd.PlayerOpt.Logfile)
 	}
-	
+
 	return nil
 }
 

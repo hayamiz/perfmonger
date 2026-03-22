@@ -50,28 +50,23 @@
   - Go CLI 層: `core/cmd/perfmonger/record.go`
   - Go コア層: `core/cmd/perfmonger-core/recorder/recorder.go` (`handleBackgroundSession()`, `RunDirect()`)
 
-- [ ] live コマンドが起動時にクラッシュする
-  - recorder の `RunDirect()` 内で nil pointer dereference (SIGSEGV) が発生
-  - `recorder.go:333` 付近の goroutine で発生
-  - テスト: `tests/test_live.py::test_live_outputs_json_and_creates_logfile` (xfail)
+- [x] live コマンドが起動時にクラッシュする → **修正済み**
+  - player binary を `os.Executable() + "play"` subcommand に変更
+  - player_stdout が nil の場合の goroutine 起動ガード追加
+  - play サブコマンドが stdin からの読み取りに対応
 
-- [ ] stat コマンドが panic で異常終了する
-  - summarizer の `Run()` 内で `unexpected EOF` panic が発生
-  - `summarizer.go:110` 付近
-  - recorder がまだ実行中の可能性を示す warning も出力される
-  - テスト: `tests/test_stat.py::test_stat_creates_logfile` (xfail)
+- [x] stat コマンドが panic で異常終了する → **修正済み**
+  - `RecorderOption.StopCh` チャネルを追加し、recorder の select ループで監視
+  - stat コマンドがユーザーコマンド終了後に `close(stopCh)` で recorder を停止
+  - recorder が完全に flush してからファイルを summarizer に渡す
 
-- [ ] record の `--no-gzip` オプションだけではデフォルトファイル名が `.pgr.gz` のまま
-  - Ruby 版ではデフォルトが `perfmonger.pgr` で、`--gzip` 時に自動で `.gz` を付与していた
-  - Go 版ではデフォルトが `perfmonger.pgr.gz` で、`--no-gzip` でもファイル名が変わらない
-  - `-l perfmonger.pgr` を明示すれば動作する
-  - 関連ファイル: `core/cmd/perfmonger/record.go`
+- [x] record の `--no-gzip` オプションだけではデフォルトファイル名が `.pgr.gz` のまま → **修正済み**
+  - `applyRubySpecificLogic()` で `--no-gzip` 時にファイル名から `.gz` を除去
 
-- [ ] plot コマンドが `perfmonger-core_linux_amd64` バイナリに依存している
-  - plot は内部で `perfmonger-core_linux_amd64 plot-format` を fork/exec する
-  - `lib/exec/` にシンボリックリンクはあるがリンク先の `perfmonger-core_linux_amd64` が存在しない
-  - `core/build.sh` で perfmonger-core もビルドするか、plot の実装を perfmonger 単一バイナリ内に統合する必要がある
-  - テスト: `tests/test_plot.py` の全4テスト (xfail)
+- [x] plot コマンドが `perfmonger-core_linux_amd64` バイナリに依存している → **修正済み**
+  - hidden `plot-format` サブコマンドを perfmonger バイナリに追加
+  - `findPlotFormatterBinary()` で `os.Executable()` を使用
+  - `generatePlots()` を完全実装（gnuplot スクリプト生成・実行）
 
 ## 段階2: 残タスク
 
@@ -121,24 +116,3 @@
 - [ ] `RunWithOption(option *PlotFormatterOption)`関数の新規実装
 - [ ] `RunDirect(option *PlotFormatterOption)`関数の実装
 - [ ] plot.goからの直接呼び出し対応
-
-## 段階3: テスト基盤の移行（RSpec → Bats）
-
-- [ ] **RSpec テスト基盤の置き換え**
-  - [ ] Bats (Bash Automated Testing System) の導入
-    - [ ] Bats のインストール・セットアップ手順をドキュメント化
-    - [ ] CI/CD パイプラインに Bats テスト実行を統合
-  - [ ] `./spec` 以下の RSpec テストを Bats に移行
-    - [ ] `spec/record_spec.rb` → Bats テスト化
-    - [ ] `spec/play_spec.rb` → Bats テスト化
-    - [ ] `spec/summary_spec.rb` → Bats テスト化
-    - [ ] `spec/stat_spec.rb` → Bats テスト化
-    - [ ] `spec/plot_spec.rb` → Bats テスト化
-    - [ ] `spec/fingerprint_spec.rb` → Bats テスト化
-    - [ ] `spec/live_spec.rb` → Bats テスト化
-  - [ ] テストデータとヘルパー関数の移行
-    - [ ] `spec/data/` 以下のテストデータファイルを活用
-    - [ ] `spec_helper.rb` の機能を Bats ヘルパー関数として実装
-  - [ ] テスト実行の統合
-    - [ ] `Rakefile` から Bats テスト実行タスクを呼び出し
-    - [ ] Ruby 依存完全削除後は Bats のみでテスト実行

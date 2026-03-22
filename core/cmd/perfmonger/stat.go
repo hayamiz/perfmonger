@@ -139,58 +139,62 @@ func (cmd *statCommand) run() error {
 	if cmd.Kill {
 		return cmd.killSession()
 	}
-	
+
 	if cmd.Status {
 		return cmd.showStatus()
 	}
-	
+
 	if os.Getenv("PERFMONGER_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] running stat command with: %v\n", cmd.Command)
 	}
-	
+
 	// Apply Ruby-specific logic for both recorder and summary
 	cmd.applyStatSpecificLogic()
-	
+
+	// Set up a stop channel so we can signal the recorder to stop
+	stopCh := make(chan struct{})
+	cmd.RecorderOpt.StopCh = stopCh
+
 	// Create a temporary goroutine to run the recorder in background
 	recorderDone := make(chan bool, 1)
-	
+
 	go func() {
 		defer func() { recorderDone <- true }()
 		// Start recording using the direct API
 		recorder.RunWithOption(cmd.RecorderOpt)
 	}()
-	
+
 	// Give recorder a moment to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Run the user's command
 	userCmd := exec.Command(cmd.Command[0], cmd.Command[1:]...)
 	userCmd.Stdin = os.Stdin
 	userCmd.Stdout = os.Stdout
 	userCmd.Stderr = os.Stderr
-	
+
 	cmdErr := userCmd.Run()
-	
-	// Stop recorder by sending interrupt signal (simplified)
-	// In practice, the recorder should stop when command finishes
-	// For now, just wait a moment for recorder to finish
+
+	// Signal recorder to stop by closing the stop channel
+	close(stopCh)
+
+	// Wait for recorder to finish (with generous timeout)
 	select {
 	case <-recorderDone:
-		// Recorder finished
-	case <-time.After(2 * time.Second):
-		// Timeout, continue anyway
+		// Recorder finished cleanly
+	case <-time.After(5 * time.Second):
 		fmt.Fprintf(os.Stderr, "Warning: recorder may still be running\n")
 	}
-	
+
 	// Handle any error from the user command (but continue to show summary)
 	if cmdErr != nil {
 		fmt.Fprintf(os.Stderr, "Command failed: %v\n", cmdErr)
 	}
-	
+
 	// Show summary using direct API
 	fmt.Fprintf(os.Stderr, "\n== Performance Summary ==\n\n")
 	summarizer.RunWithOption(cmd.SummaryOpt)
-	
+
 	return nil
 }
 
