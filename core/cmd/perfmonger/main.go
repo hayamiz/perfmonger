@@ -55,7 +55,6 @@ level monitoring of CPU, disk I/O, and network performance with JSON output.`,
 	cmd.AddCommand(newSummaryCommand())
 	cmd.AddCommand(newFingerprintCommand())
 	cmd.AddCommand(newInitShellCommand())
-	cmd.AddCommand(newPlotFormatCommand())
 
 	return cmd
 }

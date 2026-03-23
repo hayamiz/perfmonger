@@ -25,6 +25,15 @@ type CmdOption struct {
 	disk_only_regex *regexp.Regexp
 }
 
+// PlotFormatOption is a public option struct for direct invocation from Go code.
+type PlotFormatOption struct {
+	DiskFile       string
+	CpuFile        string
+	MemFile        string
+	PerfmongerFile string
+	DiskOnly       string
+}
+
 type DiskMetaEntry struct {
 	Name string `json:"name"`
 	Idx  int    `json:"idx"`
@@ -229,12 +238,43 @@ func makeCpuDatTmpFile(coreid int) *CpuDatTmpFile {
 	return ret
 }
 
+// RunDirect executes the plot-formatter with the provided options directly,
+// returning the PlotMeta result instead of writing it to stdout.
+func RunDirect(option *PlotFormatOption) (*PlotMeta, error) {
+	var diskOnlyRegex *regexp.Regexp
+	if option.DiskOnly != "" {
+		var err error
+		diskOnlyRegex, err = regexp.Compile(option.DiskOnly)
+		if err != nil {
+			return nil, fmt.Errorf("invalid disk-only regex: %v", err)
+		}
+	}
+	opt := &CmdOption{
+		DiskFile:        option.DiskFile,
+		CpuFile:         option.CpuFile,
+		MemFile:         option.MemFile,
+		PerfmongerFile:  option.PerfmongerFile,
+		disk_only:       option.DiskOnly,
+		disk_only_regex: diskOnlyRegex,
+	}
+	return runPlotFormat(opt)
+}
+
 func Run(args []string) {
 	opt := parseArgs(args)
+	meta, err := runPlotFormat(opt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	json_enc := json.NewEncoder(os.Stdout)
+	json_enc.Encode(meta)
+}
 
+func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 	f, err := os.Open(opt.PerfmongerFile)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer f.Close()
 
@@ -248,25 +288,25 @@ func Run(args []string) {
 
 	err = dec.Decode(&cheader)
 	if err == io.EOF {
-		return
+		return nil, fmt.Errorf("empty log file")
 	}
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	err = dec.Decode(&pheader)
 	if err == io.EOF {
-		return
+		return nil, fmt.Errorf("incomplete log file: missing platform header")
 	}
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// read first record
 	err = dec.Decode(&records[curr])
 	if err == io.EOF {
-		return
+		return nil, fmt.Errorf("incomplete log file: no records")
 	} else if err != nil {
-		panic(err)
+		return nil, err
 	}
 	t0 := records[curr].Time
 	curr ^= 1
@@ -443,6 +483,5 @@ func Run(args []string) {
 	cpu_writer.Flush()
 	mem_writer.Flush()
 
-	json_enc := json.NewEncoder(os.Stdout)
-	json_enc.Encode(meta)
+	return &meta, nil
 }

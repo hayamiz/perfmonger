@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/hayamiz/perfmonger/core/cmd/perfmonger-core/plotformatter"
 )
 
 // plotCommand represents the plot command with direct field setting
@@ -263,71 +263,19 @@ func checkConvertAvailable() error {
 	return nil
 }
 
-// PlotMeta represents metadata returned by plot-formatter
-type PlotMeta struct {
-	Disk struct {
-		Devices []struct {
-			Name string `json:"name"`
-			Idx  int    `json:"idx"`
-		} `json:"devices"`
-	} `json:"disk"`
-	Cpu struct {
-		NumCore int `json:"num_core"`
-	} `json:"cpu"`
-	StartTime float64 `json:"start_time"`
-	EndTime   float64 `json:"end_time"`
-}
-
 // runPlotFormatter runs the plot-formatter component to generate data files
-func runPlotFormatter(dataFile, diskDat, cpuDat, memDat, diskOnly string) (*PlotMeta, error) {
-	// Find the plot-formatter binary using the same logic as the Ruby implementation
-	formatterBin, err := findPlotFormatterBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	// Build command arguments: "plot-format" subcommand + formatter flags
-	args := []string{
-		"plot-format",
-		"-perfmonger", dataFile,
-		"-cpufile", cpuDat,
-		"-diskfile", diskDat,
-		"-memfile", memDat,
-	}
-
-	if diskOnly != "" {
-		args = append(args, "-disk-only", diskOnly)
-	}
-
-	// Run the command and capture JSON output
-	cmd := exec.Command(formatterBin, args...)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run perfmonger-plot-formatter: %v", err)
-	}
-
-	// Parse the JSON metadata
-	var meta PlotMeta
-	if err := json.Unmarshal(output, &meta); err != nil {
-		return nil, fmt.Errorf("failed to parse plot-formatter output: %v", err)
-	}
-
-	return &meta, nil
-}
-
-// findPlotFormatterBinary returns the path to use as the plot-formatter binary.
-// In the unified binary architecture, this is our own executable with the
-// hidden "plot-format" subcommand.
-func findPlotFormatterBinary() (string, error) {
-	selfBin, err := os.Executable()
-	if err != nil {
-		return "", fmt.Errorf("failed to find own executable: %v", err)
-	}
-	return selfBin, nil
+func runPlotFormatter(dataFile, diskDat, cpuDat, memDat, diskOnly string) (*plotformatter.PlotMeta, error) {
+	return plotformatter.RunDirect(&plotformatter.PlotFormatOption{
+		PerfmongerFile: dataFile,
+		DiskFile:       diskDat,
+		CpuFile:        cpuDat,
+		MemFile:        memDat,
+		DiskOnly:       diskOnly,
+	})
 }
 
 // generatePlots generates the actual plot files using gnuplot
-func generatePlots(cmd *plotCommand, tmpDir string, meta *PlotMeta) error {
+func generatePlots(cmd *plotCommand, tmpDir string, meta *plotformatter.PlotMeta) error {
 	duration := meta.EndTime - meta.StartTime
 	diskDat := filepath.Join(tmpDir, "disk.dat")
 	cpuDat := filepath.Join(tmpDir, "cpu.dat")
@@ -364,7 +312,7 @@ func generatePlots(cmd *plotCommand, tmpDir string, meta *PlotMeta) error {
 	return nil
 }
 
-func buildDiskPlotLines(diskDat string, meta *PlotMeta, cmd *plotCommand, yColRead, yColWrite int) string {
+func buildDiskPlotLines(diskDat string, meta *plotformatter.PlotMeta, cmd *plotCommand, yColRead, yColWrite int) string {
 	var lines []string
 	for _, dev := range meta.Disk.Devices {
 		if cmd.DiskOnlyRegex != nil && !cmd.DiskOnlyRegex.MatchString(dev.Name) {
@@ -384,7 +332,7 @@ func buildDiskPlotLines(diskDat string, meta *PlotMeta, cmd *plotCommand, yColRe
 	return strings.Join(lines, ", \\\n     ")
 }
 
-func setKeyStmt(meta *PlotMeta, threshold int) string {
+func setKeyStmt(meta *plotformatter.PlotMeta, threshold int) string {
 	if len(meta.Disk.Devices) > threshold {
 		return "unset key"
 	}
@@ -397,7 +345,7 @@ func runGnuplot(cmd *plotCommand, gpFile string) error {
 	return c.Run()
 }
 
-func generateDiskIOPSPlot(cmd *plotCommand, tmpDir, diskDat string, meta *PlotMeta, duration float64) error {
+func generateDiskIOPSPlot(cmd *plotCommand, tmpDir, diskDat string, meta *plotformatter.PlotMeta, duration float64) error {
 	gpFile := filepath.Join(tmpDir, "disk-iops.gp")
 	outFile := filepath.Join(cmd.OutputDir, "disk-iops."+cmd.OutputType)
 
@@ -430,7 +378,7 @@ plot %s
 	return runGnuplot(cmd, gpFile)
 }
 
-func generateDiskTransferPlot(cmd *plotCommand, tmpDir, diskDat string, meta *PlotMeta, duration float64) error {
+func generateDiskTransferPlot(cmd *plotCommand, tmpDir, diskDat string, meta *plotformatter.PlotMeta, duration float64) error {
 	gpFile := filepath.Join(tmpDir, "disk-transfer.gp")
 	outFile := filepath.Join(cmd.OutputDir, "disk-transfer."+cmd.OutputType)
 
@@ -458,7 +406,7 @@ plot %s
 	return runGnuplot(cmd, gpFile)
 }
 
-func generateCPUPlot(cmd *plotCommand, tmpDir, cpuDat string, meta *PlotMeta, duration float64) error {
+func generateCPUPlot(cmd *plotCommand, tmpDir, cpuDat string, meta *plotformatter.PlotMeta, duration float64) error {
 	gpFile := filepath.Join(tmpDir, "cpu.gp")
 	outFile := filepath.Join(cmd.OutputDir, "cpu."+cmd.OutputType)
 
@@ -489,7 +437,7 @@ plot "%s" ind 0 usi 1:($2+$3+$4+$5+$6+$7+$8+$9) with filledcurve x1 lw 0 lc 1 ti
 	return runGnuplot(cmd, gpFile)
 }
 
-func generateAllCPUPlot(cmd *plotCommand, tmpDir, cpuDat string, meta *PlotMeta, duration float64) error {
+func generateAllCPUPlot(cmd *plotCommand, tmpDir, cpuDat string, meta *plotformatter.PlotMeta, duration float64) error {
 	gpFile := filepath.Join(tmpDir, "allcpu.gp")
 	outFile := filepath.Join(cmd.OutputDir, "allcpu."+cmd.OutputType)
 	nrCPU := meta.Cpu.NumCore
