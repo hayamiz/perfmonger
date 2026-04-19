@@ -31,3 +31,8 @@ __pycache__/
 uv.lock
 .devcontainer/claude-projects/
 .devcontainer/claude-sessions/
+core/cmd/lib/exec/perfmonger_linux_amd64
+.claude/settings.local.json
+
+# Stray root go.mod (real module is core/go.mod)
+/go.mod
