@@ -19,8 +19,6 @@ type statCommand struct {
 	SummaryOpt   *summarizer.SummaryOption
 	
 	// Ruby-specific options only (inherited from record command)
-	Kill       bool
-	Status     bool
 	RecordIntr bool
 	NoGzip     bool
 	Verbose    bool
@@ -43,8 +41,6 @@ func newStatCommandStruct() *statCommand {
 	return &statCommand{
 		RecorderOpt: recOpt,
 		SummaryOpt:  sumOpt,
-		Kill:        false,
-		Status:      false,
 		RecordIntr:  false,
 		NoGzip:      false,
 		Verbose:     false,
@@ -84,17 +80,7 @@ func (cmd *statCommand) validateAndSetCommand(args []string) error {
 
 // validateOptions performs validation using cobra's PreRunE approach
 func (cmd *statCommand) validateOptions() error {
-	// Validate mutually exclusive options (inherited from record)
-	if cmd.Kill && cmd.Status {
-		return fmt.Errorf("--kill and --status cannot be used together")
-	}
-	
-	// If kill or status, no other validation needed
-	if cmd.Kill || cmd.Status {
-		return nil
-	}
-	
-	// Validate timing parameters (inherited from record)
+	// Validate timing parameters
 	if cmd.RecorderOpt.Timeout < 0 {
 		return fmt.Errorf("timeout cannot be negative")
 	}
@@ -135,15 +121,6 @@ func (cmd *statCommand) applyStatSpecificLogic() {
 
 // run executes the stat command with direct API calls
 func (cmd *statCommand) run() error {
-	// Handle kill/status commands (inherited from record)
-	if cmd.Kill {
-		return cmd.killSession()
-	}
-
-	if cmd.Status {
-		return cmd.showStatus()
-	}
-
 	if os.Getenv("PERFMONGER_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] running stat command with: %v\n", cmd.Command)
 	}
@@ -198,19 +175,6 @@ func (cmd *statCommand) run() error {
 	return nil
 }
 
-// killSession kills a running background session (Ruby-compatible, inherited from record)
-func (cmd *statCommand) killSession() error {
-	fmt.Fprintln(os.Stderr, "kill functionality not yet implemented")
-	return fmt.Errorf("not implemented")
-}
-
-// showStatus shows status of running session (Ruby-compatible, inherited from record)
-func (cmd *statCommand) showStatus() error {
-	fmt.Fprintln(os.Stderr, "status functionality not yet implemented") 
-	return fmt.Errorf("not implemented")
-}
-
-
 // newStatCommand creates the stat subcommand with direct cobra setting
 func newStatCommand() *cobra.Command {
 	statCmd := newStatCommandStruct()
@@ -245,12 +209,6 @@ func newStatCommand() *cobra.Command {
 		"Amount of wait time before starting measurement. Floating point is o.k.")
 	cmd.Flags().VarP(&secondsDurationValue{target: &statCmd.RecorderOpt.Timeout}, "timeout", "t", 
 		"Amount of measurement time. Floating point is o.k.")
-	
-	// Control flags (Ruby-specific)
-	cmd.Flags().BoolVar(&statCmd.Kill, "kill", statCmd.Kill, 
-		"Stop currently running perfmonger-record")
-	cmd.Flags().BoolVar(&statCmd.Status, "status", statCmd.Status, 
-		"Show currently running perfmonger-record status")
 	
 	// Feature flags (direct setting to RecorderOption) - same as record
 	cmd.Flags().BoolVar(&statCmd.RecordIntr, "record-intr", statCmd.RecordIntr, 

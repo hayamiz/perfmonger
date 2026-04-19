@@ -1,181 +1,167 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
 
-func TestNewSummaryOptions(t *testing.T) {
-	opts := newSummaryOptions()
-	
-	expected := &summaryOptions{
-		JSON:     false,
-		Pager:    "",
-		DiskOnly: "",
-		LogFile:  "",
+func TestNewSummaryCommandStruct(t *testing.T) {
+	cmd := newSummaryCommandStruct()
+
+	if cmd.Pager != "" {
+		t.Errorf("Pager = %q, want empty", cmd.Pager)
 	}
-	
-	if !reflect.DeepEqual(opts, expected) {
-		t.Errorf("newSummaryOptions() defaults mismatch.\nGot:      %+v\nExpected: %+v", opts, expected)
+	if cmd.SummaryOpt.JSON {
+		t.Error("JSON should be false by default")
+	}
+	if cmd.SummaryOpt.Logfile != "" {
+		t.Errorf("Logfile = %q, want empty", cmd.SummaryOpt.Logfile)
 	}
 }
 
-func TestSummaryOptions_ParseArgs(t *testing.T) {
-	// Create a temporary test file
-	tmpfile, err := ioutil.TempFile("", "test.pgr")
+func TestSummaryCommand_ValidateAndSetLogfile(t *testing.T) {
+	tmpfile, err := os.CreateTemp("", "test*.pgr")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmpfile.Name())
 	tmpfile.Close()
-	
+
 	tests := []struct {
 		name        string
-		opts        *summaryOptions
 		args        []string
-		pagerEnv    string
-		setPagerFlag bool
-		wantErr     bool
-		errMsg      string
-		wantLogFile string
-		wantPager   string
+		wantErr     string
+		wantLogfile string
+		wantTitle   string
 	}{
 		{
-			name:    "no log file provided",
-			opts:    newSummaryOptions(),
+			name:    "no args",
 			args:    []string{},
-			wantErr: true,
-			errMsg:  "PerfMonger log file is required",
+			wantErr: "PerfMonger log file is required",
 		},
 		{
-			name:    "non-existent log file",
-			opts:    newSummaryOptions(),
+			name:    "non-existent file",
 			args:    []string{"nonexistent.pgr"},
-			wantErr: true,
-			errMsg:  "no such file: nonexistent.pgr",
+			wantErr: "no such file: nonexistent.pgr",
 		},
 		{
-			name:        "valid log file",
-			opts:        newSummaryOptions(),
+			name:        "valid file",
 			args:        []string{tmpfile.Name()},
-			wantErr:     false,
-			wantLogFile: tmpfile.Name(),
-		},
-		{
-			name:         "pager flag set without value, PAGER env available",
-			opts:         &summaryOptions{Pager: ""},
-			args:         []string{tmpfile.Name()},
-			pagerEnv:     "less",
-			setPagerFlag: true,
-			wantErr:      false,
-			wantLogFile:  tmpfile.Name(),
-			wantPager:    "less",
-		},
-		{
-			name:         "pager flag set without value, no PAGER env",
-			opts:         &summaryOptions{Pager: ""},
-			args:         []string{tmpfile.Name()},
-			pagerEnv:     "",
-			setPagerFlag: true,
-			wantErr:      true,
-			errMsg:       "no pager is available. Please set PAGER or give pager name to --pager option",
+			wantErr:     "",
+			wantLogfile: tmpfile.Name(),
+			wantTitle:   tmpfile.Name(),
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up environment
-			oldPager := os.Getenv("PAGER")
-			defer os.Setenv("PAGER", oldPager)
-			
-			if tt.pagerEnv != "" {
-				os.Setenv("PAGER", tt.pagerEnv)
-			} else {
-				os.Unsetenv("PAGER")
-			}
-			
-			// Create a mock cobra command to simulate flag behavior
-			cmd := &cobra.Command{}
-			cmd.Flags().StringVarP(&tt.opts.Pager, "pager", "p", tt.opts.Pager, "")
-			
-			if tt.setPagerFlag {
-				cmd.Flags().Set("pager", "")
-			}
-			
-			err := tt.opts.parseArgs(tt.args, cmd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseArgs() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr && err.Error() != tt.errMsg {
-				t.Errorf("parseArgs() error message = %v, want %v", err.Error(), tt.errMsg)
-			}
-			if !tt.wantErr {
-				if tt.opts.LogFile != tt.wantLogFile {
-					t.Errorf("parseArgs() LogFile = %v, want %v", tt.opts.LogFile, tt.wantLogFile)
+			cmd := newSummaryCommandStruct()
+			err := cmd.validateAndSetLogfile(tt.args)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("validateAndSetLogfile() unexpected error: %v", err)
 				}
-				if tt.wantPager != "" && tt.opts.Pager != tt.wantPager {
-					t.Errorf("parseArgs() Pager = %v, want %v", tt.opts.Pager, tt.wantPager)
+				if cmd.SummaryOpt.Logfile != tt.wantLogfile {
+					t.Errorf("Logfile = %q, want %q", cmd.SummaryOpt.Logfile, tt.wantLogfile)
+				}
+				if cmd.SummaryOpt.Title != tt.wantTitle {
+					t.Errorf("Title = %q, want %q", cmd.SummaryOpt.Title, tt.wantTitle)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("validateAndSetLogfile() expected error %q, got nil", tt.wantErr)
+				} else if err.Error() != tt.wantErr {
+					t.Errorf("validateAndSetLogfile() error = %q, want %q", err.Error(), tt.wantErr)
 				}
 			}
 		})
 	}
 }
 
-func TestSummaryOptions_BuildSummarizerArgs(t *testing.T) {
+func TestSummaryCommand_ValidatePagerOption(t *testing.T) {
 	tests := []struct {
-		name string
-		opts *summaryOptions
-		want []string
+		name         string
+		pagerEnv     string
+		setPagerFlag bool
+		wantErr      string
+		wantPager    string
 	}{
 		{
-			name: "default options",
-			opts: &summaryOptions{
-				JSON:     false,
-				DiskOnly: "",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-title", "test.pgr", "test.pgr"},
+			name:         "pager flag set with PAGER env",
+			pagerEnv:     "less",
+			setPagerFlag: true,
+			wantErr:      "",
+			wantPager:    "less",
 		},
 		{
-			name: "with JSON option",
-			opts: &summaryOptions{
-				JSON:     true,
-				DiskOnly: "",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-json", "-title", "test.pgr", "test.pgr"},
+			name:         "pager flag set without PAGER env",
+			pagerEnv:     "",
+			setPagerFlag: true,
+			wantErr:      "no pager is available. Please set PAGER or give pager name to --pager option",
 		},
 		{
-			name: "with disk-only option",
-			opts: &summaryOptions{
-				JSON:     false,
-				DiskOnly: "sd[a-d]",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-disk-only", "sd[a-d]", "-title", "test.pgr", "test.pgr"},
-		},
-		{
-			name: "with all options",
-			opts: &summaryOptions{
-				JSON:     true,
-				DiskOnly: "nvme.*",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-json", "-disk-only", "nvme.*", "-title", "test.pgr", "test.pgr"},
+			name:         "pager flag not set",
+			pagerEnv:     "",
+			setPagerFlag: false,
+			wantErr:      "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.opts.buildSummarizerArgs()
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("buildSummarizerArgs() = %v, want %v", got, tt.want)
+			oldPager := os.Getenv("PAGER")
+			defer os.Setenv("PAGER", oldPager)
+
+			if tt.pagerEnv != "" {
+				os.Setenv("PAGER", tt.pagerEnv)
+			} else {
+				os.Unsetenv("PAGER")
+			}
+
+			summaryCmd := newSummaryCommandStruct()
+			cobraCmd := &cobra.Command{}
+			cobraCmd.Flags().StringVarP(&summaryCmd.Pager, "pager", "p", "", "")
+
+			if tt.setPagerFlag {
+				cobraCmd.Flags().Set("pager", "")
+			}
+
+			err := summaryCmd.validatePagerOption(cobraCmd)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("validatePagerOption() unexpected error: %v", err)
+				}
+				if tt.wantPager != "" && summaryCmd.Pager != tt.wantPager {
+					t.Errorf("Pager = %q, want %q", summaryCmd.Pager, tt.wantPager)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("validatePagerOption() expected error %q, got nil", tt.wantErr)
+				} else if err.Error() != tt.wantErr {
+					t.Errorf("validatePagerOption() error = %q, want %q", err.Error(), tt.wantErr)
+				}
 			}
 		})
+	}
+}
+
+func TestNewSummaryCommand(t *testing.T) {
+	cmd := newSummaryCommand()
+
+	if cmd.Use != "summary [options] LOG_FILE" {
+		t.Errorf("Use = %q, want %q", cmd.Use, "summary [options] LOG_FILE")
+	}
+
+	expectedFlags := []string{"json", "pager", "disk-only"}
+	for _, name := range expectedFlags {
+		if cmd.Flags().Lookup(name) == nil {
+			t.Errorf("expected flag %q to be defined", name)
+		}
+	}
+
+	if cmd.Flags().ShorthandLookup("p") == nil {
+		t.Error("expected short flag 'p' to be defined")
 	}
 }

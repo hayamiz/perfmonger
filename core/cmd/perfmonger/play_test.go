@@ -1,155 +1,103 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
-	"reflect"
 	"testing"
 )
 
-func TestNewPlayOptions(t *testing.T) {
-	opts := newPlayOptions()
-	
-	expected := &playOptions{
-		Color:    false,
-		Pretty:   false,
-		DiskOnly: "",
-		LogFile:  "",
+func TestNewPlayCommandStruct(t *testing.T) {
+	cmd := newPlayCommandStruct()
+
+	if cmd.PlayerOpt.Color {
+		t.Error("Color should be false by default")
 	}
-	
-	if !reflect.DeepEqual(opts, expected) {
-		t.Errorf("newPlayOptions() defaults mismatch.\nGot:      %+v\nExpected: %+v", opts, expected)
+	if cmd.PlayerOpt.Pretty {
+		t.Error("Pretty should be false by default")
+	}
+	if cmd.PlayerOpt.Logfile != "-" {
+		t.Errorf("Logfile = %q, want %q", cmd.PlayerOpt.Logfile, "-")
 	}
 }
 
-func TestPlayOptions_ParseArgs(t *testing.T) {
-	// Create a temporary test file
-	tmpfile, err := ioutil.TempFile("", "test.pgr")
+func TestPlayCommand_ValidateAndSetLogfile(t *testing.T) {
+	// Create a temporary file for testing
+	tmpfile, err := os.CreateTemp("", "test*.pgr")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmpfile.Name())
 	tmpfile.Close()
-	
+
 	tests := []struct {
-		name    string
-		opts    *playOptions
-		args    []string
-		wantErr bool
-		errMsg  string
-		wantLogFile string
+		name        string
+		args        []string
+		wantErr     string
+		wantLogfile string
 	}{
 		{
-			name:    "no log file provided",
-			opts:    newPlayOptions(),
-			args:    []string{},
-			wantErr: true,
-			errMsg:  "PerfMonger log file is required",
+			name:        "no args reads from stdin",
+			args:        []string{},
+			wantErr:     "",
+			wantLogfile: "-",
 		},
 		{
-			name:    "non-existent log file",
-			opts:    newPlayOptions(),
+			name:    "non-existent file",
 			args:    []string{"nonexistent.pgr"},
-			wantErr: true,
-			errMsg:  "no such file: nonexistent.pgr",
+			wantErr: "no such file: nonexistent.pgr",
 		},
 		{
-			name:        "valid log file",
-			opts:        newPlayOptions(),
+			name:        "valid file",
 			args:        []string{tmpfile.Name()},
-			wantErr:     false,
-			wantLogFile: tmpfile.Name(),
+			wantErr:     "",
+			wantLogfile: tmpfile.Name(),
 		},
 		{
-			name:        "log file with extra args ignored",
-			opts:        newPlayOptions(),
+			name:        "extra args ignored",
 			args:        []string{tmpfile.Name(), "extra", "args"},
-			wantErr:     false,
-			wantLogFile: tmpfile.Name(),
+			wantErr:     "",
+			wantLogfile: tmpfile.Name(),
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.opts.parseArgs(tt.args, nil)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseArgs() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr && err.Error() != tt.errMsg {
-				t.Errorf("parseArgs() error message = %v, want %v", err.Error(), tt.errMsg)
-			}
-			if !tt.wantErr && tt.opts.LogFile != tt.wantLogFile {
-				t.Errorf("parseArgs() LogFile = %v, want %v", tt.opts.LogFile, tt.wantLogFile)
+			cmd := newPlayCommandStruct()
+			err := cmd.validateAndSetLogfile(tt.args)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("validateAndSetLogfile() unexpected error: %v", err)
+				} else if cmd.PlayerOpt.Logfile != tt.wantLogfile {
+					t.Errorf("Logfile = %q, want %q", cmd.PlayerOpt.Logfile, tt.wantLogfile)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("validateAndSetLogfile() expected error %q, got nil", tt.wantErr)
+				} else if err.Error() != tt.wantErr {
+					t.Errorf("validateAndSetLogfile() error = %q, want %q", err.Error(), tt.wantErr)
+				}
 			}
 		})
 	}
 }
 
-func TestPlayOptions_BuildPlayerArgs(t *testing.T) {
-	tests := []struct {
-		name string
-		opts *playOptions
-		want []string
-	}{
-		{
-			name: "default options",
-			opts: &playOptions{
-				Color:    false,
-				Pretty:   false,
-				DiskOnly: "",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"test.pgr"},
-		},
-		{
-			name: "with color option",
-			opts: &playOptions{
-				Color:    true,
-				Pretty:   false,
-				DiskOnly: "",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-color", "test.pgr"},
-		},
-		{
-			name: "with pretty option",
-			opts: &playOptions{
-				Color:    false,
-				Pretty:   true,
-				DiskOnly: "",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-pretty", "test.pgr"},
-		},
-		{
-			name: "with disk-only option",
-			opts: &playOptions{
-				Color:    false,
-				Pretty:   false,
-				DiskOnly: "sd[a-d]",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-disk-only", "sd[a-d]", "test.pgr"},
-		},
-		{
-			name: "with all options",
-			opts: &playOptions{
-				Color:    true,
-				Pretty:   true,
-				DiskOnly: "nvme.*",
-				LogFile:  "test.pgr",
-			},
-			want: []string{"-color", "-pretty", "-disk-only", "nvme.*", "test.pgr"},
-		},
+func TestNewPlayCommand(t *testing.T) {
+	cmd := newPlayCommand()
+
+	if cmd.Use != "play [options] LOG_FILE" {
+		t.Errorf("Use = %q, want %q", cmd.Use, "play [options] LOG_FILE")
 	}
-	
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.opts.buildPlayerArgs()
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("buildPlayerArgs() = %v, want %v", got, tt.want)
-			}
-		})
+
+	expectedFlags := []string{"color", "pretty", "disk-only"}
+	for _, name := range expectedFlags {
+		if cmd.Flags().Lookup(name) == nil {
+			t.Errorf("expected flag %q to be defined", name)
+		}
+	}
+
+	shortFlags := []string{"c", "p"}
+	for _, s := range shortFlags {
+		if cmd.Flags().ShorthandLookup(s) == nil {
+			t.Errorf("expected short flag %q to be defined", s)
+		}
 	}
 }

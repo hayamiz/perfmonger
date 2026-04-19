@@ -15,8 +15,6 @@ type liveCommand struct {
 	RecorderOpt *recorder.RecorderOption
 	
 	// Ruby-specific options only (inherited from record command)
-	Kill       bool
-	Status     bool
 	RecordIntr bool
 	NoGzip     bool
 	Verbose    bool
@@ -36,8 +34,6 @@ func newLiveCommandStruct() *liveCommand {
 	
 	return &liveCommand{
 		RecorderOpt: opt,
-		Kill:        false,
-		Status:      false,
 		RecordIntr:  false,
 		NoGzip:      false,
 		Verbose:     false,
@@ -48,17 +44,7 @@ func newLiveCommandStruct() *liveCommand {
 
 // validateOptions performs validation using cobra's PreRunE approach
 func (cmd *liveCommand) validateOptions() error {
-	// Validate mutually exclusive options (inherited from record)
-	if cmd.Kill && cmd.Status {
-		return fmt.Errorf("--kill and --status cannot be used together")
-	}
-	
-	// If kill or status, no other validation needed
-	if cmd.Kill || cmd.Status {
-		return nil
-	}
-	
-	// Validate timing parameters (inherited from record)
+	// Validate timing parameters
 	if cmd.RecorderOpt.Timeout < 0 {
 		return fmt.Errorf("timeout cannot be negative")
 	}
@@ -77,15 +63,6 @@ func (cmd *liveCommand) validateOptions() error {
 
 // run executes the live command logic with direct API calls
 func (cmd *liveCommand) run() error {
-	// Handle kill/status commands (inherited from record)
-	if cmd.Kill {
-		return cmd.killSession()
-	}
-	
-	if cmd.Status {
-		return cmd.showStatus()
-	}
-	
 	// Apply Ruby-specific logic (inherited from record)
 	cmd.applyRubySpecificLogic()
 	
@@ -107,18 +84,6 @@ func (cmd *liveCommand) run() error {
 	// Direct API call - no conversion needed
 	recorder.RunWithOption(cmd.RecorderOpt)
 	return nil
-}
-
-// killSession kills a running background session (Ruby-compatible, inherited from record)
-func (cmd *liveCommand) killSession() error {
-	fmt.Fprintln(os.Stderr, "kill functionality not yet implemented")
-	return fmt.Errorf("not implemented")
-}
-
-// showStatus shows status of running session (Ruby-compatible, inherited from record)
-func (cmd *liveCommand) showStatus() error {
-	fmt.Fprintln(os.Stderr, "status functionality not yet implemented") 
-	return fmt.Errorf("not implemented")
 }
 
 // applyRubySpecificLogic applies minimal Ruby-specific logic (inherited from record)
@@ -168,12 +133,6 @@ func newLiveCommand() *cobra.Command {
 		"Amount of wait time before starting measurement. Floating point is o.k.")
 	cmd.Flags().VarP(&secondsDurationValue{target: &liveCmd.RecorderOpt.Timeout}, "timeout", "t", 
 		"Amount of measurement time. Floating point is o.k.")
-	
-	// Control flags (Ruby-specific)
-	cmd.Flags().BoolVar(&liveCmd.Kill, "kill", liveCmd.Kill, 
-		"Stop currently running perfmonger-record")
-	cmd.Flags().BoolVar(&liveCmd.Status, "status", liveCmd.Status, 
-		"Show currently running perfmonger-record status")
 	
 	// Feature flags (direct setting to RecorderOption) - same as record
 	cmd.Flags().BoolVar(&liveCmd.RecordIntr, "record-intr", liveCmd.RecordIntr, 

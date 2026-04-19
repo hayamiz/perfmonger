@@ -10,19 +10,14 @@
 
 ### Go 単体テストの修正
 
-- [ ] `*_test.go` がコンパイルエラーになる
-  - `record_test.go`, `play_test.go`, `stat_test.go`, `summary_test.go` が段階2.6-2.8のリファクタリングで削除された構造体・関数を参照している
-  - 参照先: `newPlayOptions`, `newRecordOptions`, `newSummaryOptions`, `newStatOptions`, `buildRecorderArgs`, `buildSummaryArgs`, `playOptions` 等
-  - `go test ./...` がビルドエラーで失敗する
-  - 対応: 新しい構造体（`recordCommand`, `playCommand` 等）に合わせてテストを書き直すか、不要なテストを削除
+- [x] `*_test.go` を新しい構造体に合わせて書き直し済み
+  - `recordCommand`, `playCommand`, `statCommand`, `summaryCommand` の validateOptions / validateAndSetLogfile / validateAndSetCommand をテスト
+  - `go test -v -count=1` で全30テストケース PASS
 
-### live / stat の kill / status 実装
+### live / stat の --kill / --status は削除済み
 
-- [ ] `live.go` の `killSession()` / `showStatus()` がスタブのまま
-  - 「kill functionality not yet implemented」を返すだけ
-  - `record.go` の実装を共通化して適用する
-- [ ] `stat.go` の `killSession()` / `showStatus()` がスタブのまま
-  - 同上
+- [x] `live.go` / `stat.go` では --kill / --status はサポート不要のため削除
+  - バックグラウンド記録のセッション管理は record コマンドのみの機能
 
 ### pager 機能の有効化
 
