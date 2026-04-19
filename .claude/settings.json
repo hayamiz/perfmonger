@@ -15,8 +15,12 @@
       "Bash(PERFMONGER_DEBUG=1 ./lib/exec/perfmonger_linux_amd64 stat:*)",
       "Bash(bundle exec exe/perfmonger plot:*)",
       "Bash(bundle exec exe/perfmonger fingerprint:*)",
-      "Bash(bundle exec exe/perfmonger live:*)"
+      "Bash(bundle exec exe/perfmonger live:*)",
+      "Bash(uv run:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/tmp"
+    ]
   }
 }

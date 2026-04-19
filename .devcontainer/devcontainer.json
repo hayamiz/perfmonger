@@ -1,0 +1,50 @@
+{
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "name": "Go Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "USER_UID": "${localEnv:UID:1000}",
+      "USER_GID": "${localEnv:GID:1000}"
+    }
+  },
+  "remoteUser": "ubuntu",
+  "containerUser": "ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "anthropic.claude-code",
+        "cline.cline"
+      ],
+      "settings": {
+        "go.gopath": "/home/ubuntu/go",
+        "go.toolsManagement.autoUpdate": true,
+        "claudeCode.allowDangerouslySkipPermissions": true
+      }
+    }
+  },
+  "containerEnv": {
+    "SSH_AUTH_SOCK": "/tmp/ssh-auth.sock"
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/inside-container.settings.local.json,target=${containerWorkspaceFolder}/.claude/settings.local.json,type=bind",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/ubuntu/.gitconfig,type=bind,consistency=cached",
+    "source=${localEnv:GH_CONFIG_DIR},target=/home/ubuntu/.config/gh,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.ssh-auth-sock,target=/tmp/ssh-auth.sock,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.pushover_token.sh,target=/host-pushover-token.sh,type=bind,readonly",
+    "source=${localEnv:HOME}/.devcontainer-opencode-config,target=/host-opencode,type=bind,readonly",
+    "source=${localEnv:HOME}/.cline,target=/home/ubuntu/.cline,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-projects,target=/home/ubuntu/.claude/projects,type=bind",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-sessions,target=/home/ubuntu/.claude/sessions,type=bind"
+    ,"source=${localEnv:HOME}/.claude,target=/host-claude,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude.json,target=/host-claude.json,type=bind,readonly"
+  ],
+  "initializeCommand": ".devcontainer/initialize.sh",
+  "forwardPorts": [],
+  "runArgs": ["--network=host"],
+  "postStartCommand": "/usr/local/bin/devcontainer-post-start.sh",
+  "postCreateCommand": "go version && claude --version && opencode --version"
+}

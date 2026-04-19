@@ -29,3 +29,5 @@ __pycache__/
 .pytest_cache/
 *.pyc
 uv.lock
+.devcontainer/claude-projects/
+.devcontainer/claude-sessions/

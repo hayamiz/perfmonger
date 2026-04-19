@@ -108,3 +108,24 @@ Key conventions:
 - **Comments**: ALL comments in code must be written in English only. No Japanese or other languages are allowed in code comments.
 - **Variable/Function Names**: Use descriptive English names for variables, functions, and types.
 - **Documentation**: Code documentation and docstrings should be in English to maintain consistency and readability for international contributors.
+## Devcontainer
+
+This project uses a devcontainer for a consistent development environment.
+
+### Files
+
+- `.devcontainer/Dockerfile` — Container image definition. Edit to change the base image, install additional packages, or add language runtimes.
+- `.devcontainer/devcontainer.json` — Devcontainer configuration. Controls the container name, VS Code extensions, environment variables, bind mounts, and port forwarding.
+- `.devcontainer/inside-container.settings.local.json` — Claude Code local permission overrides inside the container. Mounted as `.claude/settings.local.json` to override project-level settings.
+- `.devcontainer/build.sh` — Builds the container image. Run this after modifying the Dockerfile.
+- `.devcontainer/shell.sh` — Starts the container and opens an interactive bash shell inside it.
+
+### Usage
+
+```bash
+# Build the container image
+.devcontainer/build.sh
+
+# Start the container and open a shell
+.devcontainer/shell.sh
+```
