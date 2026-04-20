@@ -1,4 +1,4 @@
-package subsystem
+package perfmonger
 
 import (
 	"time"
@@ -30,7 +30,6 @@ PerfMonger binary format:
 
 const (
 	Linux  = 1
-	Darwin = 2
 )
 
 type PlatformType int
@@ -55,6 +54,3 @@ type LinuxHeader struct {
 	DevsParts []string
 }
 
-type DarwinHeader struct {
-	DevsParts []string
-}

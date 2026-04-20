@@ -12,8 +12,7 @@ import (
 	"sort"
 
 	projson "github.com/hayamiz/go-projson"
-	"github.com/hayamiz/perfmonger/core"
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
 type SummaryOption struct {
@@ -63,7 +62,7 @@ func main() {
 	}
 	defer f.Close()
 
-	input_reader := core.NewPerfmongerLogReader(f)
+	input_reader := ss.NewPerfmongerLogReader(f)
 	dec := gob.NewDecoder(input_reader)
 
 	err = dec.Decode(&cheader)

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(go run:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go generate:*)",
+      "Bash(go install:*)",
+      "Bash(git add:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(gh --version)",
+      "Bash(gh repo:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(make:*)"
+    ]
+  }
+}

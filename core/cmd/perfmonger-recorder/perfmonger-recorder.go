@@ -22,7 +22,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	ss "github.com/hayamiz/perfmonger/core/subsystem"
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
 type RecorderOption struct {

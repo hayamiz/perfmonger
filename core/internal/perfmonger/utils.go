@@ -1,4 +1,4 @@
-package core
+package perfmonger
 
 import (
 	"bufio"

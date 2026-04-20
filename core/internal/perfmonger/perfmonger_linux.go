@@ -1,6 +1,6 @@
 // +build linux
 
-package subsystem
+package perfmonger
 
 import (
 	"bufio"

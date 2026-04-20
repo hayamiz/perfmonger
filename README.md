@@ -16,7 +16,6 @@ PerfMonger is a system performance monitor which enables high-resolution and hol
 ## Target platform
 
   * GNU/Linux
-  * Mac OS X (experimental support)
 
 ## How to installation
 
@@ -30,6 +29,16 @@ You need Ruby 2.2 or later, and Go 1.8 or later to build perfmonger.
 
     bundle
     rake build
+
+Note: The Go core now builds a single binary `perfmonger-core_<os>_<arch>` in `lib/exec/` that contains all core functionality (record, play, summarize, plot-format, view) as subcommands. CLI compatibility wrappers with the former names (e.g. `perfmonger-recorder_<os>_<arch>`) dispatch to this unified core binary during the transition phase.
+
+### Go Dev Environment (optional)
+
+If you prefer to isolate Go caches and paths per-repo:
+
+    source 00_LOAD_GO_DEVENV.sh
+
+This sets `GOROOT` (from your installed `go`), `GOPATH` to `./godevenv/gopath`, and adjusts `PATH`, `GOCACHE`, and `GOMODCACHE`. Use `go_devenv_info` to inspect and `go_devenv_unload` to revert. Network access may be required for `go mod download` on first build.
 
 ## Getting started
 

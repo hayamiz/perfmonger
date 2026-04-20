@@ -1,0 +1,10 @@
+name: perfmonger
+version: 1.0.0
+description: APM project for perfmonger
+author: Yuto Hayamizu
+dependencies:
+  apm:
+  - hayamiz/hayamiz-agentkit/skills/commit-all
+  - hayamiz/hayamiz-agentkit/skills/commit-session
+  mcp: []
+scripts: {}

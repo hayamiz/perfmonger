@@ -10,8 +10,6 @@ class CoreFinder
         case RUBY_PLATFORM
         when /linux/
           os = "linux"
-        when /darwin/
-          os = "darwin"
         else
           os = nil
         end

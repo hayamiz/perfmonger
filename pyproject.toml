@@ -1,0 +1,14 @@
+[project]
+name = "perfmonger-tests"
+version = "0.0.0"
+requires-python = ">=3.10"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 120
