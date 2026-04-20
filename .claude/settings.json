@@ -22,5 +22,9 @@
     "additionalDirectories": [
       "/tmp"
     ]
+  },
+  "enabledPlugins": {
+    "ticket@hayamiz-agentkit": true,
+    "gardener@hayamiz-agentkit": true
   }
 }

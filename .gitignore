@@ -36,3 +36,7 @@ core/cmd/lib/exec/perfmonger_linux_amd64
 
 # Stray root go.mod (real module is core/go.mod)
 /go.mod
+
+
+# APM dependencies
+apm_modules/

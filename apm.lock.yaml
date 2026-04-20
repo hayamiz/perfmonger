@@ -1,0 +1,22 @@
+lockfile_version: '1'
+generated_at: '2026-04-20T01:44:40.739235+00:00'
+apm_version: 0.8.11
+dependencies:
+- repo_url: hayamiz/hayamiz-agentkit
+  host: github.com
+  resolved_commit: 261be987e4255ca23137d9a7d1e06fa69429f006
+  virtual_path: skills/commit-all
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .claude/skills/commit-all
+  content_hash: sha256:1941be2793e07bf60889bd30f259bf9dc32188e0762e21b99acd302671bd620b
+- repo_url: hayamiz/hayamiz-agentkit
+  host: github.com
+  resolved_commit: 261be987e4255ca23137d9a7d1e06fa69429f006
+  virtual_path: skills/commit-session
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .claude/skills/commit-session
+  content_hash: sha256:3dae5297352c41e7266c5ea3965856f67d14c1a9b9499b548d34012783591a19
