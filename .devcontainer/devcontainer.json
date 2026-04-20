@@ -46,5 +46,5 @@
   "forwardPorts": [],
   "runArgs": ["--network=host"],
   "postStartCommand": "/usr/local/bin/devcontainer-post-start.sh",
-  "postCreateCommand": "go version && claude --version && opencode --version"
+  "postCreateCommand": "go version && claude --version && opencode --version && cd core && go mod download"
 }
