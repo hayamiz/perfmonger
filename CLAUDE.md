@@ -100,8 +100,16 @@ Key conventions:
 
 ## Development Documentation
 
-- `devdoc/TODO.md`: Contains implementation tasks to be completed. Updated this file as tasks progress.
-- `devdoc/DONE.md`: Stores completed tasks moved from TODO.md for record keeping.
+Ongoing work is tracked as tickets under `doc/tickets/` (see the `## Tickets` section below). The legacy free-form `TODO.md` / `DONE.md` notes from the Go migration have been archived at `doc/tickets/archive/` for historical reference and are no longer updated.
+
+## Tickets
+
+Ticket directory: doc/tickets/
+
+File-based work-item tickets for this project live under `doc/tickets/`.
+Managed by the `ticket` plugin (`/ticket-create`, `/ticket-check`,
+`/ticket-triage`, `/ticket-fix`). See `doc/tickets/CLAUDE.md` for the
+ticket schema and lifecycle.
 
 ## Code Style Guidelines
 
