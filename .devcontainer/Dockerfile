@@ -53,6 +53,15 @@ RUN apt-get -o Acquire::Retries=3 update \
     python3 \
     python3-pip \
     python3-venv \
+    gnuplot \
+    imagemagick \
+    numactl \
+    pciutils \
+    kmod \
+    lsb-release \
+    util-linux \
+    fdisk \
+    procps \
     && locale-gen en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -71,6 +80,9 @@ ARG NODE_MAJOR=22
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && apt-get -o Acquire::Retries=3 install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Install uv (required for Python integration tests via pytest)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Adjust UID/GID of the ubuntu user to match the host user
 RUN if [ "$USER_UID" != "1000" ]; then \
