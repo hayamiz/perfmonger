@@ -188,36 +188,26 @@ func NewPlayerOption() *PlayerOption {
 }
 
 // RunWithOption executes the player with the provided options
-// This is the new preferred API that avoids double argument parsing
+// This is the preferred API that uses direct execution (no double argument parsing)
 func RunWithOption(option *PlayerOption) {
-	// Create command line arguments from the option struct
-	args := make([]string, 0, 10)
-	
-	if option.Color {
-		args = append(args, "-color")
-	}
-	if option.Pretty {
-		args = append(args, "-pretty")
-	}
-	if option.DiskOnly != "" {
-		args = append(args, "-disk-only", option.DiskOnly)
-	}
-	
-	// Add logfile as positional argument if not stdin
-	if option.Logfile != "-" {
-		args = append(args, option.Logfile)
-	}
-	
-	// Call the existing Run function with generated args
-	Run(args)
+	// Call the direct execution function (no args conversion needed)
+	RunDirect(option)
 }
 
 func Run(args []string) {
 	option := NewPlayerOption()
-	var in *os.File
-	var out *bufio.Writer
 
 	parseArgs(args, option)
+
+	// Call the direct execution function
+	RunDirect(option)
+}
+
+// RunDirect executes the player with the provided PlayerOption directly
+// This avoids the double conversion: PlayerOption -> args -> parseArgs -> PlayerOption
+func RunDirect(option *PlayerOption) {
+	var in *os.File
+	var out *bufio.Writer
 
 	if option.Logfile == "-" {
 		in = os.Stdin

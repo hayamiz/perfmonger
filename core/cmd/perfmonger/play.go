@@ -48,7 +48,7 @@ func (cmd *playCommand) run() error {
 	}
 	
 	// Direct API call - no conversion needed
-	player.RunWithOption(cmd.PlayerOpt)
+	player.RunDirect(cmd.PlayerOpt)
 	return nil
 }
 
