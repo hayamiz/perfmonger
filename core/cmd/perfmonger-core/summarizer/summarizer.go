@@ -27,7 +27,7 @@ func parseArgs(args []string, option *SummaryOption) {
 	var err error
 
 	fs := flag.NewFlagSet("summarizer", flag.ExitOnError)
-	
+
 	fs.BoolVar(&option.JSON, "json",
 		false, "Show summary in JSON")
 	fs.StringVar(&option.Title, "title",
@@ -61,41 +61,43 @@ func NewSummaryOption() *SummaryOption {
 	}
 }
 
-// RunWithOption executes the summarizer with the provided options
-// This is the new preferred API that avoids double argument parsing
+// RunWithOption executes the summarizer with the provided options.
+// It is a thin backward-compatible wrapper around RunDirect that writes
+// to os.Stdout.
 func RunWithOption(option *SummaryOption) {
-	// Create command line arguments from the option struct
-	args := make([]string, 0, 10)
-	
-	if option.JSON {
-		args = append(args, "-json")
+	if err := RunDirect(option, os.Stdout); err != nil {
+		panic(err)
 	}
-	if option.Title != "" {
-		args = append(args, "-title", option.Title)
-	}
-	if option.DiskOnly != "" {
-		args = append(args, "-disk-only", option.DiskOnly)
-	}
-	
-	// Add logfile as positional argument
-	if option.Logfile != "" {
-		args = append(args, option.Logfile)
-	}
-	
-	// Call the existing Run function with generated args
-	Run(args)
 }
 
 func Run(args []string) {
 	option := NewSummaryOption()
+	parseArgs(args, option)
+	if err := RunDirect(option, os.Stdout); err != nil {
+		panic(err)
+	}
+}
+
+// RunDirect executes the summarizer with the provided SummaryOption directly.
+// Output is written to the provided io.Writer. This avoids the double
+// conversion: SummaryOption -> args -> parseArgs -> SummaryOption.
+func RunDirect(option *SummaryOption, out io.Writer) error {
 	var cheader ss.CommonHeader
 	var pheader ss.PlatformHeader
 
-	parseArgs(args, option)
+	// Compile disk-only regex here for callers (e.g., cobra) that set
+	// DiskOnly as a string without populating DiskOnlyRegex.
+	if option.DiskOnlyRegex == nil {
+		re, err := regexp.Compile(option.DiskOnly)
+		if err != nil {
+			return err
+		}
+		option.DiskOnlyRegex = re
+	}
 
 	f, err := os.Open(option.Logfile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer f.Close()
 
@@ -104,26 +106,26 @@ func Run(args []string) {
 
 	err = dec.Decode(&cheader)
 	if err == io.EOF {
-		return
+		return nil
 	}
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = dec.Decode(&pheader)
 	if err == io.EOF {
-		return
+		return nil
 	}
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	var fst_record ss.StatRecord
 	// read first record
 	err = dec.Decode(&fst_record)
 	if err == io.EOF {
-		return
+		return nil
 	} else if err != nil {
-		panic(err)
+		return err
 	}
 
 	// loop until last line
@@ -135,7 +137,7 @@ func Run(args []string) {
 			idx ^= 1
 			break
 		} else if err != nil {
-			panic(err)
+			return err
 		}
 
 		idx ^= 1
@@ -171,6 +173,7 @@ func Run(args []string) {
 			fst_record.Time, fst_record.Net,
 			lst_record.Time, lst_record.Net)
 	}
+	_ = err // preserve existing behavior: accumulated errors above are ignored
 
 	interval := lst_record.Time.Sub(fst_record.Time)
 
@@ -202,24 +205,24 @@ func Run(args []string) {
 
 		printer.FinishObject()
 
-		if str, err := printer.String(); err != nil {
-			fmt.Println("skip by err")
+		if str, perr := printer.String(); perr != nil {
+			fmt.Fprintln(out, "skip by err")
 		} else {
-			fmt.Println(str)
+			fmt.Fprintln(out, str)
 		}
 	} else {
 		if option.Title == "" {
-			fmt.Println("== performance summary ==")
+			fmt.Fprintln(out, "== performance summary ==")
 		} else {
-			fmt.Printf("== performance summary of '%s' ==\n", option.Title)
+			fmt.Fprintf(out, "== performance summary of '%s' ==\n", option.Title)
 		}
-		fmt.Printf(`
+		fmt.Fprintf(out, `
 Duration: %.3f sec
 
 `,
 			interval.Seconds())
 		if cpu_usage != nil {
-			fmt.Printf(`* Average CPU usage (MAX: %d %%)
+			fmt.Fprintf(out, `* Average CPU usage (MAX: %d %%)
   * Non-idle usage: %.2f %%
        %%usr: %.2f %%
        %%sys: %.2f %%
@@ -257,7 +260,7 @@ Duration: %.3f sec
 
 			for _, device := range devices {
 				e := (*disk_usage)[device]
-				fmt.Printf(`* Average DEVICE usage: %s
+				fmt.Fprintf(out, `* Average DEVICE usage: %s
         read IOPS: %.2f
        write IOPS: %.2f
   read throughput: %.2f MB/s
@@ -277,4 +280,6 @@ Duration: %.3f sec
 			}
 		}
 	}
+
+	return nil
 }

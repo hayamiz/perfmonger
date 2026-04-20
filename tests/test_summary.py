@@ -1,11 +1,13 @@
 """Tests for the summary subcommand (summary_spec.rb equivalent)."""
 
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
-from conftest import run_perfmonger, DATA_DIR
+from conftest import run_perfmonger, DATA_DIR, _find_perfmonger_bin
 
 
 def _strip_file_path_line(text):
@@ -70,3 +72,80 @@ def test_summary_gzipped_json_matches_fixture():
 
     expected = (DATA_DIR / "busy100.pgr.summary.json").read_text()
     assert result.stdout == expected
+
+
+# -- Pager-related tests (ticket #0001) --------------------------------------
+#
+# All of these tests run with stdout captured by pytest, i.e. a pipe (not a
+# TTY). Per the documented behavior, the pager must NOT be invoked in that
+# case; output should be written directly to stdout. The integration tests
+# here therefore assert that the summary output is correct and, when
+# applicable, that no pager-related warnings appear on stderr.
+
+
+def _run_summary_with_env(*extra_args, env_overrides=None):
+    """Run `perfmonger summary <extra_args> busy100.pgr` with env overrides."""
+    bin_path = _find_perfmonger_bin()
+    env = os.environ.copy()
+    if env_overrides is not None:
+        for k, v in env_overrides.items():
+            if v is None:
+                env.pop(k, None)
+            else:
+                env[k] = v
+    args = [bin_path, "summary", *extra_args, str(DATA_DIR / "busy100.pgr")]
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+    )
+
+
+def test_summary_piped_stdout_does_not_use_pager():
+    """Piped stdout (non-TTY) should write summary directly to stdout."""
+    result = _run_summary_with_env(env_overrides={"PAGER": "cat"})
+    assert result.returncode == 0
+    assert "performance summary" in result.stdout
+    assert "Duration:" in result.stdout
+    # No pager warnings should appear on stderr (pager path not taken at all).
+    assert "Warning: failed to start pager" not in result.stderr
+
+
+def test_summary_no_pager_flag_disables_pager():
+    """--no-pager always writes directly to stdout, regardless of PAGER."""
+    result = _run_summary_with_env(
+        "--no-pager", env_overrides={"PAGER": "cat"}
+    )
+    assert result.returncode == 0
+    assert "performance summary" in result.stdout
+    assert "Duration:" in result.stdout
+    assert "Warning:" not in result.stderr
+
+
+def test_summary_pager_unset_writes_to_stdout():
+    """With PAGER unset, output must go directly to stdout."""
+    result = _run_summary_with_env(env_overrides={"PAGER": None})
+    assert result.returncode == 0
+    assert "performance summary" in result.stdout
+
+
+def test_summary_pager_empty_writes_to_stdout():
+    """PAGER="" must be treated the same as PAGER unset: no pager."""
+    result = _run_summary_with_env(env_overrides={"PAGER": ""})
+    assert result.returncode == 0
+    assert "performance summary" in result.stdout
+    assert "Warning:" not in result.stderr
+
+
+def test_summary_pager_nonexistent_with_pipe_still_works():
+    """Nonexistent PAGER + piped stdout: pager path isn't attempted, so no
+    warning, and summary is written to stdout."""
+    result = _run_summary_with_env(
+        env_overrides={"PAGER": "/does/not/exist/pager"}
+    )
+    assert result.returncode == 0
+    assert "performance summary" in result.stdout
+    # Pager branch is skipped because stdout is not a TTY, so no warning.
+    assert "Warning: failed to start pager" not in result.stderr
