@@ -1,6 +1,0 @@
-#!/usr/bin/env ruby
-# coding: utf-8
-
-require 'perfmonger'
-
-exit(PerfMonger::CLI::Runner.new.run(ARGV))
