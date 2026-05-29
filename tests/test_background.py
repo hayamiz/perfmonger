@@ -1,6 +1,7 @@
 """Tests for the record --background / --kill / --status options."""
 
 import os
+import pwd
 import signal
 import time
 from pathlib import Path
@@ -10,9 +11,17 @@ from conftest import run_perfmonger, requires_proc_diskstats
 
 
 def _session_file():
-    """Return the expected session file path."""
-    username = os.environ.get("USER") or os.environ.get("LOGNAME") or "unknown"
-    return Path("/tmp") / f"perfmonger-{username}-session.pid"
+    """Return the expected session file path.
+
+    This must mirror sessionFilePath() in core/cmd/perfmonger/record.go:
+    filepath.Join(os.TempDir(), "perfmonger-<user>-session.pid"), where
+    os.TempDir() honors $TMPDIR (falling back to /tmp) and <user> is the
+    current user's name from a passwd lookup (user.Current().Username) — not
+    the $USER environment variable, which may be unset.
+    """
+    tmpdir = os.environ.get("TMPDIR") or "/tmp"
+    username = pwd.getpwuid(os.getuid()).pw_name
+    return Path(tmpdir) / f"perfmonger-{username}-session.pid"
 
 
 def _cleanup_session():
