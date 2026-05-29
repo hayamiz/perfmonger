@@ -40,17 +40,31 @@ fi
 OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 OPENCODE_STAGE="$HOME/.devcontainer-opencode-config"
 mkdir -p "$OPENCODE_CONFIG_DIR"
-rm -rf "$OPENCODE_STAGE"
 mkdir -p "$OPENCODE_STAGE"
+find "$OPENCODE_STAGE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 if [ -n "$(ls -A "$OPENCODE_CONFIG_DIR" 2>/dev/null)" ]; then
   cp -rL "$OPENCODE_CONFIG_DIR/." "$OPENCODE_STAGE/"
 fi
 
-# Ensure Cline data directory exists so bind mount doesn't fail.
-mkdir -p "${HOME}/.cline/data"
+# Stage Claude config for bind mount.
+# ~/.claude on the host typically contains symlinks into a dotfiles repo that
+# the container cannot resolve. Copy with -L to dereference symlinks so the
+# mount exposes plain files. Whitelist entries to avoid copying large runtime
+# directories (projects/, sessions/, statsig/, ...).
+CLAUDE_SRC="${HOME}/.claude"
+CLAUDE_STAGE="${HOME}/.devcontainer-claude-stage"
+mkdir -p "$CLAUDE_STAGE"
+chmod 700 "$CLAUDE_STAGE"
+find "$CLAUDE_STAGE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+for _item in settings.json settings.local.json CLAUDE.md \
+             notification_wrapper.sh stop_wrapper.sh osc9_notify.sh skills .credentials.json; do
+  if [ -e "$CLAUDE_SRC/$_item" ]; then
+    cp -rL "$CLAUDE_SRC/$_item" "$CLAUDE_STAGE/"
+  fi
+done
+unset _item
 
-# Ensure Claude config directory and state file exist so bind mounts don't fail.
-# These are required by the claude-auth mount entries in devcontainer.json.
+# Ensure Claude state file exists for bind mount.
 mkdir -p "${HOME}/.claude"
 touch -a "${HOME}/.claude.json"
 
@@ -58,6 +72,8 @@ touch -a "${HOME}/.claude.json"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "${SCRIPT_DIR}/claude-projects"
 mkdir -p "${SCRIPT_DIR}/claude-sessions"
+mkdir -p "${SCRIPT_DIR}/claude-plugins"
+mkdir -p "${SCRIPT_DIR}/claude-file-history"
 
 # Ensure pushover token file exists (empty is fine) so bind mount doesn't fail
 touch -a "${HOME}/.pushover_token.sh"

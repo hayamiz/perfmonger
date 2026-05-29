@@ -49,6 +49,7 @@ RUN apt-get -o Acquire::Retries=3 update \
     iproute2 \
     dnsutils \
     net-tools \
+    tmux \
     locales \
     python3 \
     python3-pip \
@@ -99,11 +100,13 @@ RUN echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
 ENV GOPATH="/home/${USERNAME}/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
-# Install Claude Code
-RUN npm install -g @anthropic-ai/claude-code
-
-# Install cline
-RUN npm install -g cline
+# Install Claude Code under the user's npm prefix so auto-update works without root
+ENV PATH=/home/${USERNAME}/.npm-global/bin:${PATH}
+USER ${USERNAME}
+RUN mkdir -p /home/${USERNAME}/.npm-global \
+    && npm config set prefix /home/${USERNAME}/.npm-global \
+    && npm install -g @anthropic-ai/claude-code
+USER root
 
 # Install OpenCode
 RUN curl -fsSL https://opencode.ai/install | bash \
@@ -122,13 +125,43 @@ RUN mkdir -p /home/${USERNAME}/.config \
 # Pre-create .claude and subdirectories for bind mounts
 RUN mkdir -p /home/${USERNAME}/.claude/projects \
              /home/${USERNAME}/.claude/sessions \
+             /home/${USERNAME}/.claude/plugins \
+             /home/${USERNAME}/.claude/file-history \
     && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.claude
 
+# Create minimal tmux config with C-t as prefix
+RUN printf '%s\n' \
+        'unbind C-b' \
+        'set -g prefix C-t' \
+        'bind C-t send-prefix' \
+        'set -g mode-keys vi' \
+        'bind -T prefix C-u copy-mode -u' \
+        'bind -T prefix C-d copy-mode \; send-keys -X halfpage-down' \
+        'set -ga update-environment "VSCODE_IPC_HOOK_CLI VSCODE_GIT_IPC_HANDLE VSCODE_GIT_ASKPASS_NODE VSCODE_GIT_ASKPASS_MAIN VSCODE_INJECTION TERM_PROGRAM"' \
+        'set -g history-limit 100000' \
+        'set -sg escape-time 10' \
+        'set -g focus-events on' \
+        'set -g default-terminal "tmux-256color"' \
+        'set -ga terminal-overrides ",*256col*:Tc,xterm-256color:Tc"' \
+        'bind r source-file ~/.tmux.conf \; display "reloaded"' \
+        > /home/${USERNAME}/.tmux.conf \
+    && chown ${USER_UID}:${USER_GID} /home/${USERNAME}/.tmux.conf
 
 # Generate post-start initialization script
 RUN { \
       echo '#!/usr/bin/env bash'; \
       echo 'set -euo pipefail'; \
+      echo '# Symlink host Claude config files into ~/.claude/ if present'; \
+      echo 'for f in settings.json CLAUDE.md notification_wrapper.sh stop_wrapper.sh osc9_notify.sh; do'; \
+      echo '  if [ -f "/host-claude/$f" ] || [ -L "/host-claude/$f" ]; then'; \
+      echo '    mkdir -p "$HOME/.claude"'; \
+      echo '    ln -sfn "/host-claude/$f" "$HOME/.claude/$f"'; \
+      echo '  fi'; \
+      echo 'done'; \
+      echo '# Symlink skills directory if present'; \
+      echo 'if [ -d "/host-claude/skills" ]; then'; \
+      echo '  ln -sfn "/host-claude/skills" "$HOME/.claude/skills"'; \
+      echo 'fi'; \
       echo ''; \
       echo '# Copy Claude OAuth credentials from read-only mount'; \
       echo 'if [ -f /host-claude/.credentials.json ] || [ -L /host-claude/.credentials.json ]; then'; \

@@ -17,7 +17,7 @@
       "extensions": [
         "golang.go",
         "anthropic.claude-code",
-        "cline.cline"
+        "wenbopan.vscode-terminal-osc-notifier"
       ],
       "settings": {
         "go.gopath": "/home/ubuntu/go",
@@ -36,10 +36,11 @@
     "source=${localEnv:HOME}/.ssh-auth-sock,target=/tmp/ssh-auth.sock,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.pushover_token.sh,target=/host-pushover-token.sh,type=bind,readonly",
     "source=${localEnv:HOME}/.devcontainer-opencode-config,target=/host-opencode,type=bind,readonly",
-    "source=${localEnv:HOME}/.cline,target=/home/ubuntu/.cline,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.devcontainer-claude-stage,target=/host-claude,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer/claude-projects,target=/home/ubuntu/.claude/projects,type=bind",
-    "source=${localWorkspaceFolder}/.devcontainer/claude-sessions,target=/home/ubuntu/.claude/sessions,type=bind"
-    ,"source=${localEnv:HOME}/.claude,target=/host-claude,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-sessions,target=/home/ubuntu/.claude/sessions,type=bind",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-plugins,target=/home/ubuntu/.claude/plugins,type=bind",
+    "source=${localWorkspaceFolder}/.devcontainer/claude-file-history,target=/home/ubuntu/.claude/file-history,type=bind",
     "source=${localEnv:HOME}/.claude.json,target=/host-claude.json,type=bind,readonly"
   ],
   "initializeCommand": ".devcontainer/initialize.sh",
