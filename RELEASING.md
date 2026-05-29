@@ -67,8 +67,8 @@ On a `v*.*.*` tag push, `release.yml`:
    pinned to `~> v2`). GoReleaser:
    - cross-compiles the `perfmonger` binary for `linux/amd64` and `linux/arm64`
      with `CGO_ENABLED=0` (no cgo, so a single runner cross-builds both);
-   - packages each binary as a `tar.gz` archive that also includes `COPYING`,
-     `README.md`, and `NEWS.md`;
+   - publishes each as a standalone binary named `perfmonger_linux_amd64` /
+     `perfmonger_linux_arm64` (the `binary` archive format — no tar.gz wrapper);
    - generates a source code `tar.gz`;
    - generates a `checksums.txt` (SHA256) file;
    - creates the GitHub Release using the extracted `NEWS.md` notes (GoReleaser's
@@ -83,16 +83,17 @@ After the workflow succeeds, on the
 [Releases page](https://github.com/hayamiz/perfmonger/releases) confirm that the
 release contains:
 
-- `perfmonger_X.Y.Z_linux_amd64.tar.gz`
-- `perfmonger_X.Y.Z_linux_arm64.tar.gz`
+- `perfmonger_linux_amd64`
+- `perfmonger_linux_arm64`
 - a source archive (`*.tar.gz`)
 - `checksums.txt`
 - release notes matching the top `NEWS.md` entry.
 
-Smoke-test a downloaded archive:
+Smoke-test a downloaded binary:
 
 ```sh
-curl -L https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_X.Y.Z_linux_amd64.tar.gz | tar xz
+curl -L -o perfmonger https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_linux_amd64
+chmod +x perfmonger
 ./perfmonger --version   # should print: PerfMonger version X.Y.Z
 ```
 
