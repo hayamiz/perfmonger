@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 	"testing"
-
-	"github.com/spf13/cobra"
 )
 
 func TestNewSummaryCommandStruct(t *testing.T) {
@@ -80,68 +78,59 @@ func TestSummaryCommand_ValidateAndSetLogfile(t *testing.T) {
 	}
 }
 
-func TestSummaryCommand_ValidatePagerOption(t *testing.T) {
+func TestSummaryCommand_ResolvePager(t *testing.T) {
 	tests := []struct {
-		name         string
-		pagerEnv     string
-		setPagerFlag bool
-		wantErr      string
-		wantPager    string
+		name      string
+		pagerFlag string // value set on cmd.Pager (empty means --pager not given)
+		setEnv    bool   // whether to set PAGER env var
+		pagerEnv  string // PAGER env value when setEnv is true
+		want      string
 	}{
 		{
-			name:         "pager flag set with PAGER env",
-			pagerEnv:     "less",
-			setPagerFlag: true,
-			wantErr:      "",
-			wantPager:    "less",
+			name:      "pager flag overrides PAGER env",
+			pagerFlag: "more",
+			setEnv:    true,
+			pagerEnv:  "less",
+			want:      "more",
 		},
 		{
-			name:         "pager flag set without PAGER env",
-			pagerEnv:     "",
-			setPagerFlag: true,
-			wantErr:      "no pager is available. Please set PAGER or give pager name to --pager option",
+			name:      "PAGER env used when flag empty",
+			pagerFlag: "",
+			setEnv:    true,
+			pagerEnv:  "less",
+			want:      "less",
 		},
 		{
-			name:         "pager flag not set",
-			pagerEnv:     "",
-			setPagerFlag: false,
-			wantErr:      "",
+			name:      "no pager when flag empty and PAGER unset",
+			pagerFlag: "",
+			setEnv:    false,
+			want:      "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldPager := os.Getenv("PAGER")
-			defer os.Setenv("PAGER", oldPager)
+			oldPager, hadPager := os.LookupEnv("PAGER")
+			defer func() {
+				if hadPager {
+					os.Setenv("PAGER", oldPager)
+				} else {
+					os.Unsetenv("PAGER")
+				}
+			}()
 
-			if tt.pagerEnv != "" {
+			if tt.setEnv {
 				os.Setenv("PAGER", tt.pagerEnv)
 			} else {
 				os.Unsetenv("PAGER")
 			}
 
 			summaryCmd := newSummaryCommandStruct()
-			cobraCmd := &cobra.Command{}
-			cobraCmd.Flags().StringVarP(&summaryCmd.Pager, "pager", "p", "", "")
+			summaryCmd.Pager = tt.pagerFlag
 
-			if tt.setPagerFlag {
-				cobraCmd.Flags().Set("pager", "")
-			}
-
-			err := summaryCmd.validatePagerOption(cobraCmd)
-			if tt.wantErr == "" {
-				if err != nil {
-					t.Errorf("validatePagerOption() unexpected error: %v", err)
-				}
-				if tt.wantPager != "" && summaryCmd.Pager != tt.wantPager {
-					t.Errorf("Pager = %q, want %q", summaryCmd.Pager, tt.wantPager)
-				}
-			} else {
-				if err == nil {
-					t.Errorf("validatePagerOption() expected error %q, got nil", tt.wantErr)
-				} else if err.Error() != tt.wantErr {
-					t.Errorf("validatePagerOption() error = %q, want %q", err.Error(), tt.wantErr)
-				}
+			got := summaryCmd.resolvePager()
+			if got != tt.want {
+				t.Errorf("resolvePager() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -154,7 +143,7 @@ func TestNewSummaryCommand(t *testing.T) {
 		t.Errorf("Use = %q, want %q", cmd.Use, "summary [options] LOG_FILE")
 	}
 
-	expectedFlags := []string{"json", "pager", "disk-only"}
+	expectedFlags := []string{"json", "pager", "no-pager", "disk-only"}
 	for _, name := range expectedFlags {
 		if cmd.Flags().Lookup(name) == nil {
 			t.Errorf("expected flag %q to be defined", name)

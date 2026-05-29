@@ -70,6 +70,9 @@ spec is declared, the spec-update step is skipped.
 # Go unit tests
 cd core/internal/perfmonger && go test -v -cover
 
+# Go CLI command tests
+cd core && go test ./cmd/...
+
 # Go static analysis
 cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)
 

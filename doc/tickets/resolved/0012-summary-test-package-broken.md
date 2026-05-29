@@ -2,7 +2,7 @@
 title: core/cmd/perfmonger test package does not compile (validatePagerOption undefined)
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-05-29
 ---
@@ -63,3 +63,50 @@ HEAD（#0007 着手前）の `summary_test.go` でも同じ参照が存在し、
 - `cd core && go test ./cmd/perfmonger/` がビルド・実行され、緑になる。
 - 可能なら `doc/tickets/CLAUDE.md` の `## Verification` に
   `core/cmd/perfmonger` のテストも追加し、再発を防ぐ。
+
+## Resolution
+
+### 採用方針
+
+方針2（テストを現行 API に合わせて書き換え）を採用した。`validatePagerOption`
+を再追加するのではなく、現行の `resolvePager()` を対象とするテストへ書き換えた。
+
+### 根本原因
+
+`validatePagerOption`（`$PAGER` から `cmd.Pager` を書き換え、ページャ未設定時に
+エラーを返す旧メソッド）は、コミット `4d59f78`（#0001 "feat(summary): restore
+pager support and RunDirect API"）で**意図的に削除・再設計**された。後継は
+`resolvePager() string`（"" = ページャ不使用）＋ `NoPager bool` フィールド＋
+TTY 判定とフォールバックを行う `runWithPager()` である。しかし
+`summary_test.go` の `TestSummaryCommand_ValidatePagerOption` が旧メソッドを
+参照したまま残され、パッケージがコンパイル不能になっていた。プロジェクト規定の
+検証は `core/internal/perfmonger` のみが対象だったため未検出だった。
+
+旧メソッドを再追加すると #0001 の再設計および `doc/architecture.md`
+（507〜514 行の `resolvePager()` の優先順位仕様）と矛盾するため、git 履歴と
+アーキテクチャドキュメントに従いテスト側を現行 API に合わせた。
+
+### 変更ファイル
+
+- `core/cmd/perfmonger/summary_test.go`:
+  - `TestSummaryCommand_ValidatePagerOption` を `TestSummaryCommand_ResolvePager`
+    に置き換え。テーブル駆動で `resolvePager()` の優先順位を検証:
+    1. `--pager`（`cmd.Pager="more"`）が `$PAGER=less` を上書き → `"more"`
+    2. `--pager` 空 ＋ `$PAGER=less` → `"less"`
+    3. `--pager` 空 ＋ `$PAGER` 未設定 → `""`（ページャ不使用）
+  - 未使用となった `github.com/spf13/cobra` import を削除（`go vet` 対応）。
+  - `TestNewSummaryCommand` の `expectedFlags` に、実際に登録されている
+    `no-pager` フラグを追加。
+- `doc/tickets/CLAUDE.md`: `## Verification` に `cd core && go test ./cmd/...`
+  を追加し再発を防止。
+
+### 検証結果（すべて合格）
+
+- `cd core && go test ./cmd/perfmonger/` → `ok`（旧コンパイルエラー解消、
+  #0007 の `main_test.go` 含め実行）
+- `cd core && go vet ./cmd/perfmonger/` → 問題なし
+- `cd core/internal/perfmonger && go test -cover` → `ok`（coverage 54.2%）
+- `cd core/internal/perfmonger && go vet ...` → 問題なし
+- `make build && uv sync && uv run pytest -v` → 36 passed。失敗は
+  `tests/test_background.py` の 5 件のみで、いずれもサンドボックスの
+  セッション検出制約による既存の失敗（本チケットとは無関係）。新規失敗なし。
