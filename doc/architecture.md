@@ -22,8 +22,7 @@ perfmonger/
 │   │   │   ├── record.go / live.go / play.go / stat.go / plot.go
 │   │   │   ├── summary.go / fingerprint.go / initshell.go
 │   │   │   └── godevenv/            # Isolated Go toolchain (optional)
-│   │   └── perfmonger-core/         # Multi-call core binary + reusable pkgs
-│   │       ├── perfmonger-core.go   # argv[0]-based dispatcher
+│   │   └── perfmonger-core/         # Reusable component packages
 │   │       ├── recorder/            # RecorderOption + RunDirect
 │   │       ├── player/              # PlayerOption + RunDirect
 │   │       ├── summarizer/          # SummaryOption + RunDirect
@@ -55,8 +54,7 @@ the repo root.
 
 ## 2. Binaries
 
-The Makefile produces two binaries per target platform plus compatibility
-symlinks.
+The Makefile produces a single binary per target platform.
 
 ### 2.1 `perfmonger_<GOOS>_<GOARCH>` — the unified CLI
 
@@ -78,39 +76,13 @@ sits at `0.14.4`. Subcommands:
 `cobra` is configured with Ruby-compatible usage templates so `--help` output
 mirrors the old Ruby CLI layout.
 
-### 2.2 `perfmonger-core_<GOOS>_<GOARCH>` — multi-call core binary
-
-Thin dispatcher (see
-[core/cmd/perfmonger-core/perfmonger-core.go](../core/cmd/perfmonger-core/perfmonger-core.go))
-that inspects `argv[0]` (stripping the `perfmonger-` prefix and any
-`_linux_amd64`-style suffix) and routes to one of the internal packages
-(`recorder`, `player`, `summarizer`, `plotformatter`, `viewer`). It can also be
-called as `perfmonger-core <subcommand>`.
-
-### 2.3 Compatibility symlinks
-
-`make wrappers` (run as part of the default `build` target) creates symlinks
-pointing at the core binary for each legacy subcommand name:
-
-```
-perfmonger-recorder_<os>_<arch>    → perfmonger-core_<os>_<arch>
-perfmonger-player_<os>_<arch>      → perfmonger-core_<os>_<arch>
-perfmonger-summarizer_<os>_<arch>  → perfmonger-core_<os>_<arch>
-perfmonger-plot-formatter_<os>_<arch> → perfmonger-core_<os>_<arch>
-perfmonger-viewer_<os>_<arch>      → perfmonger-core_<os>_<arch>
-```
-
-These exist so external scripts that hard-coded the old names keep working.
-New code should call the `perfmonger` binary.
-
-### 2.4 Build targets
+### 2.2 Build targets
 
 `Makefile` drives everything:
 
 | Target        | What it does                                                                 |
 |---------------|------------------------------------------------------------------------------|
-| `build` (default) | Build `perfmonger`, `perfmonger-core`, and wrapper symlinks for host       |
-| `wrappers`    | Create compatibility symlinks; depends on the core binary                    |
+| `build` (default) | Build the `perfmonger` binary for the host platform                      |
 | `test`        | `go test -v -cover` for `core/internal/perfmonger`, then `uv run pytest -v`  |
 | `vet`         | `go vet` on Linux-specific sources in `core/internal/perfmonger`             |
 | `cross-build` | Runs `build` twice: `GOOS=linux GOARCH=amd64` and `GOOS=linux GOARCH=arm64`  |
@@ -220,8 +192,8 @@ in `CommonHeader`) if the type definitions ever change incompatibly.
 ## 4. Core Reusable Packages — `core/cmd/perfmonger-core/*`
 
 Each of these packages exposes a `RunDirect(option)` entry point that the
-top-level cobra commands call into, plus a legacy `Run(args []string)` used by
-the `perfmonger-core` multi-call binary. Keeping `RunDirect` separate avoids
+top-level cobra commands call into. Some also retain a `Run(args []string)`
+that parses its own argument list; keeping `RunDirect` separate avoids
 re-parsing arguments when invoked from Go code.
 
 ### 4.1 `recorder`
@@ -674,8 +646,8 @@ are *not* recommended behaviors — they are observations.
 - **Player panics on I/O errors.** Gob decode errors other than `EOF` are
   thrown via `panic` rather than returning an error; same for `os.Open`.
 - **`viewer` package is a placeholder.** Layout is hardcoded to "Hello
-  world"; the package exists so the `perfmonger-core view` subcommand
-  doesn't 404, but no real visualization is wired up.
+  world"; the package is retained in the tree but is not wired up to any
+  `perfmonger` subcommand and has no real visualization.
 - **Interval backoff is silent.** The recorder doubles the interval every
   1000 samples up to one hour unless `--no-interval-backoff` is passed.
   Long-running recordings therefore have non-uniform time granularity. There
@@ -689,10 +661,6 @@ are *not* recommended behaviors — they are observations.
   true, so the flag is present. If the user actually passes `--record-intr`
   (enabling interrupt recording), neither condition holds and the flag is
   not emitted — so the child correctly does record interrupts.
-- **`perfmonger-core` uses a `flag`-based parser.** The top-level
-  `perfmonger` binary uses cobra; the core multi-call binary uses
-  `flag.FlagSet` with different defaults (e.g., `Output = "-"` rather than
-  `perfmonger.pgr.gz`). These are two distinct CLI surfaces.
 - **No `.pgr` schema versioning.** `CommonHeader` has no version field. Any
   incompatible change to the gob-encoded types would silently break older
   recordings.

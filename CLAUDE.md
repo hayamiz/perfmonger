@@ -28,14 +28,11 @@ The project is a single-binary Go implementation:
 
 ### Building
 ```bash
-# Build the unified Go binary (perfmonger_linux_amd64)
+# Build the unified Go binary for the host platform (via the root Makefile)
+make build
+
+# Build the unified Go binary directly with go build
 cd core/cmd/perfmonger && go build -o ../../../lib/exec/perfmonger_linux_amd64 .
-
-# Build core components (perfmonger-core binary, compatibility wrappers)
-cd core && ./build.sh
-
-# Self-build (current platform only)
-cd core && ./build.sh -
 
 # Optional: Use isolated Go environment
 source 00_LOAD_GO_DEVENV.sh
