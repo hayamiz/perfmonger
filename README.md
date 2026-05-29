@@ -25,10 +25,27 @@ releases; avoid relying on it for production-critical workflows.
 
 ## Installation
 
-### Pre-built binary (coming soon)
+### Pre-built binary
 
-Pre-built releases on GitHub will be provided once the release pipeline is in
-place. In the meantime, please build from source as described below.
+Prebuilt Linux binaries are published on the
+[GitHub Releases page](https://github.com/hayamiz/perfmonger/releases) for
+both `amd64` and `arm64`. Each release ships a `tar.gz` archive containing the
+`perfmonger` binary along with `COPYING`, `README.md`, and `NEWS.md`, plus a
+`checksums.txt` (SHA256) file.
+
+Download and extract the archive for your architecture (replace `X.Y.Z` with
+the release version):
+
+```sh
+# amd64
+curl -L https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_X.Y.Z_linux_amd64.tar.gz | tar xz
+
+# arm64
+curl -L https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_X.Y.Z_linux_arm64.tar.gz | tar xz
+```
+
+Then move the extracted `perfmonger` binary somewhere on your `PATH`
+(e.g. `~/bin/perfmonger`).
 
 ### Build from source
 

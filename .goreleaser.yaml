@@ -1,0 +1,46 @@
+# GoReleaser configuration for PerfMonger.
+# Schema reference: https://goreleaser.com/customization/
+version: 2
+
+# The Go module root is core/ (module github.com/hayamiz/perfmonger/core),
+# there is no go.mod at the repository root.
+builds:
+  - id: perfmonger
+    dir: core
+    main: ./cmd/perfmonger
+    binary: perfmonger
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    # Inject the version (without leading "v") into main.VERSION at build time.
+    ldflags:
+      - -s -w -X main.VERSION={{.Version}}
+
+archives:
+  - id: perfmonger
+    formats:
+      - tar.gz
+    # Repo-root files to bundle alongside the binary. goreleaser resolves these
+    # paths relative to the current working directory (repository root), not the
+    # build dir (core/).
+    files:
+      - COPYING
+      - README.md
+      - NEWS.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# Publish a source code archive alongside the binaries (decision H).
+source:
+  enabled: true
+
+# Release notes are sourced from NEWS.md and passed via --release-notes,
+# so disable goreleaser's git-log based changelog (D3).
+changelog:
+  disable: true

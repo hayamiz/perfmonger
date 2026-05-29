@@ -1,7 +1,9 @@
-## 2025-XX-XX: PerfMonger 0.15.0
-
+## 2026-05-29: PerfMonger 1.0.0
   * Changes
+    * Reimplemented entirely in Go and distributed as a single `perfmonger` binary.
+    * Removed the Ruby implementation and gem packaging (#0004).
     * Dropped support of Darwin (Mac OS X) which was already deprecated.
+    * Started distributing prebuilt Linux (amd64/arm64) binaries via GitHub Releases (#0007).
 
 ## 2023-05-13: PerfMonger 0.14.4
   * Yanked release 0.14.3 and repushed release binary.

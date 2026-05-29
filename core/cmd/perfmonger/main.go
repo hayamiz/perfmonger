@@ -6,7 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const VERSION = "0.14.4"
+// VERSION is the single source of truth for the perfmonger version.
+// It defaults to "dev" for local builds and is overridden at release time
+// via -ldflags "-X main.VERSION=<tag>". It must be a var (not a const) so
+// that -ldflags -X can override it.
+var VERSION = "dev"
 
 // Ruby-compatible usage template
 const usageTemplate = `Usage:

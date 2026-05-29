@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      # Build first: pytest's conftest expects the prebuilt binary at
+      # lib/exec/perfmonger_linux_amd64. Then run vet and the full test suite.
+      # /proc/diskstats-dependent tests skip automatically via
+      # @requires_proc_diskstats on GitHub runners.
+      - name: Build, vet, and test
+        run: make build && make vet && make test
