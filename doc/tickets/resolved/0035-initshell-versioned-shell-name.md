@@ -2,7 +2,7 @@
 title: SHELL env fallback fails for versioned shell binary names like "bash-5.1"
 type: bug
 priority: low
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -34,3 +34,19 @@ match on a prefix (`strings.HasPrefix(name, "bash")` / `"zsh"`) or strip a trail
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: SHELL-env fallback: filepath.Base("/usr/bin/bash-5.1") returns "bash-5.1", not matching the switch. Fix: normalize the shell name (prefix match or strip trailing -<version>) before the switch.
+
+## Resolution
+
+Extended `normalizeShellName` in `core/cmd/perfmonger/initshell.go` to strip a
+trailing `-<version>` suffix after `filepath.Base`. A versioned binary name such
+as `/usr/bin/bash-5.1` or `/usr/local/bin/zsh-5.9` now normalizes to `bash` /
+`zsh`, matching the switch cases in `run()`/`runInitShell`. The base-name and
+empty-detection behavior from #0034 is preserved.
+
+Added three cases to the existing `TestNormalizeShellName` table in
+`core/cmd/perfmonger/initshell_test.go` (`/usr/bin/bash-5.1` -> `bash`,
+`/usr/local/bin/zsh-5.9` -> `zsh`, `bash-5.1` -> `bash`). These failed before
+the fix and pass after it; the rest of the table (including the empty-output
+case) is unchanged.
+
+Verified: `go test -count=1 ./cmd/perfmonger/` passes and the binary builds.

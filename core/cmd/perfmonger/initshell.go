@@ -119,7 +119,13 @@ func normalizeShellName(raw string) string {
 	if trimmed == "" {
 		return ""
 	}
-	return filepath.Base(trimmed)
+	base := filepath.Base(trimmed)
+	// Strip a trailing version suffix (e.g. "bash-5.1" -> "bash") so that
+	// versioned shell binary names map to their base shell name.
+	if idx := strings.IndexByte(base, '-'); idx > 0 {
+		base = base[:idx]
+	}
+	return base
 }
 
 // errorForShell builds the error returned when the detected shell is not

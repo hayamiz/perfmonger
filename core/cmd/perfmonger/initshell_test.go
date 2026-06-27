@@ -18,6 +18,9 @@ func TestNormalizeShellName(t *testing.T) {
 		{"bash with whitespace", "  bash\n", "bash"},
 		{"empty output stays empty", "", ""},
 		{"whitespace only stays empty", "   \n", ""},
+		{"versioned bash binary", "/usr/bin/bash-5.1", "bash"},
+		{"versioned zsh binary", "/usr/local/bin/zsh-5.9", "zsh"},
+		{"versioned bash name only", "bash-5.1", "bash"},
 	}
 
 	for _, tc := range cases {
