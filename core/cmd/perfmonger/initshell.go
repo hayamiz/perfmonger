@@ -159,37 +159,6 @@ func getParentShell() string {
 	return ""
 }
 
-func runInitShell(args []string) {
-	shell := getParentShell()
-	
-	// Check if user wants the actual completion script
-	generateScript := len(args) > 0 && args[0] == "-"
-	
-	switch shell {
-	case "bash":
-		if generateScript {
-			fmt.Print(bashCompletion)
-		} else {
-			fmt.Println("# Add the following line to ~/.bashrc")
-			fmt.Println()
-			fmt.Println("eval \"$(perfmonger init-shell -)\"")
-		}
-		
-	case "zsh":
-		if generateScript {
-			fmt.Print(zshCompletion)
-		} else {
-			fmt.Println("# Add the following line to ~/.zshrc")
-			fmt.Println()
-			fmt.Println("eval \"$(perfmonger init-shell -)\"")
-		}
-		
-	default:
-		fmt.Fprintln(os.Stderr, errorForShell(shell).Error())
-		os.Exit(1)
-	}
-}
-
 // initShellOptions represents all options for the init-shell command
 type initShellOptions struct {
 	GenerateScript bool

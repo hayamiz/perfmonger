@@ -45,3 +45,18 @@ func TestRunDetectionFailureMessage(t *testing.T) {
 		t.Errorf("errorForShell(\"\") = %q, want %q", got, "could not detect parent shell")
 	}
 }
+
+// TestErrorForShellUnsupported verifies the error message for a detected but
+// unsupported shell. errorForShell is the surviving error path used by the live
+// run() default branch (after the dead runInitShell was removed; see ticket
+// 0036), so this guards that contract.
+func TestErrorForShellUnsupported(t *testing.T) {
+	err := errorForShell("fish")
+	if err == nil {
+		t.Fatalf("errorForShell(\"fish\") = nil, want an error")
+	}
+	want := "unsupported shell: fish. Only bash and zsh are supported"
+	if got := err.Error(); got != want {
+		t.Errorf("errorForShell(\"fish\") = %q, want %q", got, want)
+	}
+}
