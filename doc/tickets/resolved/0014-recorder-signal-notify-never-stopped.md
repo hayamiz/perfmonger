@@ -2,7 +2,7 @@
 title: signal.Notify in recorder.RunDirect is never paired with signal.Stop
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -43,3 +43,36 @@ Suggested direction: call `defer signal.Stop(sigint_ch)` immediately after the
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: Add `defer signal.Stop(sigint_ch)` immediately after the signal.Notify call. Standard Go cleanup pattern, single defer in one function.
+
+## Resolution
+
+Fixed via strict TDD.
+
+Files changed:
+
+- `core/cmd/perfmonger-core/recorder/recorder.go`
+  - Added package-level overridable seams `signalNotify = signal.Notify` and
+    `signalStop = signal.Stop` so signal registration/teardown is observable in
+    tests.
+  - In `RunDirect`, changed the registration call to `signalNotify(sigint_ch,
+    os.Interrupt)` and added `defer signalStop(sigint_ch)` immediately after it,
+    so the SIGINT handler is deregistered when `RunDirect` returns. This stops
+    the channel from being leaked and from silently consuming signals after the
+    function exits.
+- `core/cmd/perfmonger-core/recorder/recorder_test.go`
+  - Added `TestRunDirectStopsSignalNotify`, a regression test that installs the
+    seams, runs `RunDirect` with a short timeout to a temp output file, and
+    asserts that the exact channel passed to `signal.Notify` is also passed to
+    `signal.Stop` before `RunDirect` returns.
+
+TDD: the test was written first and initially failed to compile (`undefined:
+signalNotify` / `undefined: signalStop`), confirming RED. After adding the
+seams and the `defer signalStop`, the test passed (GREEN).
+
+Verification (all passed, run from repo root after sourcing
+`00_LOAD_GO_DEVENV.sh`):
+
+- `cd core/internal/perfmonger && go test -cover ./...` — ok, coverage 54.4%
+- `cd core && go test ./cmd/...` — all packages ok
+- `cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)` — exit 0
+- `cd core/cmd/perfmonger && go build -o ../../../lib/exec/perfmonger_linux_amd64 .` — build ok

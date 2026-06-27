@@ -5,6 +5,7 @@ import (
 	"path"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // TestWriteSessionFileSuccess verifies that WriteSessionFile writes the current
@@ -58,5 +59,52 @@ func TestWriteSessionFileLockFailureDoesNotWritePID(t *testing.T) {
 
 	if _, statErr := os.Stat(sf); statErr == nil {
 		t.Fatalf("session PID file %s was written despite lock acquisition failure", sf)
+	}
+}
+
+// TestRunDirectStopsSignalNotify is a regression test for the bug where
+// RunDirect called signal.Notify on a fresh channel but never paired it with
+// signal.Stop, leaking the registration past the function's return. The test
+// installs observable seams over the signal package and asserts that the exact
+// channel passed to signal.Notify is later handed to signal.Stop before
+// RunDirect returns.
+func TestRunDirectStopsSignalNotify(t *testing.T) {
+	var notifiedCh chan<- os.Signal
+	var stoppedCh chan<- os.Signal
+
+	origNotify := signalNotify
+	origStop := signalStop
+	t.Cleanup(func() {
+		signalNotify = origNotify
+		signalStop = origStop
+	})
+
+	signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+		notifiedCh = c
+		// Do not register with the real signal package during the test.
+	}
+	signalStop = func(c chan<- os.Signal) {
+		stoppedCh = c
+	}
+
+	// Write to a temp file so RunDirect does not touch real stdout, and use a
+	// short timeout so the recording loop exits promptly.
+	tmpfile := path.Join(t.TempDir(), "out.pgr")
+	option := NewRecorderOption()
+	option.Output = tmpfile
+	option.Timeout = 10 * time.Millisecond
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+
+	RunDirect(option)
+
+	if notifiedCh == nil {
+		t.Fatalf("signal.Notify was never called by RunDirect")
+	}
+	if stoppedCh == nil {
+		t.Fatalf("signal.Stop was never called by RunDirect; the SIGINT registration leaks past return")
+	}
+	if notifiedCh != stoppedCh {
+		t.Fatalf("signal.Stop was called with a different channel than signal.Notify; registration not torn down")
 	}
 }

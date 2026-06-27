@@ -50,6 +50,13 @@ type RecorderOption struct {
 	StopCh             chan struct{} // External stop signal (closed to stop recording)
 }
 
+// signalNotify and signalStop wrap the os/signal package functions so that
+// signal registration/teardown can be observed in tests.
+var (
+	signalNotify = signal.Notify
+	signalStop   = signal.Stop
+)
+
 // By default, measurement interval backoff is enabled.
 // Minimum resoluton guaranteed: BACKOFF_RATIO / BACKOFF_THRESH
 const (
@@ -420,7 +427,10 @@ func RunDirect(option *RecorderOption) {
 	backoff_counter := 0
 
 	// cause SIGINT to break loop
-	signal.Notify(sigint_ch, os.Interrupt)
+	signalNotify(sigint_ch, os.Interrupt)
+	// Deregister the handler on return so the channel is not leaked and does
+	// not keep silently consuming signals after RunDirect exits.
+	defer signalStop(sigint_ch)
 
 	for {
 		record.Time = time.Now()
