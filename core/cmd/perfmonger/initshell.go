@@ -110,23 +110,46 @@ _perfmonger() {
 compdef _perfmonger perfmonger
 `
 
+// normalizeShellName maps raw `ps`/SHELL output to a clean shell name. It
+// returns "" for empty or whitespace-only input so that callers can detect a
+// failed detection instead of feeding filepath.Base("") (which yields ".")
+// into the shell-name switch.
+func normalizeShellName(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	return filepath.Base(trimmed)
+}
+
+// errorForShell builds the error returned when the detected shell is not
+// supported. An empty shell name means detection failed, which warrants a
+// clearer message than the generic "unsupported shell" wording.
+func errorForShell(shell string) error {
+	if shell == "" {
+		return fmt.Errorf("could not detect parent shell")
+	}
+	return fmt.Errorf("unsupported shell: %s. Only bash and zsh are supported", shell)
+}
+
 func getParentShell() string {
 	// Try to get parent process shell
 	ppid := os.Getppid()
-	
+
 	// Try ps command to get parent shell
 	cmd := exec.Command("ps", "-p", fmt.Sprintf("%d", ppid), "-o", "comm=")
 	output, err := cmd.Output()
 	if err == nil {
-		shell := strings.TrimSpace(string(output))
-		return filepath.Base(shell)
+		if shell := normalizeShellName(string(output)); shell != "" {
+			return shell
+		}
 	}
-	
+
 	// Fallback: check SHELL environment variable
 	if shell := os.Getenv("SHELL"); shell != "" {
-		return filepath.Base(shell)
+		return normalizeShellName(shell)
 	}
-	
+
 	return ""
 }
 
@@ -156,8 +179,7 @@ func runInitShell(args []string) {
 		}
 		
 	default:
-		fmt.Fprintf(os.Stderr, "Unsupported shell: %s\n", shell)
-		fmt.Fprintln(os.Stderr, "Only bash and zsh are supported")
+		fmt.Fprintln(os.Stderr, errorForShell(shell).Error())
 		os.Exit(1)
 	}
 }
@@ -208,9 +230,9 @@ func (opts *initShellOptions) run() error {
 		}
 		
 	default:
-		return fmt.Errorf("unsupported shell: %s. Only bash and zsh are supported", shell)
+		return errorForShell(shell)
 	}
-	
+
 	return nil
 }
 
