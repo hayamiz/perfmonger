@@ -359,13 +359,42 @@ func (f *fingerprintCommand) createTarball(tmpdir, baseName string) error {
 		return err
 	}
 	defer tarFile.Close()
-	
-	gzipWriter := gzip.NewWriter(tarFile)
-	defer gzipWriter.Close()
-	
+
+	if err := f.writeTarball(tarFile, tmpdir, baseName); err != nil {
+		return err
+	}
+
+	// Explicitly close the file and check the error: a failure to flush the
+	// underlying file (e.g. the disk filled up) would otherwise be silently
+	// dropped by the deferred Close above, leaving a truncated archive.
+	return tarFile.Close()
+}
+
+// writeTarball writes a gzip-compressed tar archive of tmpdir/baseName into out.
+// The gzip and tar writers are closed explicitly, in the correct order
+// (tar -> gzip), before returning so that any error from flushing the final
+// trailers (gzip CRC/size, tar end-of-archive blocks) is propagated instead of
+// being silently discarded.
+func (f *fingerprintCommand) writeTarball(out io.Writer, tmpdir, baseName string) error {
+	gzipWriter := gzip.NewWriter(out)
 	tarWriter := tar.NewWriter(gzipWriter)
-	defer tarWriter.Close()
-	
+
+	if err := f.walkIntoTar(tarWriter, tmpdir, baseName); err != nil {
+		return err
+	}
+
+	// Close tar first (writes end-of-archive blocks), then gzip (writes the
+	// GZIP trailer). Check each error and return on the first failure.
+	if err := tarWriter.Close(); err != nil {
+		return err
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *fingerprintCommand) walkIntoTar(tarWriter *tar.Writer, tmpdir, baseName string) error {
 	// Walk the output directory and add files to the tarball
 	baseDir := filepath.Join(tmpdir, baseName)
 	return filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
