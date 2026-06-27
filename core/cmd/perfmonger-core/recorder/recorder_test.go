@@ -1,12 +1,45 @@
 package recorder
 
 import (
+	"bufio"
+	"encoding/gob"
+	"errors"
 	"os"
 	"path"
 	"strconv"
 	"testing"
 	"time"
+
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
+
+// failingWriter is an io.Writer that always returns an error, simulating a
+// full disk or an otherwise broken output destination.
+type failingWriter struct{}
+
+var errDiskFull = errors.New("simulated disk full")
+
+func (failingWriter) Write(p []byte) (int, error) {
+	return 0, errDiskFull
+}
+
+// TestEncodeAndFlushPropagatesFlushError is a regression test for the bug where
+// the recording loop ignored the error returned by out.Flush(). When the
+// underlying writer fails (e.g. a full disk), encodeAndFlush must surface the
+// error so the loop can break and the process can exit non-zero, instead of
+// silently dropping data.
+func TestEncodeAndFlushPropagatesFlushError(t *testing.T) {
+	// A small bufio buffer ensures the encoded record is held in the buffer and
+	// only forced out to the failing writer on Flush.
+	out := bufio.NewWriter(failingWriter{})
+	enc := gob.NewEncoder(out)
+	record := ss.NewStatRecord()
+	record.Time = time.Now()
+
+	if err := encodeAndFlush(enc, out, record); err == nil {
+		t.Fatalf("encodeAndFlush returned nil error when the underlying writer failed; the flush error was swallowed")
+	}
+}
 
 // TestWriteSessionFileSuccess verifies that WriteSessionFile writes the current
 // PID under a writable TMPDIR and returns the session file path with no error.

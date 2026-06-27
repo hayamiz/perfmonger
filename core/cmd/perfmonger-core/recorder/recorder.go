@@ -263,6 +263,18 @@ func RemoveSessionFile() {
 	}
 }
 
+// encodeAndFlush encodes a single record and flushes the buffered writer,
+// returning the first error encountered. Propagating the Flush error is
+// important: on a full disk (or a broken output file descriptor) the buffered
+// data never reaches durable storage, and callers must stop recording instead
+// of silently continuing to encode into a failed writer.
+func encodeAndFlush(enc *gob.Encoder, out *bufio.Writer, record *ss.StatRecord) error {
+	if err := enc.Encode(record); err != nil {
+		return err
+	}
+	return out.Flush()
+}
+
 func Run(args []string) {
 	option := NewRecorderOption()
 	
@@ -451,11 +463,13 @@ func RunDirect(option *RecorderOption) {
 			ss.ReadMemStat(record)
 		}
 
-		err = enc.Encode(record)
+		// Encode the record and flush it to durable storage. If either the
+		// encode or the flush fails (e.g. the disk is full), stop recording so
+		// the process exits non-zero instead of silently dropping data.
+		err = encodeAndFlush(enc, out, record)
 		if err != nil {
 			break
 		}
-		out.Flush()
 
 		if !running {
 			break
@@ -504,7 +518,16 @@ func RunDirect(option *RecorderOption) {
 		}
 	}
 
-	out.Flush()
+	// If the loop exited because of a write/flush failure, the output is
+	// already truncated or corrupted. Propagate the failure so the process
+	// exits non-zero instead of reporting success on an unusable file.
+	if err != nil {
+		panic(err)
+	}
+
+	if flushErr := out.Flush(); flushErr != nil {
+		panic(flushErr)
+	}
 
 	if player_stdin != nil {
 		player_stdin.Close()
