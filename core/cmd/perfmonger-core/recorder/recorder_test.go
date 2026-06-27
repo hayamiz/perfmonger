@@ -182,6 +182,67 @@ func TestWriteSessionFileLockFailureDoesNotWritePID(t *testing.T) {
 	}
 }
 
+// closeTrackingWriteCloser is an io.WriteCloser that records whether Close was
+// called. It stands in for the player process's stdin pipe so tests can assert
+// the pipe is released on error paths.
+type closeTrackingWriteCloser struct {
+	closed bool
+}
+
+func (c *closeTrackingWriteCloser) Write(p []byte) (int, error) { return len(p), nil }
+
+func (c *closeTrackingWriteCloser) Close() error {
+	c.closed = true
+	return nil
+}
+
+// fakePlayerPipeSource implements playerPipeSource so setupPlayerPipes can be
+// exercised without spawning a real subprocess. StdoutPipe can be made to fail
+// to reproduce the fd-leak error path.
+type fakePlayerPipeSource struct {
+	stdin           *closeTrackingWriteCloser
+	stdoutPipeError error
+}
+
+func (f *fakePlayerPipeSource) StdinPipe() (io.WriteCloser, error) {
+	return f.stdin, nil
+}
+
+func (f *fakePlayerPipeSource) StdoutPipe() (io.ReadCloser, error) {
+	if f.stdoutPipeError != nil {
+		return nil, f.stdoutPipeError
+	}
+	return io.NopCloser(bytes.NewReader(nil)), nil
+}
+
+// TestSetupPlayerPipesClosesStdinWhenStdoutPipeFails is a regression test for the
+// bug where, when StdoutPipe() fails during recorder setup, the already-acquired
+// stdin pipe was set to nil without being closed, leaking the underlying write-end
+// pipe file descriptor. setupPlayerPipes must call Close on the stdin pipe before
+// abandoning it on the StdoutPipe failure path.
+func TestSetupPlayerPipesClosesStdinWhenStdoutPipeFails(t *testing.T) {
+	stdin := &closeTrackingWriteCloser{}
+	src := &fakePlayerPipeSource{
+		stdin:           stdin,
+		stdoutPipeError: errors.New("simulated StdoutPipe failure"),
+	}
+
+	gotStdin, gotStdout, err := setupPlayerPipes(src)
+
+	if err == nil {
+		t.Fatalf("setupPlayerPipes returned nil error when StdoutPipe failed")
+	}
+	if gotStdin != nil {
+		t.Fatalf("setupPlayerPipes returned a non-nil stdin on the failure path; want nil")
+	}
+	if gotStdout != nil {
+		t.Fatalf("setupPlayerPipes returned a non-nil stdout on the failure path; want nil")
+	}
+	if !stdin.closed {
+		t.Fatalf("stdin pipe was not closed when StdoutPipe failed; the pipe fd is leaked")
+	}
+}
+
 // TestRunDirectStopsSignalNotify is a regression test for the bug where
 // RunDirect called signal.Notify on a fresh channel but never paired it with
 // signal.Stop, leaking the registration past the function's return. The test

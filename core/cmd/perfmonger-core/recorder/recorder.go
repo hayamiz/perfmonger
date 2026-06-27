@@ -310,6 +310,51 @@ func newGzipBufWriter(file io.Writer) (out *bufio.Writer, cleanup func()) {
 	return out, cleanup
 }
 
+// playerPipeSource abstracts the parts of *exec.Cmd used while wiring up the
+// player subprocess's pipes. It exists so the pipe-setup logic can be exercised
+// in tests without spawning a real subprocess.
+type playerPipeSource interface {
+	StdinPipe() (io.WriteCloser, error)
+	StdoutPipe() (io.ReadCloser, error)
+}
+
+// execCmdPipeSource adapts *exec.Cmd to the playerPipeSource interface, since
+// exec.Cmd's pipe methods return concrete *os.File types rather than the io
+// interface types.
+type execCmdPipeSource struct {
+	cmd *exec.Cmd
+}
+
+func (e execCmdPipeSource) StdinPipe() (io.WriteCloser, error) {
+	return e.cmd.StdinPipe()
+}
+
+func (e execCmdPipeSource) StdoutPipe() (io.ReadCloser, error) {
+	return e.cmd.StdoutPipe()
+}
+
+// setupPlayerPipes acquires the player subprocess's stdin and stdout pipes. On
+// any failure it returns (nil, nil, err) after releasing pipes already acquired,
+// so the caller can fall back without leaking file descriptors. In particular,
+// if StdoutPipe() fails after StdinPipe() succeeded, the stdin pipe is closed
+// before being abandoned.
+func setupPlayerPipes(cmd playerPipeSource) (io.WriteCloser, io.ReadCloser, error) {
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		// Release the already-acquired stdin pipe before abandoning it,
+		// otherwise its write-end fd is leaked for the process lifetime.
+		stdin.Close()
+		return nil, nil, err
+	}
+
+	return stdin, stdout, nil
+}
+
 func Run(args []string) {
 	option := NewRecorderOption()
 	
@@ -367,20 +412,12 @@ func RunDirect(option *RecorderOption) {
 			playerArgs = append(playerArgs, "--pretty")
 		}
 		player_cmd = exec.Command(option.PlayerBin, playerArgs...)
-		player_stdin, err = player_cmd.StdinPipe()
+		player_stdin, player_stdout, err = setupPlayerPipes(execCmdPipeSource{cmd: player_cmd})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get stdin of %s\n", option.PlayerBin)
+			fmt.Fprintf(os.Stderr, "Failed to set up pipes of %s\n", option.PlayerBin)
 			player_cmd = nil
 			player_stdin = nil
-		}
-		if player_cmd != nil {
-			player_stdout, err = player_cmd.StdoutPipe()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get stdout of %s\n", option.PlayerBin)
-				player_cmd = nil
-				player_stdin = nil
-				player_stdout = nil
-			}
+			player_stdout = nil
 		}
 
 		if player_cmd != nil {
