@@ -209,22 +209,35 @@ func SessionFilePath() string {
 
 // WriteSessionFile atomically writes the current PID to the session file
 // under flock protection. Returns the session file path for deferred cleanup.
-func WriteSessionFile() string {
+// If the lock cannot be acquired, it returns an error and does not write the
+// PID file, so that mutual exclusion is never silently lost.
+func WriteSessionFile() (string, error) {
 	sf := SessionFilePath()
 	lockfile := path.Join(os.TempDir(), ".perfmonger.lock")
 
 	if _, err := os.Stat(lockfile); err != nil {
 		ioutil.WriteFile(lockfile, []byte(""), 0644)
 	}
-	fd, _ := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
-	syscall.Flock(fd, syscall.LOCK_EX)
+	fd, err := syscall.Open(lockfile, syscall.O_RDONLY, 0000)
+	if err != nil {
+		return "", fmt.Errorf("failed to open lock file %s: %w", lockfile, err)
+	}
+	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
+		syscall.Close(fd)
+		return "", fmt.Errorf("failed to acquire lock on %s: %w", lockfile, err)
+	}
 
 	ioutil.WriteFile(sf, []byte(strconv.Itoa(os.Getpid())), 0644)
 
-	syscall.Flock(fd, syscall.LOCK_UN)
-	syscall.Close(fd)
+	if err := syscall.Flock(fd, syscall.LOCK_UN); err != nil {
+		syscall.Close(fd)
+		return "", fmt.Errorf("failed to release lock on %s: %w", lockfile, err)
+	}
+	if err := syscall.Close(fd); err != nil {
+		return "", fmt.Errorf("failed to close lock file %s: %w", lockfile, err)
+	}
 
-	return sf
+	return sf, nil
 }
 
 // RemoveSessionFile removes the session PID file under flock protection.
@@ -259,7 +272,9 @@ func RunDirect(option *RecorderOption) {
 	// The CLI layer handles duplicate-session detection before launching;
 	// here we just write and clean up the PID file.
 	if option.Background {
-		WriteSessionFile()
+		if _, err := WriteSessionFile(); err != nil {
+			panic(err)
+		}
 		defer RemoveSessionFile()
 	}
 
