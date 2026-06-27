@@ -128,22 +128,38 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 		return err
 	}
 
-	// loop until last line
+	// loop until last line.
+	//
+	// lst_records is a two-element ping-pong buffer; each successful decode
+	// lands in lst_records[idx] and then idx flips, so the slot opposite to
+	// idx holds the most recently decoded record. The buffer is left
+	// un-seeded: gob.Decode reuses (rather than fully overwrites) maps and
+	// slices in the destination, so pre-populating a slot would let stale
+	// fields from an earlier record leak into a later one. To still handle a
+	// single-record log, track whether the loop decoded anything and fall
+	// back to fst_record when it did not.
 	var lst_records [2]ss.StatRecord
 	idx := 0
+	decoded := false
 	for {
 		err = dec.Decode(&lst_records[idx])
 		if err == io.EOF {
-			idx ^= 1
 			break
 		} else if err != nil {
 			return err
 		}
 
+		decoded = true
 		idx ^= 1
 	}
 
-	lst_record := lst_records[idx]
+	// For a multi-record log the last decoded record lives in the slot
+	// opposite to idx. For a one-record log nothing was decoded here, so the
+	// last record is the first record itself.
+	lst_record := fst_record
+	if decoded {
+		lst_record = lst_records[idx^1]
+	}
 
 	var cpu_usage *ss.CpuUsage = nil
 	var intr_usage *ss.InterruptUsage = nil
