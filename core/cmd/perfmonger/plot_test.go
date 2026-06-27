@@ -6,6 +6,54 @@ import (
 	"testing"
 )
 
+// TestSaveGpfiles_PropagatesWriteError verifies that when a destination file
+// cannot be written (e.g. the output directory is read-only), saveGpfiles
+// returns a non-nil error instead of silently swallowing the failure.
+func TestSaveGpfiles_PropagatesWriteError(t *testing.T) {
+	srcDir := t.TempDir()
+	dstDir := t.TempDir()
+
+	name := "disk.dat"
+	if err := os.WriteFile(filepath.Join(srcDir, name), []byte("data"), 0644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	// Make the destination directory read-only so os.WriteFile fails.
+	if err := os.Chmod(dstDir, 0500); err != nil {
+		t.Fatalf("setup chmod: %v", err)
+	}
+	defer os.Chmod(dstDir, 0700)
+
+	err := saveGpfiles(srcDir, dstDir, []string{name})
+	if err == nil {
+		t.Fatalf("expected error when writing to read-only directory, got nil")
+	}
+}
+
+// TestSaveGpfiles_Success verifies that existing source files are copied to the
+// destination and missing files are skipped without error.
+func TestSaveGpfiles_Success(t *testing.T) {
+	srcDir := t.TempDir()
+	dstDir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(srcDir, "disk.dat"), []byte("hello"), 0644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	// "missing.dat" intentionally does not exist; it must be skipped silently.
+	if err := saveGpfiles(srcDir, dstDir, []string{"disk.dat", "missing.dat"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dstDir, "disk.dat"))
+	if err != nil {
+		t.Fatalf("expected copied file: %v", err)
+	}
+	if string(got) != "hello" {
+		t.Fatalf("copied content mismatch: got %q", string(got))
+	}
+}
+
 // TestCheckPdfCairoSupported_NoShellInjection verifies that a malicious
 // GnuplotBin value containing shell metacharacters is NOT executed via a
 // shell. If the value were interpolated into a shell command string, the

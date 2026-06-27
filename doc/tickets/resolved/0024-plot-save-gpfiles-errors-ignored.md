@@ -2,7 +2,7 @@
 title: Errors from os.ReadFile and os.WriteFile silently discarded when saving gnuplot files
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -39,3 +39,27 @@ a clear message identifying the file that could not be saved.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: os.ReadFile/os.WriteFile errors in SaveGpfiles are discarded. Fix: check both returns and propagate with context, exit non-zero. Unambiguous.
+
+## Resolution
+
+The inline save block in `generatePlots` (`core/cmd/perfmonger/plot.go`) was
+extracted into a new testable helper `saveGpfiles(srcDir, dstDir string, names []string) error`.
+
+Both error returns are now checked and propagated with context:
+
+- `os.ReadFile` errors are wrapped as `failed to read %q for saving: %w`.
+- `os.WriteFile` errors are wrapped as `failed to save %q: %w`.
+
+Source files that were never generated are skipped via the existing `os.Stat`
+check (this is intentional, not an error). Any propagated error flows up through
+`generatePlots` and the plot command, causing a non-zero exit with a clear
+message identifying the failing file.
+
+Tests added (TDD) in `core/cmd/perfmonger/plot_test.go`:
+
+- `TestSaveGpfiles_PropagatesWriteError` — read-only destination directory makes
+  `os.WriteFile` fail; asserts a non-nil error is returned.
+- `TestSaveGpfiles_Success` — existing source files are copied and missing files
+  are skipped without error.
+
+Verification: `go test -count=1 ./cmd/perfmonger/` passes; binary builds.

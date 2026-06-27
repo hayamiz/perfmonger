@@ -307,16 +307,35 @@ func generatePlots(cmd *plotCommand, tmpDir string, meta *plotformatter.PlotMeta
 
 	// Copy data/gp files if --save
 	if cmd.SaveGpfiles {
-		for _, name := range []string{"disk.dat", "cpu.dat", "mem.dat", "disk-iops.gp", "disk-transfer.gp", "cpu.gp", "allcpu.gp"} {
-			src := filepath.Join(tmpDir, name)
-			if _, err := os.Stat(src); err == nil {
-				dst := filepath.Join(cmd.OutputDir, name)
-				data, _ := os.ReadFile(src)
-				os.WriteFile(dst, data, 0644)
-			}
+		names := []string{"disk.dat", "cpu.dat", "mem.dat", "disk-iops.gp", "disk-transfer.gp", "cpu.gp", "allcpu.gp"}
+		if err := saveGpfiles(tmpDir, cmd.OutputDir, names); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// saveGpfiles copies the named files from srcDir to dstDir. Files that do not
+// exist in srcDir are skipped silently (some plots may not have been
+// generated). Any read or write error is propagated with context identifying
+// the file that could not be saved.
+func saveGpfiles(srcDir, dstDir string, names []string) error {
+	for _, name := range names {
+		src := filepath.Join(srcDir, name)
+		if _, err := os.Stat(src); err != nil {
+			// Source file was not generated; skip it.
+			continue
+		}
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return fmt.Errorf("failed to read %q for saving: %w", src, err)
+		}
+		dst := filepath.Join(dstDir, name)
+		if err := os.WriteFile(dst, data, 0644); err != nil {
+			return fmt.Errorf("failed to save %q: %w", dst, err)
+		}
+	}
 	return nil
 }
 
