@@ -3,8 +3,39 @@ package perfmonger
 import (
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
+
+func TestParseNetStatShortLine(t *testing.T) {
+	// /proc/net/dev-like input containing an empty line and a line
+	// shorter than 7 bytes, which must not crash the parser.
+	input := "Inter-|   Receive                                                |  Transmit\n" +
+		" face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n" +
+		"\n" +
+		"abc\n" +
+		"    lo:  1000      10    0    0    0     0          0         0     1000      10    0    0    0     0       0          0\n"
+
+	record := NewStatRecord()
+	err := parseNetStat(record, strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("parseNetStat should not return an error on short lines: %v", err)
+	}
+	if record.Net == nil {
+		t.Fatal("record.Net should not be nil")
+	}
+
+	lo_found := false
+	for _, entry := range record.Net.Entries {
+		if entry.Name == "lo" {
+			lo_found = true
+			break
+		}
+	}
+	if !lo_found {
+		t.Error("Valid device 'lo' should still be parsed despite short lines.")
+	}
+}
 
 func TestReadDiskStat(t *testing.T) {
 	var err error

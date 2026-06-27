@@ -379,17 +379,25 @@ func ReadNetStat(record *StatRecord) error {
 		return errors.New("Valid *StatRecord is required.")
 	}
 
-	net_stat := NewNetStat()
-
 	f, err := os.Open("/proc/net/dev")
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	scanner := bufio.NewScanner(f)
+
+	return parseNetStat(record, f)
+}
+
+func parseNetStat(record *StatRecord, r io.Reader) error {
+	net_stat := NewNetStat()
+
+	scanner := bufio.NewScanner(r)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		if len(line) < 7 {
+			continue
+		}
 		switch {
 		case line[0:7] == "Inter-|":
 			continue
