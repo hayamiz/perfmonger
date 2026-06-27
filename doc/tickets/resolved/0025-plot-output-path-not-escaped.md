@@ -2,7 +2,7 @@
 title: Gnuplot output path embedded in script without escaping, breaking on special characters
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -36,3 +36,23 @@ all four plot-generating functions.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: Output paths are embedded into gnuplot scripts via %s without escaping. Fix: a helper that escapes double-quotes/backslashes per gnuplot C-string rules, applied uniformly at all embed sites.
+
+## Resolution
+
+Resolved via strict TDD.
+
+- Added `escapeGnuplotString` to `core/cmd/perfmonger/plot.go`, which escapes
+  backslashes (first) and double-quotes per gnuplot C-style double-quoted string
+  rules.
+- Applied the helper at every site that embeds the output path into a gnuplot
+  script: `generateDiskIOPSPlot`, `generateDiskTransferPlot`, `generateCPUPlot`
+  (all `set output "%s"`), and `generateAllCPUPlot` (the `fmt.Fprintf(&sb, "set
+  output \"%s\"\n", ...)` line).
+- Tests added in `core/cmd/perfmonger/plot_test.go`:
+  - `TestEscapeGnuplotString` — table-driven, covers plain paths, double-quote,
+    backslash, Windows-style path, and combined quote+backslash.
+  - `TestGenerateDiskIOPSPlot_EscapesOutputPath` — asserts a path containing a
+    double-quote is escaped.
+
+Verification: `go test -count=1 ./cmd/perfmonger/` passes; `go build` of the
+unified binary succeeds. Scope limited to gnuplot output-path escaping only.

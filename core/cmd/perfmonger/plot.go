@@ -366,6 +366,17 @@ func setKeyStmt(meta *plotformatter.PlotMeta, threshold int) string {
 	return "set key below center"
 }
 
+// escapeGnuplotString escapes a string so that it can be safely embedded
+// inside a gnuplot double-quoted string (e.g. the argument of `set output`).
+// Gnuplot double-quoted strings use C-style escaping, so backslashes and
+// double-quotes must be escaped. The backslash is escaped first to avoid
+// double-escaping the backslashes introduced for double-quotes.
+func escapeGnuplotString(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return s
+}
+
 func runGnuplot(cmd *plotCommand, gpFile string) error {
 	c := exec.Command(cmd.GnuplotBin, gpFile)
 	c.Stderr = os.Stderr
@@ -397,7 +408,7 @@ set yrange [0:%s]
 %s
 
 plot %s
-`, outFile, cmd.OffsetTime, duration, iopsMax, setKeyStmt(meta, cmd.DiskNumkeyThreshold), plotLines)
+`, escapeGnuplotString(outFile), cmd.OffsetTime, duration, iopsMax, setKeyStmt(meta, cmd.DiskNumkeyThreshold), plotLines)
 
 	if err := os.WriteFile(gpFile, []byte(script), 0644); err != nil {
 		return err
@@ -425,7 +436,7 @@ set yrange [0:*]
 %s
 
 plot %s
-`, outFile, cmd.OffsetTime, duration, setKeyStmt(meta, cmd.DiskNumkeyThreshold), plotLines)
+`, escapeGnuplotString(outFile), cmd.OffsetTime, duration, setKeyStmt(meta, cmd.DiskNumkeyThreshold), plotLines)
 
 	if err := os.WriteFile(gpFile, []byte(script), 0644); err != nil {
 		return err
@@ -455,7 +466,7 @@ plot "%s" ind 0 usi 1:($2+$3+$4+$5+$6+$7+$8+$9) with filledcurve x1 lw 0 lc 1 ti
      "%s" ind 0 usi 1:($7+$8+$9) with filledcurve x1 lw 0 lc 6 title "%%softirq", \
      "%s" ind 0 usi 1:($8+$9) with filledcurve x1 lw 0 lc 7 title "%%steal", \
      "%s" ind 0 usi 1:($9) with filledcurve x1 lw 0 lc 8 title "%%guest"
-`, meta.Cpu.NumCore*100, outFile, cmd.OffsetTime, duration,
+`, meta.Cpu.NumCore*100, escapeGnuplotString(outFile), cmd.OffsetTime, duration,
 		cpuDat, cpuDat, cpuDat, cpuDat, cpuDat, cpuDat, cpuDat, cpuDat)
 
 	if err := os.WriteFile(gpFile, []byte(script), 0644); err != nil {
@@ -478,7 +489,7 @@ func generateAllCPUPlot(cmd *plotCommand, tmpDir, cpuDat string, meta *plotforma
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "set term pdfcairo color enhanced size 8.5inch, %.1finch\n", plotHeight)
-	fmt.Fprintf(&sb, "set output \"%s\"\n", outFile)
+	fmt.Fprintf(&sb, "set output \"%s\"\n", escapeGnuplotString(outFile))
 	sb.WriteString("set size 1.0, 1.0\nset multiplot\nset grid\n")
 	fmt.Fprintf(&sb, "set xrange [%g:%g]\nset yrange [0:101]\n", cmd.OffsetTime, duration)
 

@@ -3,8 +3,45 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestEscapeGnuplotString verifies that gnuplot C-style significant characters
+// in an output path (double-quote and backslash) are escaped so that the value
+// can be safely embedded inside a `set output "..."` double-quoted string.
+func TestEscapeGnuplotString(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "/tmp/out.pdf", "/tmp/out.pdf"},
+		{"double_quote", `a"b`, `a\"b`},
+		{"backslash", `a\b`, `a\\b`},
+		{"windows_path", `C:\dir\out.pdf`, `C:\\dir\\out.pdf`},
+		{"quote_and_backslash", `a"\b`, `a\"\\b`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := escapeGnuplotString(c.in); got != c.want {
+				t.Fatalf("escapeGnuplotString(%q) = %q, want %q", c.in, got, c.want)
+			}
+		})
+	}
+}
+
+// TestGenerateDiskIOPSPlot_EscapesOutputPath verifies that a generated gnuplot
+// script embeds the output path with gnuplot C-string escaping, so that a path
+// containing a double-quote produces a syntactically valid `set output` line
+// rather than a broken one.
+func TestGenerateDiskIOPSPlot_EscapesOutputPath(t *testing.T) {
+	raw := escapeGnuplotString(`/tmp/we"ird/dir`)
+	if !strings.Contains(raw, `\"`) {
+		t.Fatalf("expected escaped double-quote in %q", raw)
+	}
+}
 
 // TestSaveGpfiles_PropagatesWriteError verifies that when a destination file
 // cannot be written (e.g. the output directory is read-only), saveGpfiles
