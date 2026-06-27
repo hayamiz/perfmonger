@@ -2,7 +2,7 @@
 title: fingerprint runCommand always returns nil error, silently discarding command failures
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -36,3 +36,27 @@ continue past non-critical failures.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: runCommand returns nil error in both branches, dropping command failures (fdisk/lsblk). Fix: append the error to f.errors and/or return it, preserving the non-fatal semantics. Straightforward.
+
+## Resolution
+
+Changed `runCommand` in `core/cmd/perfmonger/fingerprint.go` so that when the
+underlying command fails, the error is wrapped (`command %q failed: %v`),
+appended to `f.errors`, and returned to the caller. Previously both branches
+returned `(output, nil)`, silently discarding failures.
+
+The non-fatal "continue collecting" semantics are preserved: callers use
+`if output, _ := f.runCommand(...); len(output) > 0` and still proceed past a
+failure, but the recorded error now makes `doWithMessage` report "failed" for
+that step (instead of a misleading "done") and surfaces the failure in the
+overall run.
+
+Regression test added in `core/cmd/perfmonger/fingerprint_test.go`:
+- `TestRunCommandRecordsErrorOnFailure` runs a non-existent command and asserts
+  a non-nil error is returned and recorded in `f.errors` (this failed before the
+  fix).
+- `TestRunCommandSucceeds` asserts a successful command returns no error and
+  leaves `f.errors` empty.
+
+Verification (Go env sourced): `go test -cover ./...` in
+`core/internal/perfmonger` passes (54.4% coverage); the `cmd/perfmonger`
+package tests pass; `go vet` is clean (exit 0); binary rebuilt successfully.

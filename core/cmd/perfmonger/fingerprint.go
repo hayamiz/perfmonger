@@ -136,8 +136,11 @@ func (f *fingerprintCommand) saveFile(filename string, content []byte) {
 func (f *fingerprintCommand) runCommand(cmd string, args ...string) ([]byte, error) {
 	output, err := exec.Command(cmd, args...).CombinedOutput()
 	if err != nil {
-		// Don't treat command errors as fatal, just log them
-		return output, nil
+		// Don't treat command errors as fatal: record them so the failure is
+		// reported by doWithMessage, but allow the overall run to continue.
+		cmdErr := fmt.Errorf("command %q failed: %v", cmd, err)
+		f.errors = append(f.errors, cmdErr)
+		return output, cmdErr
 	}
 	return output, nil
 }
