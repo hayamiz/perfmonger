@@ -4,7 +4,7 @@ type: feature
 priority: medium
 status: open
 created: 2026-04-20
-updated: 2026-04-20
+updated: 2026-06-27
 ---
 
 ## Description
@@ -305,3 +305,22 @@ must reuse the same policy code. A follow-up ticket should track this.
   out-of-scope above.
 - **Should `--aggregate` be persisted into the .pgr?** No — it's a
   playback-time question. Only the raw topology goes into the file.
+
+## Triage
+
+- Complexity: high
+- Mechanical fix: no
+- Requires user decision: yes
+- Notes: Requires designing topology-aware device detection across sysfs (MD RAID, device-mapper, partitions) and refactoring GetDiskUsage1 to use a pluggable aggregation policy. The ticket provides an extensive design that needs validation (CanonicalLeaves algorithm, partition edge cases) and integration testing.
+
+## Implementation Notes
+
+The ticket already contains a comprehensive design; the work is to validate/refine it.
+
+- Data model (perfmonger.go): extend LinuxDevice with Kind/Parent/Slaves/Holders/MDLevel/DMName/SizeSect; add TopologyVer to LinuxHeader for forward-compat (gob tolerates additive fields). Decision: promote partitions into the Devices map or keep separate.
+- Topology discovery (perfmonger_linux.go): new buildTopology() detecting device kind via sysfs (md/level → MD RAID, dm/uuid → DM, loop/backing_file or loopN → loop, bcache/ → bcache, device/ → physical), reading slaves/; inject a configurable sysfs root for testability; handle missing files gracefully.
+- Aggregation (usage.go): add CanonicalLeaves(header) computing a non-overlapping device set (leaves with no slaves, excluding partitions whose parent is a leaf); returns nil when TopologyVer==0. Add GetDiskUsage1WithPolicy(totalSet) to filter which devices feed `total`; keep GetDiskUsage1 unchanged for per-entry output.
+- Summarizer: add --aggregate flag (leaves default for TopologyVer>=1, plus physical/top/all/selected); when TopologyVer==0 force `all` and warn on stderr that total may double-count.
+- Backward-compat: old .pgr decodes TopologyVer=0 (force all + warn); new .pgr → old binary ignores unknown fields.
+- Testing: unit tests for buildTopology over a synthetic /sys/block tree (MD/LVM/partitions/bcache), CanonicalLeaves over synthetic headers, GetDiskUsage1WithPolicy; pytest integration with a golden .pgr in spec/data/.
+- Open questions for the user: document partition exclusion from total; measure sysfs-read cost on large systems; treat multipath as generic DM or add a dedicated kind (design says defer).

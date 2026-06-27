@@ -4,7 +4,7 @@ type: feature
 priority: medium
 status: open
 created: 2026-04-20
-updated: 2026-04-20
+updated: 2026-06-27
 ---
 
 ## Description
@@ -190,3 +190,20 @@ triage) covering:
 
 No code changes in this ticket — design only. Implementation follows
 in a separate ticket once the shape is agreed.
+
+## Triage
+
+- Complexity: medium
+- Mechanical fix: no
+- Requires user decision: yes
+- Notes: Design-phase ticket: decide storage shape (extend headers vs new optional record) and content tiers (which metadata is valuable and cheap enough to collect) before coding.
+
+## Implementation Notes
+
+Storage (Axis A): Option A.1 (recommended) — extend CommonHeader/LinuxHeader and add CommonHeader.SchemaVersion (0=old) to gate new fields; gob handles schema evolution. Option A.2 — a separate optional SystemMetadata record (cleaner separation, needs frame parsing); defer to v2.
+
+Content (Axis B): Tier 1 always (kernel version, os-release ID/VERSION_ID/PRETTY_NAME, CPU model, logical/physical core counts, MemTotal, GOARCH, perfmonger version, clocksource, btime, hostname, timezone — all file reads, <5ms). Tier 2 if already walking /sys/block (per-device vendor/model/size/rotational/scheduler; per-NIC driver/vendor). Tier 3 opt-in/deferred (lscpu/dmidecode, full cpuinfo, container/virt detection, NUMA). Tier 4 out of scope (raw /proc/interrupts, mdstat, mounts — keep in fingerprint).
+
+Implementation: new sysinfo.go with CollectSystemInfo() (each read non-fatal, returns "" on ENOENT); call it from NewPlatformHeader and set SchemaVersion=1 in the recorder. Add a SystemInfo struct (and BlockDeviceInfo/NICInfo). play emits a system_info JSON block; summary prints a header line; optional --show-metadata. Backward-compat via gob zero-values both directions.
+
+Questions for the user: A.1 vs A.2; add --no-sysinfo opt-out; always-show vs opt-in display; all devices vs only -d-selected; measure startup cost and defer if >5ms.

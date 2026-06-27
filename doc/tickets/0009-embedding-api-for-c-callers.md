@@ -4,7 +4,7 @@ type: feature
 priority: medium
 status: open
 created: 2026-04-20
-updated: 2026-04-20
+updated: 2026-06-27
 ---
 
 ## Description
@@ -117,3 +117,27 @@ A written recommendation (posted back into this ticket as
 
 No code changes in this ticket — design only. A follow-up ticket (or
 tickets) should carry the implementation once the shape is agreed.
+
+## Triage
+
+- Complexity: high
+- Mechanical fix: no
+- Requires user decision: yes
+- Notes: This is a design-phase ticket requesting a written recommendation (CLI interface spec for C callers), not code. Multiple candidate mechanisms exist (ready-fd, stop-on-fd-close, session-id, metadata, structured errors) with different trade-offs; scope hinges on the user's chosen subset.
+
+## Implementation Notes
+
+Recommended v1 subset for safe C embedding:
+
+- --ready-fd=N: write JSON {"event":"started","pid":..,"output":..} before the first sample so the caller knows recording is armed.
+- --stop-when-fd-closes=N (or stdin EOF): caller closes the pipe to stop cleanly; more robust than SIGTERM and automatic on caller crash.
+- Caller-supplied output path (-l) already exists; document and stabilize the contract.
+- Concurrent-session support: skip session-file locking in foreground mode; optionally namespace background sessions via --session-id=<str>.
+- Deterministic flush/exit: document that final sample is flushed, gzip trailer written, fsync before exit.
+- Exit-code contract: 0 success / 1 setup error / 2 collection error / 3 user stop.
+
+Deferrable to v2+: --meta key=value (or --meta-fd) metadata injection; structured JSON errors on stderr; long-running record-server over a UNIX socket (only if startup latency proves a bottleneck — measure first); a cgo library surface (much larger scope).
+
+Skeleton: add flags in record.go (--ready-fd/--stop-when-fd-closes/--session-id); extend RecorderOption with ReadyFd/StopWhenFdCloses/SessionId; in RunDirect write the ready JSON before the loop and spawn a goroutine watching the stop fd; refactor session-file logic to honor --session-id. New tests/test_embedding.py with a pipe fixture.
+
+Questions for the user: is ready-signal + stop-on-fd-close enough for v1, or are metadata/concurrent-session must-haves; auto-detect pipe vs require explicit flags; defer metadata or include --meta now; can tests rely on pytest + mock-pipe fixtures or is a C integration test required.
