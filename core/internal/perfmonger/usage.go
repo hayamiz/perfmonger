@@ -237,6 +237,9 @@ func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *Interr
 		core_sys_count := 0
 
 		for idx, istat_entry1 := range i1.Entries {
+			if idx >= len(i2.Entries) {
+				return nil, errors.New("Intr stat format changed")
+			}
 			istat_entry2 := i2.Entries[idx]
 
 			if istat_entry1.IrqNo != istat_entry2.IrqNo ||

@@ -2,7 +2,7 @@
 title: GetInterruptUsage panics when i2.Entries is shorter than i1.Entries
 type: bug
 priority: high
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -34,3 +34,22 @@ Suggested direction: before the loop, verify the two slices have matching length
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: The loop over i1.Entries indexes i2.Entries[idx] without a bounds check, panicking when i2 is shorter. Fix: add `if idx >= len(i2.Entries) { return nil, error }` alongside the existing IrqNo/IrqType validation. Clear-cut.
+
+## Resolution
+
+Added a bounds check at the start of the loop over `i1.Entries` in
+`GetInterruptUsage` (`core/internal/perfmonger/usage.go`): when
+`idx >= len(i2.Entries)`, the function now returns an
+`"Intr stat format changed"` error instead of indexing past the end of
+`i2.Entries`. This treats a shortened IRQ table the same way as the existing
+`IrqNo`/`IrqType` mismatch check.
+
+Test added: `TestGetInterruptUsageMismatchedEntries` in
+`core/internal/perfmonger/usage_test.go` constructs `i1` with 2 entries and
+`i2` with 1 entry (NumCore=1) and asserts that `GetInterruptUsage` returns a
+non-nil error rather than panicking. Before the fix the test panicked with
+`index out of range [1] with length 1` at `usage.go:240`; after the fix it
+passes.
+
+Verification (all passed): `go test -count=1 ./...`, `go vet`, and
+`go build` of the `perfmonger` binary.

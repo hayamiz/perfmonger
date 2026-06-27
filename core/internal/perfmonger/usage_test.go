@@ -262,6 +262,42 @@ func TestGetInterruptUsageEmptyEntries(t *testing.T) {
 	}
 }
 
+func TestGetInterruptUsageMismatchedEntries(t *testing.T) {
+	t1, perr := time.Parse(time.RFC3339, "2012-01-23T01:23:45+09:00")
+	if perr != nil {
+		t.Fatal("Timestamp parse error")
+	}
+	t2 := t1.Add(time.Second)
+
+	// If the IRQ table changes between the two samples (e.g. a device was
+	// added or removed), i2.Entries may be shorter than i1.Entries. The loop
+	// over i1.Entries reads i2.Entries[idx] and must not panic with
+	// "index out of range"; it must return an error instead.
+	num_core := 1
+
+	mkEntry := func(irq_no int) *InterruptStatEntry {
+		e := new(InterruptStatEntry)
+		e.IrqNo = irq_no
+		e.NumCore = num_core
+		e.IntrCounts = make([]int, num_core)
+		return e
+	}
+
+	i1 := NewInterruptStat()
+	i1.Entries = append(i1.Entries, mkEntry(0))
+	i1.Entries = append(i1.Entries, mkEntry(1))
+	i1.NumEntries = 2
+
+	i2 := NewInterruptStat()
+	i2.Entries = append(i2.Entries, mkEntry(0))
+	i2.NumEntries = 1
+
+	_, err := GetInterruptUsage(t1, i1, t2, i2)
+	if err == nil {
+		t.Error("err == nil, want non-nil error for mismatched Entries length")
+	}
+}
+
 func TestDiskUsage(t *testing.T) {
 	d1 := NewDiskStat()
 	d2 := NewDiskStat()
