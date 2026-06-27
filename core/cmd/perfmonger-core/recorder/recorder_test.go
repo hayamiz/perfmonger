@@ -3,6 +3,7 @@ package recorder
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"encoding/gob"
 	"errors"
 	"io"
@@ -80,6 +81,50 @@ func TestEncodeAndFlushPropagatesFlushError(t *testing.T) {
 
 	if err := encodeAndFlush(enc, out, record); err == nil {
 		t.Fatalf("encodeAndFlush returned nil error when the underlying writer failed; the flush error was swallowed")
+	}
+}
+
+// TestGzipBufWriterFlushesBufferOnPanic is a regression test for the bug where
+// the bufio.Writer wrapping the gzip writer was not flushed before
+// gzip.Writer.Close() ran on panic paths, silently discarding buffered bytes and
+// corrupting the output. newGzipBufWriter must return a cleanup that flushes the
+// bufio buffer into the gzip writer BEFORE closing it, so that on panic the
+// buffered data still reaches the gzip writer before its footer is written. The
+// cleanup must also re-raise the original panic. The recovered output must
+// therefore decompress to all bytes written before the panic.
+func TestGzipBufWriterFlushesBufferOnPanic(t *testing.T) {
+	payload := []byte("data written before the panic must survive the unwinding\n")
+
+	var compressed bytes.Buffer
+
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("expected body panic to propagate out of the gzip cleanup")
+			}
+		}()
+
+		out, cleanup := newGzipBufWriter(&compressed)
+		defer cleanup()
+
+		// Write into the bufio buffer but do NOT flush; the bytes are held in
+		// the buffer when the panic unwinds.
+		if _, err := out.Write(payload); err != nil {
+			t.Fatalf("unexpected write error: %v", err)
+		}
+		panic("boom in recording body")
+	}()
+
+	gz, err := gzip.NewReader(&compressed)
+	if err != nil {
+		t.Fatalf("gzip output is corrupt/incomplete after panic: %v", err)
+	}
+	got, err := io.ReadAll(gz)
+	if err != nil {
+		t.Fatalf("failed to decompress gzip output after panic: %v", err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("buffered data was lost on panic path: got %q, want %q", got, payload)
 	}
 }
 

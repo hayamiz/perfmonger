@@ -276,6 +276,40 @@ func encodeAndFlush(enc *gob.Encoder, out *bufio.Writer, record *ss.StatRecord) 
 	return out.Flush()
 }
 
+// newGzipBufWriter wraps file in a gzip.Writer and a bufio.Writer and returns
+// the buffered writer together with a cleanup function. The caller MUST invoke
+// the cleanup with `defer cleanup()` immediately. The cleanup flushes the bufio
+// buffer into the gzip writer BEFORE closing the gzip writer, so that on panic
+// paths the buffered bytes reach the gzip writer before its footer is written,
+// producing a complete, valid gzip stream instead of a truncated one.
+//
+// A flush error must never mask a panic that is already unwinding: cleanup
+// captures any in-flight panic, flushes, then re-raises the original panic. Only
+// when there was no panic is a flush error surfaced (via panic).
+func newGzipBufWriter(file io.Writer) (out *bufio.Writer, cleanup func()) {
+	gzwriter := gzip.NewWriter(file)
+	out = bufio.NewWriter(gzwriter)
+	cleanup = func() {
+		// Capture any in-flight panic so the buffer can be flushed first.
+		p := recover()
+		flushErr := out.Flush()
+		// Close runs after the flush so the gzip footer is written only once
+		// all buffered bytes have entered the gzip writer.
+		closeErr := gzwriter.Close()
+		if p != nil {
+			// Preserve the original panic; flush/close errors must not mask it.
+			panic(p)
+		}
+		if flushErr != nil {
+			panic(flushErr)
+		}
+		if closeErr != nil {
+			panic(closeErr)
+		}
+	}
+	return out, cleanup
+}
+
 func Run(args []string) {
 	option := NewRecorderOption()
 	
@@ -383,10 +417,14 @@ func RunDirect(option *RecorderOption) {
 			out = bufio.NewWriter(io.MultiWriter(file, player_stdin))
 		} else {
 			if option.Gzip {
-				gzwriter := gzip.NewWriter(file)
-				defer gzwriter.Close()
-
-				out = bufio.NewWriter(gzwriter)
+				// newGzipBufWriter registers its flush-before-close ordering in
+				// the returned cleanup, so a panic anywhere in the recording
+				// body still drains the bufio buffer into the gzip writer before
+				// the gzip footer is written. The normal-path explicit Flush
+				// further down makes the cleanup's flush a no-op on success.
+				var cleanup func()
+				out, cleanup = newGzipBufWriter(file)
+				defer cleanup()
 			} else {
 				out = bufio.NewWriter(file)
 			}
