@@ -243,6 +243,25 @@ func TestGetCpuUsage(t *testing.T) {
 	assertHasKey("cores.[0].guestnice")
 }
 
+func TestGetInterruptUsageEmptyEntries(t *testing.T) {
+	t1, perr := time.Parse(time.RFC3339, "2012-01-23T01:23:45+09:00")
+	if perr != nil {
+		t.Fatal("Timestamp parse error")
+	}
+	t2 := t1.Add(time.Second)
+
+	// ReadInterruptStat can produce an InterruptStat with an empty Entries
+	// slice (e.g. /proc/interrupts with only a header line). GetInterruptUsage
+	// must return an error instead of panicking on Entries[0].
+	i1 := NewInterruptStat()
+	i2 := NewInterruptStat()
+
+	_, err := GetInterruptUsage(t1, i1, t2, i2)
+	if err == nil {
+		t.Error("err == nil, want non-nil error for empty Entries")
+	}
+}
+
 func TestDiskUsage(t *testing.T) {
 	d1 := NewDiskStat()
 	d2 := NewDiskStat()

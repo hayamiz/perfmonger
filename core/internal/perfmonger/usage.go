@@ -216,6 +216,10 @@ func GetCpuUsage(c1 *CpuStat, c2 *CpuStat) (*CpuUsage, error) {
 }
 
 func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *InterruptStat) (*InterruptUsage, error) {
+	if len(i1.Entries) == 0 || len(i2.Entries) == 0 {
+		return nil, errors.New("No interrupt stat entries")
+	}
+
 	num_core := i1.Entries[0].NumCore
 
 	usage := new(InterruptUsage)
