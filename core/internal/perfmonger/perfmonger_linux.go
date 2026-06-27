@@ -63,21 +63,30 @@ func isDevice(name string) bool {
 }
 
 func getPartitions(name string) []string {
+	return getPartitionsFromDir("/sys/block", name)
+}
+
+// getPartitionsFromDir lists the partitions of block device `name` whose
+// per-device directory lives under `blockDir` (normally "/sys/block"). The
+// `blockDir` parameter is injectable so the function can be tested against a
+// fake sysfs layout.
+func getPartitionsFromDir(blockDir string, name string) []string {
 	var dir *os.File
 	var fis []os.FileInfo
 	var err error
 	var parts = []string{}
 
-	dir, err = os.Open(fmt.Sprintf("/sys/block/%s", name))
+	dir, err = os.Open(fmt.Sprintf("%s/%s", blockDir, name))
 	if err != nil {
 		panic(err)
 	}
+	defer dir.Close()
 	fis, err = dir.Readdir(0)
 	if err != nil {
 		panic(err)
 	}
 	for _, fi := range fis {
-		_, err := os.Stat(fmt.Sprintf("/sys/block/%s/%s/stat", name, fi.Name()))
+		_, err := os.Stat(fmt.Sprintf("%s/%s/%s/stat", blockDir, name, fi.Name()))
 		if err == nil {
 			// partition exists
 			parts = append(parts, fi.Name())
