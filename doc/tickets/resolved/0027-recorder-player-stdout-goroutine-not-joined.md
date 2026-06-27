@@ -2,7 +2,7 @@
 title: Goroutine draining player stdout is not joined before RunDirect returns
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -36,3 +36,26 @@ returns, so all buffered player output is flushed to stdout.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: The goroutine draining player stdout is not joined before RunDirect returns. Use a sync.WaitGroup (Add before spawning, Done at goroutine end, Wait after player_cmd.Wait()). Standard synchronization pattern, no design ambiguity.
+
+## Resolution
+
+Fixed in `core/cmd/perfmonger-core/recorder/recorder.go`.
+
+- Extracted the inline stdout-draining goroutine into a testable seam,
+  `startPlayerDrain(r io.Reader, w io.Writer) *sync.WaitGroup`, which calls
+  `wg.Add(1)` before spawning the goroutine and `defer wg.Done()` at the
+  goroutine's end.
+- `RunDirect` now stores the returned `*sync.WaitGroup` in `player_drain_wg`
+  and calls `player_drain_wg.Wait()` after `player_cmd.Wait()`, so all buffered
+  player output is flushed to `os.Stdout` before `RunDirect` returns.
+- While extracting, reordered the loop so a final read returning `n > 0` with
+  `io.EOF` writes its bytes before breaking (the original broke on EOF before
+  writing, contributing to truncation).
+
+Test added (TDD): `TestStartPlayerDrainJoinsBeforeReturn` in
+`recorder_test.go`. It drives `startPlayerDrain` with a `slowReader` that emits
+one byte at a time with delays, then asserts that after `wg.Wait()` the full
+payload reached the destination writer. The test first failed RED with
+`undefined: startPlayerDrain`, then passed after the fix. Verified with
+`go test -count=1` and `go test -race -count=1` on the recorder package, and the
+unified binary builds clean.

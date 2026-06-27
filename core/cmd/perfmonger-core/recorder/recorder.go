@@ -15,6 +15,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -320,6 +321,7 @@ func RunDirect(option *RecorderOption) {
 	var player_cmd *exec.Cmd = nil
 	var player_stdin io.WriteCloser = nil
 	var player_stdout io.ReadCloser = nil
+	var player_drain_wg *sync.WaitGroup = nil
 
 	if option.PlayerBin != "" {
 		// Build player command arguments: base args + color/pretty flags
@@ -358,23 +360,10 @@ func RunDirect(option *RecorderOption) {
 		}
 
 		if player_stdout != nil {
-			// read stdout of player and write to stdout
-			go func() {
-				var buf = make([]byte, 4096)
-				for {
-					n, err := player_stdout.Read(buf)
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						panic(err)
-					}
-
-					if n == 0 {
-						continue
-					}
-					os.Stdout.Write(buf[0:n])
-				}
-			}()
+			// read stdout of player and write to stdout. The returned
+			// WaitGroup is joined after player_cmd.Wait() so that all
+			// buffered player output is flushed before RunDirect returns.
+			player_drain_wg = startPlayerDrain(player_stdout, os.Stdout)
 		}
 	}
 
@@ -532,5 +521,38 @@ func RunDirect(option *RecorderOption) {
 	if player_stdin != nil {
 		player_stdin.Close()
 		_ = player_cmd.Wait()
+		// Join the stdout draining goroutine so that all buffered player
+		// output is flushed to stdout before RunDirect returns. Without this,
+		// the process could exit while the goroutine is still copying, leading
+		// to truncated output or a data race on os.Stdout at shutdown.
+		if player_drain_wg != nil {
+			player_drain_wg.Wait()
+		}
 	}
+}
+
+// startPlayerDrain spawns a goroutine that copies all data from the player's
+// stdout reader to the destination writer (normally os.Stdout). It returns a
+// *sync.WaitGroup whose counter is incremented before the goroutine starts and
+// decremented when the goroutine finishes draining. Callers must Wait on the
+// returned group before returning so that all buffered player output is flushed.
+func startPlayerDrain(r io.Reader, w io.Writer) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var buf = make([]byte, 4096)
+		for {
+			n, err := r.Read(buf)
+			if n > 0 {
+				w.Write(buf[0:n])
+			}
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				panic(err)
+			}
+		}
+	}()
+	return &wg
 }

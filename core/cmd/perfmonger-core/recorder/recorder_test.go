@@ -2,8 +2,10 @@ package recorder
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/gob"
 	"errors"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -12,6 +14,45 @@ import (
 
 	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
+
+// slowReader emits its payload one byte at a time with a small delay between
+// reads, then returns io.EOF. It simulates a player process whose stdout is
+// still being drained when the player process itself has already exited, so a
+// caller that does not join the draining goroutine would observe truncated
+// output.
+type slowReader struct {
+	data []byte
+	pos  int
+}
+
+func (r *slowReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	time.Sleep(time.Millisecond)
+	p[0] = r.data[r.pos]
+	r.pos++
+	return 1, nil
+}
+
+// TestStartPlayerDrainJoinsBeforeReturn is a regression test for the bug where
+// the goroutine draining the player's stdout was not joined before RunDirect
+// returned, so buffered player output could be truncated or lost. startPlayerDrain
+// must return a join handle (sync.WaitGroup) such that, after waiting on it, all
+// bytes from the reader have been copied to the destination writer.
+func TestStartPlayerDrainJoinsBeforeReturn(t *testing.T) {
+	payload := []byte("the quick brown fox jumps over the lazy dog\n")
+	src := &slowReader{data: payload}
+	var dst bytes.Buffer
+
+	wg := startPlayerDrain(src, &dst)
+	// Joining must guarantee the drain goroutine has fully completed.
+	wg.Wait()
+
+	if got := dst.Bytes(); !bytes.Equal(got, payload) {
+		t.Fatalf("player output truncated/lost after join: got %q, want %q", got, payload)
+	}
+}
 
 // failingWriter is an io.Writer that always returns an error, simulating a
 // full disk or an otherwise broken output destination.
