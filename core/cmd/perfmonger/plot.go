@@ -247,8 +247,16 @@ func checkGnuplotAvailable(gnuplotBin string) error {
 
 // checkPdfCairoSupported checks if pdfcairo terminal is supported
 func checkPdfCairoSupported(gnuplotBin string) error {
-	cmd := exec.Command("sh", "-c", fmt.Sprintf(`%s -e "set terminal" < /dev/null 2>&1 | grep pdfcairo >/dev/null 2>&1`, gnuplotBin))
-	if err := cmd.Run(); err != nil {
+	// Execute gnuplot directly via argv (no shell) so that gnuplotBin is
+	// always treated as a literal program path. This prevents shell
+	// command injection and correctly handles paths containing spaces.
+	cmd := exec.Command(gnuplotBin, "-e", "set terminal")
+	cmd.Stdin = nil
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("pdfcairo is not supported by installed gnuplot")
+	}
+	if !strings.Contains(string(out), "pdfcairo") {
 		return fmt.Errorf("pdfcairo is not supported by installed gnuplot")
 	}
 	return nil

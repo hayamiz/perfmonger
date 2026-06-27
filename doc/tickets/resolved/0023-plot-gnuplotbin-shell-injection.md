@@ -2,7 +2,7 @@
 title: checkPdfCairoSupported passes GnuplotBin unsanitized into a shell string (command injection)
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -36,3 +36,27 @@ user-supplied paths.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: checkPdfCairoSupported passes GnuplotBin unsanitized into a shell string. Fix: use exec.Command(gnuplotBin, "-e", ...) instead of shell interpolation, eliminating injection and handling spaces.
+
+## Resolution
+
+Fixed via strict TDD.
+
+- `core/cmd/perfmonger/plot.go`: `checkPdfCairoSupported` no longer builds a
+  shell command string passed to `sh -c`. It now invokes gnuplot directly with
+  `exec.Command(gnuplotBin, "-e", "set terminal")`, captures the combined
+  output, and checks for `pdfcairo` with `strings.Contains`. Because `gnuplotBin`
+  is passed as argv[0] (never interpreted by a shell), shell metacharacters in
+  the value can no longer inject commands, and paths containing spaces work
+  correctly. The pdfcairo-detection behavior is preserved.
+
+- Test added: `core/cmd/perfmonger/plot_test.go` —
+  `TestCheckPdfCairoSupported_NoShellInjection`. It passes a malicious
+  `gnuplotBin` value (`gnuplot; touch <sentinel> #`) and asserts the sentinel
+  file is never created. Before the fix this test failed (sentinel was created,
+  proving the injection); after the fix it passes.
+
+Verification: the `core/cmd/perfmonger` package tests pass and `go vet` is clean.
+Pre-existing, unrelated test failures in other packages (#0014 recorder
+signalNotify/signalStop, #0024 plotformatter double-close, #0041
+parseNetStat short line) are tracked by their own tickets and are not affected
+by this change. The binary builds successfully.
