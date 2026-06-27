@@ -2,11 +2,15 @@ package plotformatter
 
 import (
 	"bufio"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
 // findRepoRoot walks up from the current directory to locate the repository
@@ -67,6 +71,47 @@ func TestRunPlotFormatClosesTmpFilesOnce(t *testing.T) {
 		if n != 1 {
 			t.Errorf("temp file %q closed %d times, want exactly 1", f.Name(), n)
 		}
+	}
+}
+
+// TestRunPlotFormatNilCpuReturnsError verifies that a malformed log whose first
+// record has a nil Cpu field yields a clean error instead of a nil-pointer
+// dereference panic. StatRecord.Cpu is a *CpuStat, so a partially-written log
+// can decode into a record with Cpu == nil.
+func TestRunPlotFormatNilCpuReturnsError(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "nil-cpu.pgr")
+
+	// Write a valid header pair followed by a first record with a nil Cpu.
+	f, err := os.Create(logPath)
+	if err != nil {
+		t.Fatalf("create log: %v", err)
+	}
+	enc := gob.NewEncoder(f)
+	if err := enc.Encode(&ss.CommonHeader{StartTime: time.Now()}); err != nil {
+		t.Fatalf("encode common header: %v", err)
+	}
+	if err := enc.Encode(&ss.PlatformHeader{}); err != nil {
+		t.Fatalf("encode platform header: %v", err)
+	}
+	// First record: Cpu is left nil.
+	if err := enc.Encode(&ss.StatRecord{Time: time.Now()}); err != nil {
+		t.Fatalf("encode record: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close log: %v", err)
+	}
+
+	opt := &CmdOption{
+		DiskFile:       filepath.Join(tmpDir, "disk.dat"),
+		CpuFile:        filepath.Join(tmpDir, "cpu.dat"),
+		MemFile:        filepath.Join(tmpDir, "mem.dat"),
+		PerfmongerFile: logPath,
+	}
+
+	_, err = runPlotFormat(opt)
+	if err == nil {
+		t.Fatalf("runPlotFormat returned nil error for a record with nil Cpu")
 	}
 }
 

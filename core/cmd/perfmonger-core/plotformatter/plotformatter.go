@@ -322,6 +322,9 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 	} else if err != nil {
 		return nil, err
 	}
+	if records[curr].Cpu == nil {
+		return nil, fmt.Errorf("malformed log file: first record has no CPU data")
+	}
 	t0 := records[curr].Time
 	curr ^= 1
 
