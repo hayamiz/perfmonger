@@ -200,6 +200,13 @@ var closeTmpFile = func(f *os.File) error {
 	return f.Close()
 }
 
+// flushWriter flushes a buffered writer. It is a package-level seam so tests
+// can inject a Flush failure (e.g. a full disk / I/O error) and verify the
+// error is propagated rather than silently dropped.
+var flushWriter = func(w *bufio.Writer) error {
+	return w.Flush()
+}
+
 func makeDiskDatTmpFile(dname string, idx int) *DiskDatTmpFile {
 	ret := new(DiskDatTmpFile)
 	ret.Name = dname
@@ -450,7 +457,9 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 		// Flush buffered data to the temp file. The handle itself is closed
 		// exactly once by the deferred close registered at creation time, so
 		// it is intentionally not closed here (avoids an FD-reuse hazard).
-		disk_dat.Writer.Flush()
+		if err := flushWriter(disk_dat.Writer); err != nil {
+			return nil, fmt.Errorf("failed to flush disk data for device %q: %v", disk_dat.Name, err)
+		}
 	}
 
 	f, err = os.Create(opt.DiskFile)
@@ -475,12 +484,16 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 
 		os.Remove(disk_dat.Path)
 	}
-	df_writer.Flush()
+	if err := flushWriter(df_writer); err != nil {
+		return nil, fmt.Errorf("failed to flush disk data file %q: %v", opt.DiskFile, err)
+	}
 
 	for _, cpu_dat := range cpu_dat_files {
 		// Flush buffered data; the handle is closed exactly once by the
 		// deferred close registered at creation time (avoids double-close).
-		cpu_dat.Writer.Flush()
+		if err := flushWriter(cpu_dat.Writer); err != nil {
+			return nil, fmt.Errorf("failed to flush cpu data for core %d: %v", cpu_dat.CoreId, err)
+		}
 
 		content, err := ioutil.ReadFile(cpu_dat.Path)
 		if err != nil {
@@ -490,8 +503,12 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 		cpu_writer.Write(content)
 		os.Remove(cpu_dat.Path)
 	}
-	cpu_writer.Flush()
-	mem_writer.Flush()
+	if err := flushWriter(cpu_writer); err != nil {
+		return nil, fmt.Errorf("failed to flush cpu data file %q: %v", opt.CpuFile, err)
+	}
+	if err := flushWriter(mem_writer); err != nil {
+		return nil, fmt.Errorf("failed to flush mem data file %q: %v", opt.MemFile, err)
+	}
 
 	return &meta, nil
 }

@@ -1,8 +1,11 @@
 package plotformatter
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +67,36 @@ func TestRunPlotFormatClosesTmpFilesOnce(t *testing.T) {
 		if n != 1 {
 			t.Errorf("temp file %q closed %d times, want exactly 1", f.Name(), n)
 		}
+	}
+}
+
+// TestRunPlotFormatPropagatesFlushError verifies that when a bufio.Writer.Flush
+// fails (e.g. underlying I/O error / full disk), runPlotFormat surfaces the
+// error instead of silently dropping the buffered data and returning nil.
+func TestRunPlotFormatPropagatesFlushError(t *testing.T) {
+	root := findRepoRoot(t)
+	pgr := filepath.Join(root, "spec", "data", "busy100.pgr")
+
+	wantErr := fmt.Errorf("injected flush failure")
+	orig := flushWriter
+	flushWriter = func(w *bufio.Writer) error {
+		return wantErr
+	}
+	defer func() { flushWriter = orig }()
+
+	tmpDir := t.TempDir()
+	opt := &CmdOption{
+		DiskFile:       filepath.Join(tmpDir, "disk.dat"),
+		CpuFile:        filepath.Join(tmpDir, "cpu.dat"),
+		MemFile:        filepath.Join(tmpDir, "mem.dat"),
+		PerfmongerFile: pgr,
+	}
+
+	_, err := runPlotFormat(opt)
+	if err == nil {
+		t.Fatalf("runPlotFormat returned nil error despite a failing Flush")
+	}
+	if !strings.Contains(err.Error(), wantErr.Error()) {
+		t.Errorf("error %q does not wrap the underlying flush error %q", err, wantErr)
 	}
 }

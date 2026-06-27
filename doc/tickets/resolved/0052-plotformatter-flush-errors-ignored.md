@@ -2,7 +2,7 @@
 title: plotformatter ignores all bufio.Writer.Flush() return values
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -35,3 +35,25 @@ panic-to-error ticket).
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: Five bufio.Writer.Flush() calls discard their error, silently losing data while RunDirect returns nil. Fix: check each Flush error and return it with context (combine with #0049's panic→error refactor).
+
+## Resolution
+
+Fixed in `core/cmd/perfmonger-core/plotformatter/plotformatter.go`.
+
+- Introduced a package-level `flushWriter` seam (mirroring the existing
+  `closeTmpFile` seam) wrapping `*bufio.Writer.Flush`, so a flush failure can
+  be injected in tests.
+- Routed all five buffered-writer flushes (per-device disk_dat, the combined
+  disk.dat `df_writer`, per-core cpu_dat, the combined cpu.dat `cpu_writer`,
+  and `mem_writer`) through `flushWriter` and now check each return value,
+  propagating any error via the existing `(*PlotMeta, error)` return path
+  wrapped with context (device name / core id / output file path).
+- Scoped to flush-error handling only; the broader panic→error refactor
+  (#0049 / #0050) was intentionally left untouched.
+
+Test added: `TestRunPlotFormatPropagatesFlushError` in
+`plotformatter_test.go` injects a failing `flushWriter` and asserts
+`runPlotFormat` returns a non-nil error that wraps the underlying flush error.
+
+Verified: `go test -count=1 ./cmd/perfmonger-core/plotformatter/` passes and
+the unified binary builds successfully.
