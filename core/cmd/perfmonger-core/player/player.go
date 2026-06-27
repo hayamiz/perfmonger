@@ -203,6 +203,17 @@ func Run(args []string) {
 	RunDirect(option)
 }
 
+// writeRecord writes a single JSON record (with a trailing newline) to out and
+// flushes it. The WriteString error is captured in a distinct variable and
+// checked before Flush so write failures (e.g. a broken pipe or a full disk)
+// are surfaced rather than swallowed by variable shadowing.
+func writeRecord(out *bufio.Writer, str string) error {
+	if _, writeErr := out.WriteString(str + "\n"); writeErr != nil {
+		return writeErr
+	}
+	return out.Flush()
+}
+
 // RunDirect executes the player with the provided PlayerOption directly
 // This avoids the double conversion: PlayerOption -> args -> parseArgs -> PlayerOption
 func RunDirect(option *PlayerOption) {
@@ -275,16 +286,15 @@ func RunDirect(option *PlayerOption) {
 			continue
 		}
 
-		if str, err := printer.String(); err != nil {
-			fmt.Println("error", err)
+		if str, perr := printer.String(); perr != nil {
+			fmt.Println("error", perr)
 			fmt.Println(str)
 		} else {
-			_, err = out.WriteString(str + "\n")
-		}
-		err = out.Flush()
-		if err != nil {
-			// stdout is closed
-			break
+			err = writeRecord(out, str)
+			if err != nil {
+				// stdout is closed or write failed
+				break
+			}
 		}
 
 		printer.Reset()

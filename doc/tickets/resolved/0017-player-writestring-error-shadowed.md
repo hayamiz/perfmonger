@@ -2,7 +2,7 @@
 title: player WriteString error silently discarded due to inner-scope err shadowing
 type: bug
 priority: high
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -46,3 +46,26 @@ explicitly), then break/propagate on a non-nil write error before the `Flush`.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: Variable shadowing bug in the output write path. Use a distinct variable (e.g. writeErr) for the WriteString error and check/break before Flush. No design choices.
+
+## Resolution
+
+Extracted the per-record output logic into a new `writeRecord(out *bufio.Writer,
+str string) error` helper in `core/cmd/perfmonger-core/player/player.go`. The
+helper captures the `WriteString` result in a distinct variable (`writeErr`),
+returns immediately on a non-nil write error, and only calls `Flush` on success,
+eliminating the inner-scope `err` shadowing. In `RunDirect`, the `printer.String()`
+error variable was renamed to `perr` (so it no longer shadows the outer `err`),
+and the loop now breaks when `writeRecord` returns a non-nil error, so write
+failures (broken pipe / full disk) are surfaced instead of being silently
+swallowed.
+
+Test added (TDD): `core/cmd/perfmonger-core/player/player_test.go` —
+`TestWriteRecordSurfacesWriteError` wraps a failing `io.Writer` in a small-buffer
+`bufio.Writer` and asserts `writeRecord` returns a non-nil error. The test
+initially failed to compile (`undefined: writeRecord`) before the helper existed,
+then passed after the fix.
+
+Verification: `go test -cover ./...` in `core/internal/perfmonger` passes; the
+`player` package tests pass; `go vet` is clean; the binary rebuilds successfully.
+(Pre-existing failures in fingerprint/plot/summarizer tests belong to other open
+tickets and are unrelated to this change.)
