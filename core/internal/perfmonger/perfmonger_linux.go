@@ -322,13 +322,17 @@ func ReadDiskStats(record *StatRecord, targets *map[string]bool) error {
 	}
 	defer f.Close()
 
+	return parseDiskStats(record, f, targets)
+}
+
+func parseDiskStats(record *StatRecord, r io.Reader, targets *map[string]bool) error {
 	if record.Disk == nil {
 		record.Disk = NewDiskStat()
 	} else {
 		record.Disk.Clear()
 	}
 
-	scan := bufio.NewScanner(f)
+	scan := bufio.NewScanner(r)
 
 	var num_items int
 	var err error
@@ -346,7 +350,7 @@ func ReadDiskStats(record *StatRecord, targets *map[string]bool) error {
 			&entry.RdIos, &rdmerge_or_rdsec, &rdsec_or_wrios, &rdticks_or_wrsec,
 			&entry.WrIos, &entry.WrMerges, &entry.WrSectors, &entry.WrTicks,
 			&entry.IosPgr, &entry.TotalTicks, &entry.ReqTicks)
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
 

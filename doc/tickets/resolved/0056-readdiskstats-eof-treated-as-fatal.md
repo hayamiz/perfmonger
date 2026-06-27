@@ -2,7 +2,7 @@
 title: ReadDiskStats treats io.EOF from a partial Sscanf as fatal, breaking short-format lines
 type: bug
 priority: high
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -37,3 +37,24 @@ return, so the 7-field branch is reached and short lines are handled.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: ReadDiskStats returns on any Sscanf error including io.EOF, breaking short-format lines; ReadCpuStat already handles io.EOF as a valid partial-read outcome. Fix: check `if err == io.EOF` before the generic error return, then branch on num_items. Mechanical, mirrors existing pattern.
+
+## Resolution
+
+Fixed via strict TDD in `core/internal/perfmonger/perfmonger_linux.go`.
+
+- Extracted the parsing loop of `ReadDiskStats` into a new
+  `parseDiskStats(record *StatRecord, r io.Reader, targets *map[string]bool) error`
+  helper (mirroring the `parseNetStat` refactor from #0041) so the parser can be
+  fed a test reader. `ReadDiskStats` now only opens `/proc/diskstats` and delegates.
+- Changed the `fmt.Sscanf` error check from `if err != nil` to
+  `if err != nil && err != io.EOF`, so a 7-field short-format line (which makes
+  `Sscanf` return `(7, io.EOF)`) is no longer treated as fatal and reaches the
+  existing `num_items == 7` branch.
+
+Test added: `TestParseDiskStatsShortFormat` in
+`core/internal/perfmonger/perfmonger_linux_test.go` feeds a 7-field diskstats
+line and asserts it parses without error and the device is recorded.
+
+RED (before fix): `parseDiskStats should not return an error on short-format
+lines: EOF`. GREEN after the fix; `go test ./...`, `go vet`, and the CLI build
+all pass.

@@ -37,6 +37,35 @@ func TestParseNetStatShortLine(t *testing.T) {
 	}
 }
 
+func TestParseDiskStatsShortFormat(t *testing.T) {
+	// A 7-field (old/short) /proc/diskstats line. fmt.Sscanf requesting 14
+	// fields returns (7, io.EOF) for such a line; the parser must treat the
+	// io.EOF as a valid partial-read outcome and parse the line instead of
+	// failing the whole read.
+	input := "   1    0 ram0 100 200 300 400\n"
+
+	record := NewStatRecord()
+	targets := map[string]bool{"ram0": true}
+	err := parseDiskStats(record, strings.NewReader(input), &targets)
+	if err != nil {
+		t.Fatalf("parseDiskStats should not return an error on short-format lines: %v", err)
+	}
+	if record.Disk == nil {
+		t.Fatal("record.Disk should not be nil")
+	}
+
+	ram0_found := false
+	for _, entry := range record.Disk.Entries {
+		if entry.Name == "ram0" {
+			ram0_found = true
+			break
+		}
+	}
+	if !ram0_found {
+		t.Error("Short-format device 'ram0' should be parsed.")
+	}
+}
+
 func TestReadDiskStat(t *testing.T) {
 	var err error
 	var stat_record *StatRecord = nil
