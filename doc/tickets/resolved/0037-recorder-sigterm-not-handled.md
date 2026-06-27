@@ -2,7 +2,7 @@
 title: SIGTERM kills the recorder without flushing bufio or closing the gzip writer
 type: bug
 priority: high
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -36,3 +36,29 @@ cleanup tracked separately.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: Add syscall.SIGTERM to the existing signal.Notify call and handle it the same as SIGINT (set running=false for graceful exit). Pairs naturally with #0014 (defer signal.Stop). No design ambiguity.
+
+## Resolution
+
+Fixed in `core/cmd/perfmonger-core/recorder/recorder.go`: the `signalNotify`
+call (built on the #0014 test seam) now registers `syscall.SIGTERM` alongside
+`os.Interrupt`. Both signals are delivered on the same `sigint_ch` channel, whose
+`select` case sets `running = false`, so SIGTERM now follows the identical
+graceful-shutdown path as SIGINT — the recording loop breaks, the bufio buffer is
+flushed, and the deferred `gzip.Writer.Close()` runs, writing a valid gzip
+trailer instead of corrupting the output file.
+
+Test added (TDD): `TestRunDirectHandlesSIGTERM` in `recorder_test.go` installs
+the observable `signalNotify` seam, runs `RunDirect`, and asserts that both
+`os.Interrupt` and `syscall.SIGTERM` are passed to `signal.Notify`.
+
+RED (before fix):
+
+```
+--- FAIL: TestRunDirectHandlesSIGTERM (0.01s)
+    recorder_test.go:232: signal.Notify was not called with syscall.SIGTERM; SIGTERM is not handled gracefully (got [interrupt])
+FAIL
+```
+
+GREEN (after fix): full recorder package test suite passes
+(`go test -count=1 ./cmd/perfmonger-core/recorder/` → ok), and the unified
+binary builds successfully.

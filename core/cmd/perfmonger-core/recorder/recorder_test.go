@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -180,5 +181,54 @@ func TestRunDirectStopsSignalNotify(t *testing.T) {
 	}
 	if notifiedCh != stoppedCh {
 		t.Fatalf("signal.Stop was called with a different channel than signal.Notify; registration not torn down")
+	}
+}
+
+// TestRunDirectHandlesSIGTERM is a regression test for the bug where RunDirect
+// registered only os.Interrupt (SIGINT) with signal.Notify, leaving SIGTERM to
+// terminate the process abruptly without flushing the bufio buffer or closing
+// the gzip writer, corrupting the output file. RunDirect must register
+// syscall.SIGTERM on the same graceful-shutdown path as SIGINT.
+func TestRunDirectHandlesSIGTERM(t *testing.T) {
+	var notifiedSignals []os.Signal
+
+	origNotify := signalNotify
+	origStop := signalStop
+	t.Cleanup(func() {
+		signalNotify = origNotify
+		signalStop = origStop
+	})
+
+	signalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+		notifiedSignals = append(notifiedSignals, sig...)
+		// Do not register with the real signal package during the test.
+	}
+	signalStop = func(c chan<- os.Signal) {}
+
+	tmpfile := path.Join(t.TempDir(), "out.pgr")
+	option := NewRecorderOption()
+	option.Output = tmpfile
+	option.Timeout = 10 * time.Millisecond
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+
+	RunDirect(option)
+
+	sawInterrupt := false
+	sawSIGTERM := false
+	for _, sig := range notifiedSignals {
+		if sig == os.Interrupt {
+			sawInterrupt = true
+		}
+		if sig == syscall.SIGTERM {
+			sawSIGTERM = true
+		}
+	}
+
+	if !sawInterrupt {
+		t.Fatalf("signal.Notify was not called with os.Interrupt; got %v", notifiedSignals)
+	}
+	if !sawSIGTERM {
+		t.Fatalf("signal.Notify was not called with syscall.SIGTERM; SIGTERM is not handled gracefully (got %v)", notifiedSignals)
 	}
 }

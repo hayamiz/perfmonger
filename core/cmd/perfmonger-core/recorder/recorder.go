@@ -427,8 +427,12 @@ func RunDirect(option *RecorderOption) {
 	record := ss.NewStatRecord()
 	backoff_counter := 0
 
-	// cause SIGINT to break loop
-	signalNotify(sigint_ch, os.Interrupt)
+	// cause SIGINT or SIGTERM to break the loop. SIGTERM is the signal sent by
+	// systemd, container runtimes, and a plain `kill <pid>`, so it must be
+	// handled on the same graceful-shutdown path as SIGINT; otherwise the Go
+	// runtime terminates the process without flushing the bufio buffer or
+	// closing the gzip writer, corrupting the output file.
+	signalNotify(sigint_ch, os.Interrupt, syscall.SIGTERM)
 	// Deregister the handler on return so the channel is not leaked and does
 	// not keep silently consuming signals after RunDirect exits.
 	defer signalStop(sigint_ch)
