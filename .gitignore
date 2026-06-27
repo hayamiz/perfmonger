@@ -1,10 +1,5 @@
-/ext/perfmonger/perfmonger_record
 /tmp
-/core/perfmonger-player
-/core/perfmonger-recorder
 /lib/exec/
-/ext/perfmonger/Makefile
-/core/perfmonger-summarizer
 /cpu.dat
 /disk.dat
 /perfmonger.pgr
@@ -16,9 +11,6 @@
 /*.dat
 /godevenv/
 core/cmd/perfmonger/godevenv/
-core/cmd/lib/exec/perfmonger-core_*_*
-core/cmd/perfmonger-core/perfmonger-core
-core-old/
 
 # Python / pytest
 .venv/
@@ -30,7 +22,6 @@ uv.lock
 .devcontainer/claude-sessions/
 .devcontainer/claude-plugins/
 .devcontainer/claude-file-history/
-core/cmd/lib/exec/perfmonger_linux_amd64
 .claude/settings.local.json
 
 # Stray root go.mod (real module is core/go.mod)

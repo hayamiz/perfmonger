@@ -26,4 +26,4 @@ cross-build:
 	$(MAKE) build GOOS=linux GOARCH=arm64
 
 clean:
-	rm -f $(BIN_DIR)/perfmonger_*
+	rm -f $(BIN_DIR)/perfmonger_* $(BIN_DIR)/perfmonger-* core/cmd/perfmonger/perfmonger
