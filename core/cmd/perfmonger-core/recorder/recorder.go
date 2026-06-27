@@ -115,15 +115,7 @@ func parseArgs(args []string, option *RecorderOption) {
 		option.Output = "data.pgr"
 	}
 
-	if option.Disks == "" {
-		option.TargetDisks = nil
-	} else {
-		option.TargetDisks = new(map[string]bool)
-		*option.TargetDisks = make(map[string]bool)
-		for _, dev := range strings.Split(option.Disks, ",") {
-			(*option.TargetDisks)[dev] = true
-		}
-	}
+	option.TargetDisks = BuildTargetDisks(option.Disks)
 
 	if option.Debug {
 		os.Stderr.WriteString(
@@ -139,6 +131,23 @@ func parseArgs(args []string, option *RecorderOption) {
 				option.Debug,
 				fmt.Sprint(fs.Args())))
 	}
+}
+
+// BuildTargetDisks converts a comma-separated disk device list into the
+// TargetDisks map used by ReadDiskStats for filtering. An empty list returns
+// nil, which ReadDiskStats interprets as "record all devices". This logic is
+// shared by parseArgs and the direct-API path (live/record subcommands) so that
+// the -d/--disk flag is honored on both paths.
+func BuildTargetDisks(disks string) *map[string]bool {
+	if disks == "" {
+		return nil
+	}
+	targets := new(map[string]bool)
+	*targets = make(map[string]bool)
+	for _, dev := range strings.Split(disks, ",") {
+		(*targets)[dev] = true
+	}
+	return targets
 }
 
 // NewRecorderOption creates a RecorderOption with default values

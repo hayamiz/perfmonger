@@ -338,3 +338,28 @@ func TestRunDirectHandlesSIGTERM(t *testing.T) {
 		t.Fatalf("signal.Notify was not called with syscall.SIGTERM; SIGTERM is not handled gracefully (got %v)", notifiedSignals)
 	}
 }
+
+// TestBuildTargetDisks verifies that the helper extracting the TargetDisks map
+// from a comma-separated disk list populates the map correctly, and returns nil
+// for an empty list (meaning "record all devices"). This is the logic shared by
+// parseArgs and the direct-API path used by the live/record subcommands.
+func TestBuildTargetDisks(t *testing.T) {
+	// Empty list means "record all devices": map must be nil.
+	if got := BuildTargetDisks(""); got != nil {
+		t.Fatalf("BuildTargetDisks(\"\") = %v, want nil", got)
+	}
+
+	got := BuildTargetDisks("sda,sdb")
+	if got == nil {
+		t.Fatalf("BuildTargetDisks(\"sda,sdb\") = nil, want populated map")
+	}
+	m := *got
+	if len(m) != 2 || !m["sda"] || !m["sdb"] {
+		t.Fatalf("BuildTargetDisks(\"sda,sdb\") = %v, want {sda:true, sdb:true}", m)
+	}
+
+	single := BuildTargetDisks("sda")
+	if single == nil || len(*single) != 1 || !(*single)["sda"] {
+		t.Fatalf("BuildTargetDisks(\"sda\") = %v, want {sda:true}", single)
+	}
+}

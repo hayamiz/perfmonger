@@ -302,7 +302,10 @@ func (cmd *recordCommand) applyRubySpecificLogic() {
 	if len(cmd.RecorderOpt.DevsParts) > 0 {
 		cmd.RecorderOpt.Disks = strings.Join(cmd.RecorderOpt.DevsParts, ",")
 	}
-	
+	// Build the TargetDisks map so the direct-API path honors -d/--disk. Without
+	// this, RunDirect receives a nil TargetDisks and records every device.
+	cmd.RecorderOpt.TargetDisks = recorder.BuildTargetDisks(cmd.RecorderOpt.Disks)
+
 	// Handle Ruby-specific logic (minimal processing)
 	if cmd.NoGzip {
 		cmd.RecorderOpt.Gzip = false

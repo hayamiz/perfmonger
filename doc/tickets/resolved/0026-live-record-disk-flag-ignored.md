@@ -2,7 +2,7 @@
 title: --disk flag silently ignored in live/record direct path (TargetDisks map never populated)
 type: bug
 priority: high
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -39,3 +39,23 @@ devices.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: --disk is ignored because the direct-API path never populates option.TargetDisks. Fix: extract the map-building logic from parseArgs into a helper and call it from the live/record direct paths. Direct, no ambiguity.
+
+## Resolution
+
+Extracted the TargetDisks map-building logic out of `parseArgs` into a reusable
+public helper `BuildTargetDisks(disks string) *map[string]bool` in
+`core/cmd/perfmonger-core/recorder/recorder.go`. It returns `nil` for an empty
+list (meaning "record all devices") and a populated map otherwise.
+
+- `parseArgs` now calls the helper instead of inlining the map construction.
+- The direct-API paths now call the helper after building the comma-separated
+  `Disks` string, so `-d`/`--disk` is honored:
+  - `core/cmd/perfmonger/live.go` (`applyRubySpecificLogic`)
+  - `core/cmd/perfmonger/record.go` (`applyRubySpecificLogic`)
+
+Test added: `TestBuildTargetDisks` in
+`core/cmd/perfmonger-core/recorder/recorder_test.go` asserts the empty list
+yields `nil` and that comma-separated lists populate the map correctly. It
+failed RED with `undefined: BuildTargetDisks` before the helper existed.
+
+Verification: `go test ./cmd/...`, `go vet`, and the binary build all pass.
