@@ -220,10 +220,15 @@ func GetInterruptUsage(t1 time.Time, i1 *InterruptStat, t2 time.Time, i2 *Interr
 		return nil, errors.New("No interrupt stat entries")
 	}
 
+	interval := t2.Sub(t1)
+	if interval.Seconds() <= 0.0 {
+		return nil, errors.New("negative interval")
+	}
+
 	num_core := i1.Entries[0].NumCore
 
 	usage := new(InterruptUsage)
-	usage.Interval = t2.Sub(t1)
+	usage.Interval = interval
 	usage.NumEntries = i1.NumEntries
 	usage.NumCore = num_core
 	usage.CoreIntrUsages = make([]*CpuCoreIntrUsage, num_core)

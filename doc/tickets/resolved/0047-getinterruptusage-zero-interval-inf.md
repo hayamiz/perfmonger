@@ -2,7 +2,7 @@
 title: GetInterruptUsage produces +Inf interrupt rates when the recording interval is zero
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-05-29
 updated: 2026-06-27
 ---
@@ -34,3 +34,25 @@ positive.
 - Mechanical fix: yes
 - Requires user decision: no
 - Notes: GetInterruptUsage divides by Interval.Seconds() without the `itv <= 0` guard that GetDiskUsage1 already has, producing +Inf. Fix: add the same guard and return an error. Mechanical, mirrors existing pattern.
+
+## Resolution
+
+Added an interval guard to `GetInterruptUsage` in
+`core/internal/perfmonger/usage.go`. After the empty-entries check, the
+interval `t2.Sub(t1)` is computed once and, when its seconds value is
+`<= 0`, the function returns `errors.New("negative interval")` — mirroring
+the existing guard in `GetDiskUsage1`. This prevents the unconditional
+division by `Interval.Seconds()` from producing `+Inf` interrupt rates on a
+zero/degenerate interval (e.g. `first == last` record). The computed
+interval is reused for `usage.Interval`.
+
+Test added (TDD): `TestGetInterruptUsageZeroInterval` in
+`core/internal/perfmonger/usage_test.go` builds valid single-core IRQ
+entries with identical timestamps (`t1 == t2`) and asserts the call returns
+a non-nil error and a nil usage. It fails before the fix (returns usage with
+nil error) and passes after.
+
+Verified:
+- `cd core/internal/perfmonger && go test -count=1 ./...` — ok
+- `cd core/internal/perfmonger && go vet perfmonger_linux.go $(ls *.go | grep -v perfmonger_)` — clean
+- `cd core/cmd/perfmonger && go build -o ../../../lib/exec/perfmonger_linux_amd64 .` — ok

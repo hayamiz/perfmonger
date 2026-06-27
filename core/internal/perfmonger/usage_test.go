@@ -298,6 +298,43 @@ func TestGetInterruptUsageMismatchedEntries(t *testing.T) {
 	}
 }
 
+func TestGetInterruptUsageZeroInterval(t *testing.T) {
+	t1, perr := time.Parse(time.RFC3339, "2012-01-23T01:23:45+09:00")
+	if perr != nil {
+		t.Fatal("Timestamp parse error")
+	}
+	// Identical timestamps yield a zero interval. Dividing by it would
+	// produce +Inf interrupt rates, so GetInterruptUsage must return an
+	// error instead, mirroring the guard in GetDiskUsage1.
+	t2 := t1
+
+	num_core := 1
+
+	mkEntry := func(irq_no int) *InterruptStatEntry {
+		e := new(InterruptStatEntry)
+		e.IrqNo = irq_no
+		e.NumCore = num_core
+		e.IntrCounts = make([]int, num_core)
+		return e
+	}
+
+	i1 := NewInterruptStat()
+	i1.Entries = append(i1.Entries, mkEntry(0))
+	i1.NumEntries = 1
+
+	i2 := NewInterruptStat()
+	i2.Entries = append(i2.Entries, mkEntry(0))
+	i2.NumEntries = 1
+
+	usage, err := GetInterruptUsage(t1, i1, t2, i2)
+	if err == nil {
+		t.Error("err == nil, want non-nil error for zero interval")
+	}
+	if usage != nil {
+		t.Errorf("usage = %v, want nil for zero interval", usage)
+	}
+}
+
 func TestDiskUsage(t *testing.T) {
 	d1 := NewDiskStat()
 	d2 := NewDiskStat()
