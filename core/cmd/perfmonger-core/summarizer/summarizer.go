@@ -221,10 +221,8 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 
 		printer.FinishObject()
 
-		if str, perr := printer.String(); perr != nil {
-			fmt.Fprintln(out, "skip by err")
-		} else {
-			fmt.Fprintln(out, str)
+		if err := writeJSON(printer, out); err != nil {
+			return err
 		}
 	} else {
 		if option.Title == "" {
@@ -297,5 +295,18 @@ Duration: %.3f sec
 		}
 	}
 
+	return nil
+}
+
+// writeJSON serializes the finished printer and writes the resulting JSON to
+// out. If serialization fails, the error is logged to stderr and returned so
+// the caller can surface it; no partial or debug output is written to out.
+func writeJSON(printer *projson.JsonPrinter, out io.Writer) error {
+	str, err := printer.String()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "perfmonger: failed to serialize summary JSON: %v\n", err)
+		return err
+	}
+	fmt.Fprintln(out, str)
 	return nil
 }

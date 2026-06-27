@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	projson "github.com/hayamiz/go-projson"
 	ss "github.com/hayamiz/perfmonger/core/internal/perfmonger"
 )
 
@@ -78,5 +79,27 @@ func TestRunDirectOneRecordInterval(t *testing.T) {
 	}
 	if !strings.Contains(out, `"exectime":0.000`) {
 		t.Fatalf("expected zero exectime for one-record log, got: %s", out)
+	}
+}
+
+// TestWriteJSONPropagatesPrinterError verifies that when the JSON printer is in
+// an unfinished state (printer.String() fails), writeJSON returns the actual
+// error and does NOT write the debug literal "skip by err" to the output.
+func TestWriteJSONPropagatesPrinterError(t *testing.T) {
+	printer := projson.NewPrinter()
+	// Begin an object but never finish it, so printer.String() returns an error.
+	printer.BeginObject()
+
+	var buf bytes.Buffer
+	err := writeJSON(printer, &buf)
+	if err == nil {
+		t.Fatalf("expected writeJSON to return an error for an unfinished printer, got nil")
+	}
+
+	if strings.Contains(buf.String(), "skip by err") {
+		t.Fatalf("writeJSON wrote the debug literal %q to output: %s", "skip by err", buf.String())
+	}
+	if buf.Len() != 0 {
+		t.Fatalf("expected no output on error, got: %q", buf.String())
 	}
 }
