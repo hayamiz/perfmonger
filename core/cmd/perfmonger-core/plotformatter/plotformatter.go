@@ -193,6 +193,13 @@ func printMemUsage(writer *bufio.Writer, elapsed_time float64, mem *ss.MemStat) 
 	}
 }
 
+// closeTmpFile closes a temp file handle. It is a package-level seam so tests
+// can observe how many times each temp file is closed (a double-close is an
+// FD-reuse hazard).
+var closeTmpFile = func(f *os.File) error {
+	return f.Close()
+}
+
 func makeDiskDatTmpFile(dname string, idx int) *DiskDatTmpFile {
 	ret := new(DiskDatTmpFile)
 	ret.Name = dname
@@ -382,7 +389,7 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 			if !ok {
 				disk_dat = makeDiskDatTmpFile(dname, didx)
 				disk_dat_files[dname] = disk_dat
-				defer disk_dat.File.Close()
+				defer closeTmpFile(disk_dat.File)
 
 				disk_dat.Writer.WriteString("\n\n\n")
 				disk_dat.Writer.WriteString("# device: " + disk_dat.Name + "\n")
@@ -417,7 +424,7 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 			if cpu_dat == nil {
 				cpu_dat = makeCpuDatTmpFile(coreid)
 				cpu_dat_files[coreid] = cpu_dat
-				defer cpu_dat.File.Close()
+				defer closeTmpFile(cpu_dat.File)
 
 				cpu_dat.Writer.WriteString(fmt.Sprintf("\n\n\n# core: %d\n", coreid))
 				cpu_dat.Writer.WriteString("# elapsed_time\t%usr\t%nice\t%sys\t%iowait\t%hardirq\t%softirq\t%steal\t%guest\t%idle\n")
@@ -440,8 +447,10 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 	meta.EndTime = float64(records[curr^1].Time.UnixNano()) / 1.0e9
 
 	for _, disk_dat := range disk_dat_files {
+		// Flush buffered data to the temp file. The handle itself is closed
+		// exactly once by the deferred close registered at creation time, so
+		// it is intentionally not closed here (avoids an FD-reuse hazard).
 		disk_dat.Writer.Flush()
-		disk_dat.File.Close()
 	}
 
 	f, err = os.Create(opt.DiskFile)
@@ -469,8 +478,9 @@ func runPlotFormat(opt *CmdOption) (*PlotMeta, error) {
 	df_writer.Flush()
 
 	for _, cpu_dat := range cpu_dat_files {
+		// Flush buffered data; the handle is closed exactly once by the
+		// deferred close registered at creation time (avoids double-close).
 		cpu_dat.Writer.Flush()
-		cpu_dat.File.Close()
 
 		content, err := ioutil.ReadFile(cpu_dat.Path)
 		if err != nil {
