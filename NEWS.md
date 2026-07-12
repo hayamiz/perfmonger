@@ -1,3 +1,38 @@
+## 2026-06-28: PerfMonger 1.0.1
+  * Bugfix
+    * [record] subcommand:
+      * Honor the -d/--disk filter in the direct-API path (#0026).
+      * Handle SIGTERM gracefully instead of leaving partial output (#0037).
+      * Propagate buffer flush errors during the recording loop, and flush
+        before closing gzip on panic paths (#0015, #0039).
+      * Surface session lock errors when writing the session file, and close
+        the player stdin pipe when StdoutPipe fails (#0013, #0040).
+      * Stop the signal handler and join the player stdout drain goroutine on
+        return (#0014, #0027).
+    * [play] subcommand:
+      * Surface WriteString errors in the output path (#0017).
+    * [summary] subcommand:
+      * Return JSON serialization errors instead of silently writing
+        'skip by err', and reuse the real record for single-record logs
+        (#0021, #0022).
+    * [plot] subcommand:
+      * Escape output paths embedded in gnuplot scripts and avoid shell
+        injection via the gnuplot binary path (#0023, #0025).
+      * Propagate errors when saving gnuplot files and flushing buffers, guard
+        against a nil CPU record, and close temp files exactly once
+        (#0024, #0051, #0052, #0053).
+    * [fingerprint] subcommand:
+      * Surface command failures and tar/gzip Close errors when building the
+        tarball (#0031, #0032).
+    * [init-shell] subcommand:
+      * Recognize versioned shell binary names and report detection failure
+        clearly instead of 'unsupported shell: .' (#0034, #0035).
+    * Core robustness:
+      * Accept io.EOF from short-format diskstats lines, guard
+        GetInterruptUsage against zero interval and empty/short entries, guard
+        ReadNetStat against short /proc/net/dev lines, and close the directory
+        handle in getPartitions (#0041, #0045, #0046, #0047, #0055, #0056).
+
 ## 2026-05-29: PerfMonger 1.0.0
   * Changes
     * Reimplemented entirely in Go and distributed as a single `perfmonger` binary.

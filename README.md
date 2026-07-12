@@ -29,22 +29,26 @@ releases; avoid relying on it for production-critical workflows.
 
 Prebuilt Linux binaries are published on the
 [GitHub Releases page](https://github.com/hayamiz/perfmonger/releases) for
-both `amd64` and `arm64`. Each release ships the standalone `perfmonger`
-binary for each architecture (`perfmonger_linux_amd64`,
-`perfmonger_linux_arm64`) plus a `checksums.txt` (SHA256) file.
+both `amd64` and `arm64`. Each release ships a tar.gz archive for each
+architecture (`perfmonger_linux_amd64.tar.gz`,
+`perfmonger_linux_arm64.tar.gz`), each containing the `perfmonger` binary
+plus `COPYING`, `README.md`, and `NEWS.md`, alongside a `checksums.txt`
+(SHA256) file.
 
-Download the binary for your architecture, make it executable, and move it
-somewhere on your `PATH` (replace `X.Y.Z` with the release version):
+Download the archive for your architecture, extract it, and move the
+`perfmonger` binary somewhere on your `PATH`. The URLs below use the
+`releases/latest/download/` redirect, so they always resolve to the most
+recent release:
 
 ```sh
 # amd64
-curl -L -o perfmonger https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_linux_amd64
-chmod +x perfmonger
+curl -L -o perfmonger_linux_amd64.tar.gz https://github.com/hayamiz/perfmonger/releases/latest/download/perfmonger_linux_amd64.tar.gz
+tar xzf perfmonger_linux_amd64.tar.gz
 mv perfmonger ~/bin/perfmonger
 
 # arm64
-curl -L -o perfmonger https://github.com/hayamiz/perfmonger/releases/download/vX.Y.Z/perfmonger_linux_arm64
-chmod +x perfmonger
+curl -L -o perfmonger_linux_arm64.tar.gz https://github.com/hayamiz/perfmonger/releases/latest/download/perfmonger_linux_arm64.tar.gz
+tar xzf perfmonger_linux_arm64.tar.gz
 mv perfmonger ~/bin/perfmonger
 ```
 

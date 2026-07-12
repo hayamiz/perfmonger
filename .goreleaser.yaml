@@ -22,14 +22,21 @@ builds:
 
 archives:
   - id: perfmonger
-    # Publish raw, standalone binaries instead of tar.gz archives, named
-    # perfmonger_<os>_<arch> (e.g. perfmonger_linux_amd64). With the "binary"
-    # format goreleaser uploads the executable directly; extra files (COPYING,
-    # README.md, NEWS.md) are not bundled — they remain in the source archive
-    # and the repository.
+    # Publish tar.gz archives with version-less names, perfmonger_<os>_<arch>
+    # (e.g. perfmonger_linux_amd64.tar.gz). Omitting the version from the name
+    # lets the README point at the stable releases/latest/download/<asset>
+    # redirect URL without tracking version numbers (D2). Each archive bundles
+    # the perfmonger binary plus the repo-root COPYING, README.md, and NEWS.md.
     formats:
-      - binary
+      - tar.gz
     name_template: "perfmonger_{{ .Os }}_{{ .Arch }}"
+    # Repo-root files to bundle alongside the binary. goreleaser resolves these
+    # paths relative to the current working directory (repository root), not the
+    # build dir (core/).
+    files:
+      - COPYING
+      - README.md
+      - NEWS.md
 
 checksum:
   name_template: "checksums.txt"
