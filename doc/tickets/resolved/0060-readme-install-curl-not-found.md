@@ -2,7 +2,7 @@
 title: README のインストール手順で curl が not found になる不整合
 type: bug
 priority: medium
-status: open
+status: resolved
 created: 2026-06-27
 updated: 2026-06-28
 ---
@@ -10,14 +10,15 @@ updated: 2026-06-28
 ## Triage
 
 - Complexity: medium
-- Mechanical fix: no
-- Requires user decision: yes
-- Notes: 不整合の事実（v1.0.0=tar.gz / `.goreleaser.yaml`=生バイナリ / README=生バイナリ）
-  は確定しているが、修正には「生バイナリ配布で確定して新リリースを切る（方針A）」か
-  「tar.gz 配布へ戻して README を展開手順に直す（方針B）」かの**配布形式の選択**が必要。
-  両者は配布成果物が実質的に異なり、方針A は新リリースの公開（対外的なメンテナ操作）を
-  伴う。さらに `RELEASING.md` の smoke-test も生バイナリ前提のため、選んだ方針に
-  合わせた追随が要る。よって機械的修正ではなくユーザー判断が必要。
+- Mechanical fix: yes _(grill 後。D1〜D6 で配布形式・命名・スコープが確定し、残りは機械的)_
+- Requires user decision: no _(grill で配布形式の選択を解決済み)_
+- Notes: 当初は配布形式（生バイナリ vs tar.gz）の選択が必要で要ユーザー判断だったが、
+  2026-06-28 の grill（`/grill-with-ticket`）で D1（tar.gz 配布）・D2（version-less 名 +
+  latest リダイレクト）・D3（master から v1.0.1 を切る）・D4（README に SHA256 検証を
+  載せない）・D5（RELEASING.md 修正を本チケットに含める）・D6（#0059 は本命名を前提）を
+  すべて確定。ファイル修正（`.goreleaser.yaml` / `README.md` / `NEWS.md` / `RELEASING.md`）は
+  機械的に適用可能。なお D3 のタグ push／リリース公開は対外的なメンテナ操作のため
+  `/ticket-fix` のスコープ外（ファイル修正のみ実施し、リリースは別途手動）。
 
 ## Description
 
@@ -174,8 +175,63 @@ tar.gz 資産とは命名が非連続。
 - **D4: SHA256 検証手順は README に含めない。** 手順を最小に保つ方針。
   `checksums.txt` 自体はリリースに同梱されるので、必要なユーザーは個別に検証可能。
 
-### ユーザーへの確認事項（残）
+- **D5: `RELEASING.md` の修正は本チケットに含める。** smoke-test を tar.gz＋
+  version-less 名（latest リダイレクト）の展開手順へ更新する。`.goreleaser.yaml` を
+  変える本チケットと同時に直さないとドキュメントと設定のズレを再生産するため。
 
-- **D5**: `RELEASING.md` の修正を本チケットに含めるか、別チケットに分離するか。
-- **D6**: [0059](0059-self-update-from-github-releases.md)（自己アップデート）は同じ
-  アセット命名（version-less `perfmonger_{os}_{arch}.tar.gz`）を前提にしてよいか。
+- **D6: [0059](0059-self-update-from-github-releases.md) は本チケットの命名を前提にしてよい。**
+  自己アップデートは version-less `perfmonger_{os}_{arch}.tar.gz`（latest リダイレクト）を
+  前提に実装する。`--update` は tar.gz を展開してから実行バイナリを置換する点に留意
+  （0059 側の実装ノートで扱う）。
+
+### グリル結果（全決定確定 2026-06-28）
+
+D1〜D6 をすべて確定。本チケットは機械的に実装可能な状態
+（`.goreleaser.yaml` / `README.md` / `NEWS.md` / `RELEASING.md` の修正 + `v1.0.1`
+タグ push の運用作業）。残る未決事項なし。
+
+## Resolution
+
+D1〜D5 に沿ってドキュメント・設定ファイルを修正した（2026-06-28）。Go ソースの
+変更はなく、ドキュメント／設定のみの変更。
+
+### 変更したファイル
+
+- **`.goreleaser.yaml`** — `archives` を生バイナリ配布から tar.gz 配布へ戻した。
+  `formats: [binary]` → `formats: [tar.gz]` に変更し、`COPYING` / `README.md` /
+  `NEWS.md` を同梱する `files:` リストを追加（D1）。`name_template` は
+  バージョン非依存の `"perfmonger_{{ .Os }}_{{ .Arch }}"` を維持（D2）。
+  説明コメントも tar.gz＋version-less 名の内容へ更新（英語）。
+- **`README.md`** — Installation の "Pre-built binary" 手順を tar.gz 取得＋展開へ
+  書き換え。`releases/latest/download/<asset>` のリダイレクト URL を使い、
+  バージョン番号のメンテを不要にした（D2）。SHA256 検証手順は追加していない（D4）。
+  説明文も「tar.gz アーカイブ（`perfmonger_linux_amd64.tar.gz` /
+  `perfmonger_linux_arm64.tar.gz`、`perfmonger` バイナリ＋COPYING/README/NEWS 同梱）＋
+  `checksums.txt`」を配布する旨へ更新。
+- **`NEWS.md`** — 1.0.0 エントリの上に `## 2026-06-28: PerfMonger 1.0.1` を追加。
+  v1.0.0 以降 master に積まれた約20件のバグ修正を、サブコマンド／コア別に
+  グルーピングして要約（既存エントリの体裁・インデントに合わせ、代表的な
+  #NNNN チケット番号を併記）（D3）。
+- **`RELEASING.md`** — release.yml の成果物説明と smoke-test を tar.gz＋
+  version-less 名（latest リダイレクト）の展開フローへ更新（D5）。リリース手順
+  本体はそのまま維持。
+
+### 検証結果
+
+- `goreleaser check` … **未実施**。`goreleaser` がこの環境に未インストールのため。
+  代替として `.goreleaser.yaml` の整形を確認（`uv run --with pyyaml python -c
+  "import yaml; yaml.safe_load(...)"` で **YAML OK**、`archives` ブロックが
+  `formats: [tar.gz]` / version-less `name_template` / `files:`
+  [COPYING, README.md, NEWS.md] になっていることを確認）。
+- `goreleaser release --snapshot --clean` … **未実施**（goreleaser 未インストール）。
+  実アーカイブ生成・同梱内容の確認は次回リリース時、または goreleaser 導入後に
+  実施する必要がある。
+- `NEWS.md` / `README.md` / `RELEASING.md` … Markdown の体裁を確認、崩れなし。
+
+### スコープ外（メンテナの手動作業）
+
+D3 の `v1.0.1` タグの作成・push（および release.yml 発火による GitHub Release
+公開）は対外的なリリース操作のため、本チケット（ファイル修正のみ）のスコープ外。
+ここでは実施していない。新 `.goreleaser.yaml`（D1/D2）で version-less 名の
+アセットと latest リダイレクトが機能するのは、メンテナが master から `v1.0.1` を
+切った後となる。
