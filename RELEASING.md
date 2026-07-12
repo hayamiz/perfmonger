@@ -30,6 +30,36 @@ You do not edit `VERSION` by hand for a release — the tag drives it.
 3. The top entry of [`NEWS.md`](NEWS.md) describes this release with the correct
    version number and date. The release notes attached to the GitHub Release are
    extracted verbatim from this top section, so make sure it reads well.
+4. (Optional but recommended) Run the local GoReleaser pre-flight below to catch
+   config or build problems before pushing a tag.
+
+## Local GoReleaser pre-flight (optional)
+
+The release itself runs GoReleaser in CI, so you do not normally need it
+locally. When changing `.goreleaser.yaml` (or before an important release) you
+can validate the config and dry-run the build locally.
+
+GoReleaser is a maintainer-only tool and is intentionally kept out of the
+`core/go.mod` module graph (it pulls in a large dependency tree). Instead it is
+installed on demand into your `GOBIN`, pinned via `GORELEASER_VERSION` in the
+[`Makefile`](Makefile) to a version within the `~> v2` range CI uses.
+
+```sh
+# Recommended: install into the repo-local dev env tree (no sudo, isolated).
+source 00_LOAD_GO_DEVENV.sh
+
+make tools           # go install the pinned GoReleaser into GOBIN
+make release-check   # goreleaser check + goreleaser release --snapshot --clean
+```
+
+`make release-check` depends on `make tools`, so a single `make release-check`
+also installs GoReleaser if needed. The snapshot build writes to `dist/` (git
+-ignored) and publishes nothing. On a host with an older Go, the default
+`GOTOOLCHAIN=auto` lets `go install` fetch the toolchain GoReleaser requires.
+
+To upgrade GoReleaser, bump the single `GORELEASER_VERSION` line in the
+`Makefile` (keep it within `~> v2` to stay consistent with
+[`.github/workflows/release.yml`](.github/workflows/release.yml)).
 
 ## Cutting a release
 

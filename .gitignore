@@ -12,6 +12,9 @@
 /godevenv/
 core/cmd/perfmonger/godevenv/
 
+# GoReleaser local build output (make release-check / --snapshot)
+/dist/
+
 # Python / pytest
 .venv/
 __pycache__/
