@@ -54,7 +54,7 @@ mv perfmonger ~/bin/perfmonger
 
 ### Build from source
 
-You need Go 1.24 or later (matches `core/go.mod`).
+You need Go 1.25 or later (matches `core/go.mod`).
 
 ```sh
 git clone https://github.com/hayamiz/perfmonger.git
