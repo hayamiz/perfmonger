@@ -104,7 +104,7 @@ func TestGzipBufWriterFlushesBufferOnPanic(t *testing.T) {
 			}
 		}()
 
-		out, cleanup := newGzipBufWriter(&compressed)
+		out, _, cleanup := newGzipBufWriter(&compressed)
 		defer cleanup()
 
 		// Write into the bufio buffer but do NOT flush; the bytes are held in
@@ -336,6 +336,93 @@ func TestRunDirectHandlesSIGTERM(t *testing.T) {
 	}
 	if !sawSIGTERM {
 		t.Fatalf("signal.Notify was not called with syscall.SIGTERM; SIGTERM is not handled gracefully (got %v)", notifiedSignals)
+	}
+}
+
+// TestRunDirectSetupErrorOnUncreatableOutput is a regression test for the bug
+// where RunDirect panicked when os.Create failed on the output path. RunDirect
+// must instead return a *SetupError (nothing was written), which the record
+// subcommand maps onto exit code 1. The error must be distinguishable from a
+// *CollectionError.
+func TestRunDirectSetupErrorOnUncreatableOutput(t *testing.T) {
+	// A path under a non-existent directory cannot be created by os.Create.
+	badPath := path.Join(t.TempDir(), "does-not-exist", "out.pgr")
+
+	option := NewRecorderOption()
+	option.Output = badPath
+	option.Timeout = 10 * time.Millisecond
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+
+	err := RunDirect(option)
+	if err == nil {
+		t.Fatalf("RunDirect returned nil for an uncreatable output path; expected a setup error")
+	}
+
+	var setupErr *SetupError
+	if !errors.As(err, &setupErr) {
+		t.Fatalf("RunDirect error is not a *SetupError: got %T (%v)", err, err)
+	}
+
+	var collErr *CollectionError
+	if errors.As(err, &collErr) {
+		t.Fatalf("setup failure was misclassified as a *CollectionError: %v", err)
+	}
+
+	if _, statErr := os.Stat(badPath); statErr == nil {
+		t.Fatalf("output file %s was created despite the setup error", badPath)
+	}
+}
+
+// TestRunDirectNormalPathReturnsNil verifies that the normal recording path
+// (short timeout, output to a real file) completes without panicking, returns a
+// nil error, and leaves a non-empty file on disk (the data has been flushed and
+// fsync'd before close).
+func TestRunDirectNormalPathReturnsNil(t *testing.T) {
+	tmpfile := path.Join(t.TempDir(), "out.pgr")
+
+	option := NewRecorderOption()
+	option.Output = tmpfile
+	option.Timeout = 20 * time.Millisecond
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+	// Avoid touching interrupt stats which may not be readable in all CI envs.
+	option.NoIntr = true
+
+	if err := RunDirect(option); err != nil {
+		t.Fatalf("RunDirect returned an error on the normal path: %v", err)
+	}
+
+	info, statErr := os.Stat(tmpfile)
+	if statErr != nil {
+		t.Fatalf("output file was not written: %v", statErr)
+	}
+	if info.Size() == 0 {
+		t.Fatalf("output file is empty; recorded data was not flushed to disk")
+	}
+}
+
+// TestRecorderErrorTypesAreDistinct documents the classification contract the
+// record subcommand relies on: a *SetupError and a *CollectionError wrapping the
+// same underlying error must be matchable by errors.As to their own type only,
+// so record.go can choose exit code 1 vs 2 unambiguously.
+func TestRecorderErrorTypesAreDistinct(t *testing.T) {
+	base := errors.New("underlying failure")
+
+	setup := &SetupError{Err: base}
+	coll := &CollectionError{Err: base}
+
+	var s *SetupError
+	var c *CollectionError
+
+	if !errors.As(setup, &s) || errors.As(setup, &c) {
+		t.Fatalf("SetupError did not classify cleanly as *SetupError only")
+	}
+	if !errors.As(coll, &c) || errors.As(coll, &s) {
+		t.Fatalf("CollectionError did not classify cleanly as *CollectionError only")
+	}
+	if !errors.Is(setup, base) || !errors.Is(coll, base) {
+		t.Fatalf("wrapped error types must unwrap to the underlying error")
 	}
 }
 

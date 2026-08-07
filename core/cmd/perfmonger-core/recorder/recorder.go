@@ -207,11 +207,35 @@ func showRecorderOption(option *RecorderOption) {
 	fmt.Fprintf(os.Stderr, "=====================\n")
 }
 
+// SetupError wraps a failure that happened during recorder setup, before any
+// sample was written to the output (e.g. the session file could not be locked,
+// or the output path could not be created). Nothing was written, so callers map
+// this onto exit code 1.
+type SetupError struct {
+	Err error
+}
+
+func (e *SetupError) Error() string { return e.Err.Error() }
+
+func (e *SetupError) Unwrap() error { return e.Err }
+
+// CollectionError wraps a failure that happened after recording started: during
+// header/record encoding, the buffered flush, the fsync, or the file close
+// (e.g. ENOSPC). The output may be incomplete, so callers map this onto exit
+// code 2.
+type CollectionError struct {
+	Err error
+}
+
+func (e *CollectionError) Error() string { return e.Err.Error() }
+
+func (e *CollectionError) Unwrap() error { return e.Err }
+
 // RunWithOption executes the recorder with the provided options
 // This is the preferred API that uses direct execution (no double argument parsing)
-func RunWithOption(option *RecorderOption) {
+func RunWithOption(option *RecorderOption) error {
 	// Call the direct execution function (no args conversion needed)
-	RunDirect(option)
+	return RunDirect(option)
 }
 
 // SessionFilePath returns the path to the background session PID file.
@@ -286,16 +310,21 @@ func encodeAndFlush(enc *gob.Encoder, out *bufio.Writer, record *ss.StatRecord) 
 }
 
 // newGzipBufWriter wraps file in a gzip.Writer and a bufio.Writer and returns
-// the buffered writer together with a cleanup function. The caller MUST invoke
-// the cleanup with `defer cleanup()` immediately. The cleanup flushes the bufio
-// buffer into the gzip writer BEFORE closing the gzip writer, so that on panic
-// paths the buffered bytes reach the gzip writer before its footer is written,
-// producing a complete, valid gzip stream instead of a truncated one.
+// the buffered writer, the underlying gzip writer, and a cleanup function. The
+// caller MUST invoke the cleanup with `defer cleanup()` immediately. The cleanup
+// flushes the bufio buffer into the gzip writer BEFORE closing the gzip writer,
+// so that on panic paths the buffered bytes reach the gzip writer before its
+// footer is written, producing a complete, valid gzip stream instead of a
+// truncated one.
 //
 // A flush error must never mask a panic that is already unwinding: cleanup
-// captures any in-flight panic, flushes, then re-raises the original panic. Only
-// when there was no panic is a flush error surfaced (via panic).
-func newGzipBufWriter(file io.Writer) (out *bufio.Writer, cleanup func()) {
+// captures any in-flight panic, flushes, closes, then re-raises the original
+// panic. On the non-panic path the cleanup is only a safety net; the caller is
+// expected to flush the bufio buffer and close the returned gzip writer
+// explicitly so that flush/close errors are surfaced as returned errors rather
+// than panics. gzip.Writer.Close is idempotent, so the caller's explicit close
+// followed by this cleanup's close is safe.
+func newGzipBufWriter(file io.Writer) (out *bufio.Writer, gz *gzip.Writer, cleanup func()) {
 	gzwriter := gzip.NewWriter(file)
 	out = bufio.NewWriter(gzwriter)
 	cleanup = func() {
@@ -309,14 +338,13 @@ func newGzipBufWriter(file io.Writer) (out *bufio.Writer, cleanup func()) {
 			// Preserve the original panic; flush/close errors must not mask it.
 			panic(p)
 		}
-		if flushErr != nil {
-			panic(flushErr)
-		}
-		if closeErr != nil {
-			panic(closeErr)
-		}
+		// On the non-panic path any flush/close error has already been (or will
+		// be) surfaced by the caller's explicit finalization, so it is ignored
+		// here to keep cleanup a pure safety net that never panics on success.
+		_ = flushErr
+		_ = closeErr
 	}
-	return out, cleanup
+	return out, gzwriter, cleanup
 }
 
 // playerPipeSource abstracts the parts of *exec.Cmd used while wiring up the
@@ -366,22 +394,31 @@ func setupPlayerPipes(cmd playerPipeSource) (io.WriteCloser, io.ReadCloser, erro
 
 func Run(args []string) {
 	option := NewRecorderOption()
-	
+
 	parseArgs(args, option)
-	
-	// Call the direct execution function
-	RunDirect(option)
+
+	// Call the direct execution function. This legacy entry point has no
+	// caller-supplied error handling, so a failure is surfaced as a panic to
+	// keep the previous fail-loud behavior.
+	if err := RunDirect(option); err != nil {
+		panic(err)
+	}
 }
 
 // RunDirect executes the recorder with the provided RecorderOption directly
 // This avoids the double conversion: RecorderOption -> args -> parseArgs -> RecorderOption
-func RunDirect(option *RecorderOption) {
+//
+// It returns nil on normal completion (timeout, stop-fd close, SIGINT/SIGTERM).
+// Setup failures (before any sample is written) are returned as *SetupError and
+// collection/write failures (after recording started) as *CollectionError, so
+// callers can map them onto the record subcommand's 0/1/2 exit-code contract.
+func RunDirect(option *RecorderOption) error {
 	// Session file management for background mode.
 	// The CLI layer handles duplicate-session detection before launching;
 	// here we just write and clean up the PID file.
 	if option.Background {
 		if _, err := WriteSessionFile(); err != nil {
-			panic(err)
+			return &SetupError{Err: err}
 		}
 		defer RemoveSessionFile()
 	}
@@ -389,6 +426,12 @@ func RunDirect(option *RecorderOption) {
 	var out *bufio.Writer
 	var enc *gob.Encoder
 	var err error
+	// outFile is the real output file when writing to a path (nil for stdout /
+	// player pipe). gzwriter is the gzip writer when Gzip output is enabled.
+	// Both are finalized explicitly on the normal success path so the data is
+	// flushed and fsync'd before the file is closed.
+	var outFile *os.File
+	var gzwriter *gzip.Writer
 
 	if option.Debug {
 		showRecorderOption(option)
@@ -403,7 +446,7 @@ func RunDirect(option *RecorderOption) {
 		for _, name := range platform_header.DevsParts {
 			os.Stderr.WriteString(name + "\n")
 		}
-		return
+		return nil
 	}
 
 	var player_cmd *exec.Cmd = nil
@@ -453,10 +496,15 @@ func RunDirect(option *RecorderOption) {
 			out = bufio.NewWriter(player_stdin)
 		}
 	} else {
-		file, err := os.Create(option.Output)
-		if err != nil {
-			panic(err)
+		file, createErr := os.Create(option.Output)
+		if createErr != nil {
+			// The output could not be created; nothing has been written yet.
+			return &SetupError{Err: createErr}
 		}
+		outFile = file
+		// Safety net for early-return and panic paths. On the normal path the
+		// file is closed explicitly (after fsync) below; the second Close here
+		// then returns an already-closed error that is intentionally ignored.
 		defer file.Close()
 
 		if player_stdin != nil {
@@ -466,10 +514,10 @@ func RunDirect(option *RecorderOption) {
 				// newGzipBufWriter registers its flush-before-close ordering in
 				// the returned cleanup, so a panic anywhere in the recording
 				// body still drains the bufio buffer into the gzip writer before
-				// the gzip footer is written. The normal-path explicit Flush
-				// further down makes the cleanup's flush a no-op on success.
+				// the gzip footer is written. The normal-path explicit Flush and
+				// gzip Close further down make the cleanup a no-op on success.
 				var cleanup func()
-				out, cleanup = newGzipBufWriter(file)
+				out, gzwriter, cleanup = newGzipBufWriter(file)
 				defer cleanup()
 			} else {
 				out = bufio.NewWriter(file)
@@ -479,15 +527,17 @@ func RunDirect(option *RecorderOption) {
 
 	enc = gob.NewEncoder(out)
 
-	// Write the beginning sections
+	// Write the beginning sections. The output file already exists, so a failure
+	// here means the output may be partially written: classify as a collection
+	// error (exit 2) rather than a setup error.
 	err = enc.Encode(cheader)
 	if err != nil {
-		panic(err)
+		return &CollectionError{Err: err}
 	}
 
 	err = enc.Encode(platform_header)
 	if err != nil {
-		panic(err)
+		return &CollectionError{Err: err}
 	}
 
 	// start delay
@@ -599,11 +649,34 @@ func RunDirect(option *RecorderOption) {
 	// already truncated or corrupted. Propagate the failure so the process
 	// exits non-zero instead of reporting success on an unusable file.
 	if err != nil {
-		panic(err)
+		return &CollectionError{Err: err}
 	}
 
+	// Normal finalization: flush the buffered data, write the gzip trailer (if
+	// any), fsync the file, then close it, so a successful return guarantees the
+	// recorded data is on durable storage.
 	if flushErr := out.Flush(); flushErr != nil {
-		panic(flushErr)
+		return &CollectionError{Err: flushErr}
+	}
+
+	if gzwriter != nil {
+		// Close writes the gzip trailer. gzip.Writer.Close is idempotent, so
+		// the deferred cleanup's later close is a harmless no-op.
+		if closeErr := gzwriter.Close(); closeErr != nil {
+			return &CollectionError{Err: closeErr}
+		}
+	}
+
+	if outFile != nil {
+		// fsync before close so a successful exit guarantees the data reached
+		// durable storage. Sync is skipped for non-regular outputs (pipes,
+		// devices) where it may fail even though the write succeeded.
+		if syncErr := syncFile(outFile); syncErr != nil {
+			return &CollectionError{Err: syncErr}
+		}
+		if closeErr := outFile.Close(); closeErr != nil {
+			return &CollectionError{Err: closeErr}
+		}
 	}
 
 	if player_stdin != nil {
@@ -617,6 +690,19 @@ func RunDirect(option *RecorderOption) {
 			player_drain_wg.Wait()
 		}
 	}
+
+	return nil
+}
+
+// syncFile flushes the file's data to durable storage before it is closed. Sync
+// is only meaningful for regular files; for pipes, character devices, or similar
+// special outputs Sync may return an error (e.g. EINVAL) even though every write
+// succeeded, so those errors are ignored to avoid failing an otherwise-good run.
+func syncFile(f *os.File) error {
+	if info, statErr := f.Stat(); statErr == nil && !info.Mode().IsRegular() {
+		return nil
+	}
+	return f.Sync()
 }
 
 // startPlayerDrain spawns a goroutine that copies all data from the player's
