@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -291,8 +292,28 @@ func (cmd *recordCommand) executeRecord() error {
 		fmt.Printf("[recording to %s]\n", cmd.RecorderOpt.Output)
 	}
 
-	// Direct API call - no conversion needed
-	recorder.RunWithOption(cmd.RecorderOpt)
+	// Direct API call - no conversion needed. Map the recorder's typed errors
+	// onto the exit-code contract:
+	//   0 - normal completion (timeout, stop, SIGINT/SIGTERM)
+	//   1 - setup error (nothing written, e.g. output not creatable)
+	//   2 - collection/write error (output possibly incomplete, e.g. ENOSPC)
+	// The exit codes are applied here (rather than by returning to cobra, which
+	// would always yield 1 and print usage) because these are runtime failures,
+	// not usage errors.
+	if err := recorder.RunWithOption(cmd.RecorderOpt); err != nil {
+		var setupErr *recorder.SetupError
+		var collErr *recorder.CollectionError
+		switch {
+		case errors.As(err, &setupErr):
+			fmt.Fprintf(os.Stderr, "[ERROR] failed to start recording: %v\n", err)
+			os.Exit(1)
+		case errors.As(err, &collErr):
+			fmt.Fprintf(os.Stderr, "[ERROR] recording failed: %v\n", err)
+			os.Exit(2)
+		default:
+			return err
+		}
+	}
 	return nil
 }
 

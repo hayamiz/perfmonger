@@ -135,10 +135,14 @@ func (cmd *statCommand) run() error {
 	// Create a temporary goroutine to run the recorder in background
 	recorderDone := make(chan bool, 1)
 
+	// recErr is written only by the recorder goroutine and read only after
+	// recorderDone fires, so the send on recorderDone establishes the
+	// happens-before relationship that makes the read race-free.
+	var recErr error
 	go func() {
 		defer func() { recorderDone <- true }()
 		// Start recording using the direct API
-		recorder.RunWithOption(cmd.RecorderOpt)
+		recErr = recorder.RunWithOption(cmd.RecorderOpt)
 	}()
 
 	// Give recorder a moment to start
@@ -158,7 +162,11 @@ func (cmd *statCommand) run() error {
 	// Wait for recorder to finish (with generous timeout)
 	select {
 	case <-recorderDone:
-		// Recorder finished cleanly
+		// Recorder finished; report a recording error if one occurred. recErr
+		// is only read here, after recorderDone fired, to avoid a data race.
+		if recErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: recorder error: %v\n", recErr)
+		}
 	case <-time.After(5 * time.Second):
 		fmt.Fprintf(os.Stderr, "Warning: recorder may still be running\n")
 	}

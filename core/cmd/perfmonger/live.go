@@ -81,9 +81,9 @@ func (cmd *liveCommand) run() error {
 	cmd.RecorderOpt.Color = cmd.Color
 	cmd.RecorderOpt.Pretty = cmd.Pretty
 	
-	// Direct API call - no conversion needed
-	recorder.RunWithOption(cmd.RecorderOpt)
-	return nil
+	// Direct API call - no conversion needed. Propagate any recorder error so
+	// live monitoring fails visibly instead of silently.
+	return recorder.RunWithOption(cmd.RecorderOpt)
 }
 
 // applyRubySpecificLogic applies minimal Ruby-specific logic (inherited from record)
