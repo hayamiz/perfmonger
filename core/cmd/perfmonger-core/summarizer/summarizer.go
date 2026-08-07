@@ -199,6 +199,15 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 		printer.BeginObject()
 		printer.PutKey("exectime")
 		printer.PutFloatFmt(interval.Seconds(), "%.3f")
+		if metaKeys := cheader.SortedMetaKeys(); len(metaKeys) > 0 {
+			printer.PutKey("meta")
+			printer.BeginObject()
+			for _, k := range metaKeys {
+				printer.PutKey(k)
+				printer.PutString(cheader.Meta[k])
+			}
+			printer.FinishObject()
+		}
 		if cpu_usage != nil {
 			printer.PutKey("cpu")
 			cpu_usage.WriteJsonTo(printer)
@@ -235,6 +244,13 @@ Duration: %.3f sec
 
 `,
 			interval.Seconds())
+		if metaKeys := cheader.SortedMetaKeys(); len(metaKeys) > 0 {
+			fmt.Fprintln(out, "Metadata:")
+			for _, k := range metaKeys {
+				fmt.Fprintf(out, "  %s: %s\n", k, cheader.Meta[k])
+			}
+			fmt.Fprintln(out, "")
+		}
 		if cpu_usage != nil {
 			fmt.Fprintf(out, `* Average CPU usage (MAX: %d %%)
   * Non-idle usage: %.2f %%
