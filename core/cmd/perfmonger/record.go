@@ -268,6 +268,16 @@ func (cmd *recordCommand) executeRecord() error {
 		cmd.RecorderOpt.Debug = true
 	}
 
+	// --ready-fd/--stop-fd depend on inherited file descriptors, which the
+	// background re-exec detaches. Reject the combination before daemonizing so
+	// the failure is reported here (exit 1) rather than lost in the detached
+	// child.
+	if cmd.RecorderOpt.Background &&
+		(cmd.RecorderOpt.ReadyFd >= 0 || cmd.RecorderOpt.StopFd >= 0) {
+		fmt.Fprintf(os.Stderr, "[ERROR] --ready-fd/--stop-fd cannot be used with --background\n")
+		os.Exit(1)
+	}
+
 	// Resolve output path to absolute BEFORE daemonize (which changes cwd to /)
 	if cmd.RecorderOpt.Output != "-" && !filepath.IsAbs(cmd.RecorderOpt.Output) {
 		absPath, err := filepath.Abs(cmd.RecorderOpt.Output)
@@ -288,7 +298,10 @@ func (cmd *recordCommand) executeRecord() error {
 			return cmd.launchDaemonChild()
 		}
 		// Child: continue to recording (don't print banner)
-	} else {
+	} else if cmd.RecorderOpt.ReadyFd < 0 {
+		// Suppress the human-readable banner when a ready fd is wired up: the
+		// caller consumes the machine-readable ready event instead, and the
+		// banner could corrupt stdout when the output is "-".
 		fmt.Printf("[recording to %s]\n", cmd.RecorderOpt.Output)
 	}
 
@@ -451,10 +464,16 @@ func newRecordCommand() *cobra.Command {
 		"Suppress recording memory usage")
 	cmd.Flags().BoolVar(&recCmd.NoGzip, "no-gzip", recCmd.NoGzip, 
 		"Do not save a logfile in gzipped format")
-	cmd.Flags().BoolVar(&recCmd.RecorderOpt.NoIntervalBackoff, "no-interval-backoff", recCmd.RecorderOpt.NoIntervalBackoff, 
+	cmd.Flags().BoolVar(&recCmd.RecorderOpt.NoIntervalBackoff, "no-interval-backoff", recCmd.RecorderOpt.NoIntervalBackoff,
 		"Prevent interval to be set longer every after 100 records.")
-	
-	// Debug flags  
+
+	// C-embedding start/stop fd contract (incompatible with --background)
+	cmd.Flags().IntVar(&recCmd.RecorderOpt.ReadyFd, "ready-fd", recCmd.RecorderOpt.ReadyFd,
+		"Write a newline-terminated ready JSON event to this fd after the first sample, then close it")
+	cmd.Flags().IntVar(&recCmd.RecorderOpt.StopFd, "stop-fd", recCmd.RecorderOpt.StopFd,
+		"Stop recording gracefully when this fd reaches EOF (e.g. --stop-fd=0 for stdin)")
+
+	// Debug flags
 	cmd.Flags().BoolVarP(&recCmd.Verbose, "verbose", "v", recCmd.Verbose, 
 		"Verbose output")
 	

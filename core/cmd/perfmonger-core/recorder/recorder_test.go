@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -423,6 +424,165 @@ func TestRecorderErrorTypesAreDistinct(t *testing.T) {
 	}
 	if !errors.Is(setup, base) || !errors.Is(coll, base) {
 		t.Fatalf("wrapped error types must unwrap to the underlying error")
+	}
+}
+
+// TestRunDirectReadyFdEmitsEventAndClosesFd verifies the --ready-fd contract:
+// after the first sample is flushed, RunDirect writes exactly one
+// newline-terminated ready JSON object carrying the expected keys, and then
+// closes the fd so a reader observes EOF.
+func TestRunDirectReadyFdEmitsEventAndClosesFd(t *testing.T) {
+	readyR, readyW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create ready pipe: %v", err)
+	}
+	defer readyR.Close()
+
+	tmpfile := path.Join(t.TempDir(), "out.pgr")
+	option := NewRecorderOption()
+	option.Output = tmpfile
+	option.Timeout = 200 * time.Millisecond
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+	option.NoIntr = true
+	option.ReadyFd = int(readyW.Fd())
+
+	runErr := make(chan error, 1)
+	go func() {
+		runErr <- RunDirect(option)
+	}()
+
+	// Read everything the recorder writes to the ready fd. RunDirect closes its
+	// wrapper over the fd after emitting, so ReadAll returns on EOF.
+	data, readErr := io.ReadAll(readyR)
+	if readErr != nil {
+		t.Fatalf("reading ready fd failed: %v", readErr)
+	}
+	// The recorder also holds the write end via the fd number; close ours so a
+	// lingering descriptor does not keep the pipe open in edge cases.
+	readyW.Close()
+
+	if err := <-runErr; err != nil {
+		t.Fatalf("RunDirect returned an error: %v", err)
+	}
+
+	if len(data) == 0 {
+		t.Fatalf("no ready event was written to the ready fd")
+	}
+	// Exactly one newline-terminated line.
+	if data[len(data)-1] != '\n' {
+		t.Fatalf("ready event is not newline-terminated: %q", data)
+	}
+	if n := bytes.Count(data, []byte("\n")); n != 1 {
+		t.Fatalf("expected exactly one ready line, got %d: %q", n, data)
+	}
+
+	var ev struct {
+		Event     string `json:"event"`
+		Version   int    `json:"version"`
+		Pid       int    `json:"pid"`
+		Output    string `json:"output"`
+		StartTime string `json:"start_time"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(data), &ev); err != nil {
+		t.Fatalf("ready event is not valid JSON: %v (%q)", err, data)
+	}
+	if ev.Event != "ready" {
+		t.Fatalf("ready event has event=%q, want \"ready\"", ev.Event)
+	}
+	if ev.Version != 1 {
+		t.Fatalf("ready event has version=%d, want 1", ev.Version)
+	}
+	if ev.Pid != os.Getpid() {
+		t.Fatalf("ready event has pid=%d, want %d", ev.Pid, os.Getpid())
+	}
+	if ev.Output != tmpfile {
+		t.Fatalf("ready event has output=%q, want %q", ev.Output, tmpfile)
+	}
+	if _, perr := time.Parse(time.RFC3339Nano, ev.StartTime); perr != nil {
+		t.Fatalf("ready event start_time %q is not RFC3339Nano: %v", ev.StartTime, perr)
+	}
+}
+
+// TestRunDirectStopFdClosesStopsRecording verifies that closing the write end of
+// the stop fd stops recording gracefully: RunDirect takes the normal exit path
+// and returns nil (exit 0), leaving a valid output file.
+func TestRunDirectStopFdClosesStopsRecording(t *testing.T) {
+	stopR, stopW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create stop pipe: %v", err)
+	}
+	defer stopR.Close()
+
+	tmpfile := path.Join(t.TempDir(), "out.pgr")
+	option := NewRecorderOption()
+	option.Output = tmpfile
+	// No timeout: the only thing that can stop recording is the stop fd closing.
+	option.Interval = 5 * time.Millisecond
+	option.NoIntervalBackoff = true
+	option.NoIntr = true
+	option.StopFd = int(stopR.Fd())
+
+	runErr := make(chan error, 1)
+	go func() {
+		runErr <- RunDirect(option)
+	}()
+
+	// Let a few samples be recorded, then close the write end so the recorder's
+	// stop goroutine observes EOF and closes StopCh.
+	time.Sleep(50 * time.Millisecond)
+	stopW.Close()
+
+	select {
+	case err := <-runErr:
+		if err != nil {
+			t.Fatalf("RunDirect returned an error after stop fd close: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("RunDirect did not stop within 5s after the stop fd was closed")
+	}
+
+	info, statErr := os.Stat(tmpfile)
+	if statErr != nil {
+		t.Fatalf("output file was not written: %v", statErr)
+	}
+	if info.Size() == 0 {
+		t.Fatalf("output file is empty; recorded data was not flushed")
+	}
+}
+
+// TestRunDirectReadyOrStopFdWithBackgroundIsSetupError verifies that combining
+// --ready-fd or --stop-fd with --background is rejected as a *SetupError (exit 1
+// at the CLI), because daemonization detaches inherited descriptors.
+func TestRunDirectReadyOrStopFdWithBackgroundIsSetupError(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		readyFd int
+		stopFd  int
+	}{
+		{"ready-fd", 3, -1},
+		{"stop-fd", -1, 3},
+		{"both", 3, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			option := NewRecorderOption()
+			option.Background = true
+			option.ReadyFd = tc.readyFd
+			option.StopFd = tc.stopFd
+
+			err := RunDirect(option)
+			if err == nil {
+				t.Fatalf("RunDirect returned nil; expected a setup error")
+			}
+			var setupErr *SetupError
+			if !errors.As(err, &setupErr) {
+				t.Fatalf("RunDirect error is not a *SetupError: got %T (%v)", err, err)
+			}
+			var collErr *CollectionError
+			if errors.As(err, &collErr) {
+				t.Fatalf("--background conflict misclassified as *CollectionError: %v", err)
+			}
+		})
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/gob"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -49,6 +50,14 @@ type RecorderOption struct {
 	Color              bool
 	Pretty             bool
 	StopCh             chan struct{} // External stop signal (closed to stop recording)
+	// ReadyFd, when >= 0, is a writable file descriptor to which the recorder
+	// writes a single newline-terminated "ready" JSON event after the first
+	// sample is flushed, then closes it. -1 disables the ready signal.
+	ReadyFd int
+	// StopFd, when >= 0, is a file descriptor the recorder reads in a
+	// background goroutine; when it reaches EOF (or errors) the recorder stops
+	// gracefully by closing StopCh. -1 disables stop-on-fd-close.
+	StopFd int
 }
 
 // signalNotify and signalStop wrap the os/signal package functions so that
@@ -106,6 +115,10 @@ func parseArgs(args []string, option *RecorderOption) {
 		false, "Colored output (for live subcmd)")
 	fs.BoolVar(&option.Pretty, "pretty",
 		false, "Pretty output (for live subcmd)")
+	fs.IntVar(&option.ReadyFd, "ready-fd",
+		-1, "Write a ready event to this fd after the first sample is flushed")
+	fs.IntVar(&option.StopFd, "stop-fd",
+		-1, "Stop recording gracefully when this fd reaches EOF")
 
 	fs.Parse(args)
 
@@ -174,6 +187,8 @@ func NewRecorderOption() *RecorderOption {
 		Gzip:               false,
 		Color:              false,
 		Pretty:             false,
+		ReadyFd:            -1,
+		StopFd:             -1,
 	}
 }
 
@@ -204,6 +219,8 @@ func showRecorderOption(option *RecorderOption) {
 	fmt.Fprintf(os.Stderr, "Gzip: %t\n", option.Gzip)
 	fmt.Fprintf(os.Stderr, "Color: %t\n", option.Color)
 	fmt.Fprintf(os.Stderr, "Pretty: %t\n", option.Pretty)
+	fmt.Fprintf(os.Stderr, "ReadyFd: %d\n", option.ReadyFd)
+	fmt.Fprintf(os.Stderr, "StopFd: %d\n", option.StopFd)
 	fmt.Fprintf(os.Stderr, "=====================\n")
 }
 
@@ -230,6 +247,67 @@ type CollectionError struct {
 func (e *CollectionError) Error() string { return e.Err.Error() }
 
 func (e *CollectionError) Unwrap() error { return e.Err }
+
+// readyEvent is the payload written to the --ready-fd descriptor once the first
+// sample has been flushed and the measurement window is armed. It is serialized
+// with encoding/json (rather than hand-formatted) so callers can parse it as a
+// stable, well-formed JSON object.
+type readyEvent struct {
+	Event     string `json:"event"`
+	Version   int    `json:"version"`
+	Pid       int    `json:"pid"`
+	Output    string `json:"output"`
+	StartTime string `json:"start_time"`
+}
+
+// emitReadyEvent writes a single newline-terminated ready JSON object to f. The
+// caller is responsible for closing f afterwards so a reader blocked on the fd
+// observes EOF.
+func emitReadyEvent(f *os.File, output string) error {
+	ev := readyEvent{
+		Event:     "ready",
+		Version:   1,
+		Pid:       os.Getpid(),
+		Output:    output,
+		StartTime: time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	data, err := json.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	_, err = f.Write(data)
+	return err
+}
+
+// fdFcntl issues an fcntl(2) with the given command against fd, returning the
+// integer result. It is a thin wrapper over the raw syscall because the
+// standard library's syscall package does not expose FcntlInt on Linux.
+func fdFcntl(fd int, cmd int) (int, error) {
+	r, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), uintptr(cmd), 0)
+	if errno != 0 {
+		return 0, errno
+	}
+	return int(r), nil
+}
+
+// fdIsValid reports whether fd refers to an open file descriptor in this
+// process. F_GETFD fails with EBADF for an unopened descriptor.
+func fdIsValid(fd int) bool {
+	_, err := fdFcntl(fd, syscall.F_GETFD)
+	return err == nil
+}
+
+// fdIsWritable reports whether fd is open for writing (O_WRONLY or O_RDWR). It
+// is used to reject a --ready-fd that cannot actually receive the ready event.
+func fdIsWritable(fd int) bool {
+	flags, err := fdFcntl(fd, syscall.F_GETFL)
+	if err != nil {
+		return false
+	}
+	accmode := flags & syscall.O_ACCMODE
+	return accmode == syscall.O_WRONLY || accmode == syscall.O_RDWR
+}
 
 // RunWithOption executes the recorder with the provided options
 // This is the preferred API that uses direct execution (no double argument parsing)
@@ -413,6 +491,13 @@ func Run(args []string) {
 // collection/write failures (after recording started) as *CollectionError, so
 // callers can map them onto the record subcommand's 0/1/2 exit-code contract.
 func RunDirect(option *RecorderOption) error {
+	// --ready-fd/--stop-fd rely on inherited file descriptors, which background
+	// daemonization detaches during the re-exec. Reject the combination up front
+	// as a setup error (nothing has been written yet).
+	if option.Background && (option.ReadyFd >= 0 || option.StopFd >= 0) {
+		return &SetupError{Err: fmt.Errorf("--ready-fd/--stop-fd cannot be used with --background")}
+	}
+
 	// Session file management for background mode.
 	// The CLI layer handles duplicate-session detection before launching;
 	// here we just write and clean up the PID file.
@@ -447,6 +532,57 @@ func RunDirect(option *RecorderOption) error {
 			os.Stderr.WriteString(name + "\n")
 		}
 		return nil
+	}
+
+	// Set up the optional ready descriptor. It is validated here (setup phase,
+	// before any output is written) so an invalid/unwritable fd is reported as a
+	// *SetupError (exit 1). The event itself is emitted after the first sample is
+	// flushed; the deferred Close guarantees a reader blocked on the fd observes
+	// EOF even if the recorder fails before arming.
+	var readyFile *os.File
+	if option.ReadyFd >= 0 {
+		if !fdIsValid(option.ReadyFd) || !fdIsWritable(option.ReadyFd) {
+			return &SetupError{Err: fmt.Errorf("--ready-fd=%d is not a valid writable file descriptor", option.ReadyFd)}
+		}
+		readyFile = os.NewFile(uintptr(option.ReadyFd), "ready")
+		if readyFile == nil {
+			return &SetupError{Err: fmt.Errorf("--ready-fd=%d could not be opened", option.ReadyFd)}
+		}
+		defer readyFile.Close()
+	}
+
+	// Set up the optional stop descriptor. A background goroutine reads it and
+	// closes StopCh when it reaches EOF (or errors), reusing the graceful-stop
+	// path already wired into the sample loop's select.
+	if option.StopFd >= 0 {
+		if !fdIsValid(option.StopFd) {
+			return &SetupError{Err: fmt.Errorf("--stop-fd=%d is not a valid file descriptor", option.StopFd)}
+		}
+		stopFile := os.NewFile(uintptr(option.StopFd), "stop")
+		if stopFile == nil {
+			return &SetupError{Err: fmt.Errorf("--stop-fd=%d could not be opened", option.StopFd)}
+		}
+		// Close on return so the reader goroutine unblocks and exits even when
+		// recording ends via timeout or signal rather than the stop fd.
+		defer stopFile.Close()
+
+		if option.StopCh == nil {
+			option.StopCh = make(chan struct{})
+		}
+		// Guard against a double close: the goroutine is the only closer of a
+		// channel it created, but sync.Once keeps this safe if the read loop
+		// were ever to fall through more than once.
+		var stopOnce sync.Once
+		closeStop := func() { stopOnce.Do(func() { close(option.StopCh) }) }
+		go func() {
+			buf := make([]byte, 256)
+			for {
+				if _, err := stopFile.Read(buf); err != nil {
+					break
+				}
+			}
+			closeStop()
+		}()
 	}
 
 	var player_cmd *exec.Cmd = nil
@@ -596,6 +732,17 @@ func RunDirect(option *RecorderOption) error {
 		err = encodeAndFlush(enc, out, record)
 		if err != nil {
 			break
+		}
+
+		// Emit the ready event once, immediately after the first sample has been
+		// flushed (baseline captured, measurement window armed), then close the
+		// fd. readyFile is niled so this fires exactly once.
+		if readyFile != nil {
+			if emitErr := emitReadyEvent(readyFile, option.Output); emitErr != nil {
+				return &CollectionError{Err: emitErr}
+			}
+			readyFile.Close()
+			readyFile = nil
 		}
 
 		if !running {
