@@ -2,9 +2,9 @@
 title: Embedding-friendly invocation interface for C callers (e.g. DBMS query tracing)
 type: feature
 priority: medium
-status: open
+status: resolved
 created: 2026-04-20
-updated: 2026-06-27
+updated: 2026-08-08
 ---
 
 ## Description
@@ -30,10 +30,15 @@ goes wrong — without having to reverse-engineer stdout banners, scrape
 ### Current interface (for reference)
 
 - `record` in foreground: runs until `--timeout` elapses or a signal
-  arrives. `--no-intr` is on by default so SIGINT is ignored; stopping
-  relies on timeout or SIGTERM.
+  arrives. Both SIGINT and SIGTERM trigger a graceful stop (a final
+  sample is taken, then flush + exit). Note: `--no-intr` only suppresses
+  interrupt-count sampling and has nothing to do with signal handling —
+  the name merely collides with the legacy Ruby `--no-interrupt`.
 - `record --background`: daemonizes via re-exec, writes a per-user session
-  PID file to `$TMPDIR/perfmonger-<user>-session.pid`.
+  PID file to `$TMPDIR/perfmonger-<user>-session.pid`. This session PID
+  file is written **only** in background mode; foreground recordings do
+  not touch it and are therefore already safe to run concurrently (one
+  process per unique `-l` output path).
 - `record --status` / `record --kill`: inspect/terminate the single
   per-user background session. `--kill` sends SIGINT with exponential
   backoff and unlinks the session file.
@@ -127,17 +132,136 @@ tickets) should carry the implementation once the shape is agreed.
 
 ## Implementation Notes
 
-Recommended v1 subset for safe C embedding:
+### Confirmed design decisions (reviewed 2026-08-07)
 
-- --ready-fd=N: write JSON {"event":"started","pid":..,"output":..} before the first sample so the caller knows recording is armed.
-- --stop-when-fd-closes=N (or stdin EOF): caller closes the pipe to stop cleanly; more robust than SIGTERM and automatic on caller crash.
-- Caller-supplied output path (-l) already exists; document and stabilize the contract.
-- Concurrent-session support: skip session-file locking in foreground mode; optionally namespace background sessions via --session-id=<str>.
-- Deterministic flush/exit: document that final sample is flushed, gzip trailer written, fsync before exit.
-- Exit-code contract: 0 success / 1 setup error / 2 collection error / 3 user stop.
+All nine decision points were resolved in favor of the reviewer's
+recommended option. Two carry additional requirements captured below.
 
-Deferrable to v2+: --meta key=value (or --meta-fd) metadata injection; structured JSON errors on stderr; long-running record-server over a UNIX socket (only if startup latency proves a bottleneck — measure first); a cgo library surface (much larger scope).
+- **D1 — Stop mechanism: `--stop-fd=N` only.** A goroutine reads fd N and
+  closes the existing `StopCh` on EOF/error. stdin users pass
+  `--stop-fd=0`. No pipe auto-detection (a `/dev/null` stdin would stop
+  immediately).
+- **D2 — Ready signal: `--ready-fd=N`, one JSON line then close.**
+- **D3 — Ready fires after the first sample is flushed.** *Semantics
+  (clarified):* the **perfmonger recorder child process** is the emitter,
+  not the C caller. "Ready" means the recorder has captured and flushed
+  the baseline sample, so the measurement window is armed. The C caller
+  blocks on `read(ready_fd)` and only starts the query once it sees the
+  line (or EOF). This closes the fork+exec race where the parent returns
+  before the child is actually sampling, so the recording window already
+  covers the instant the caller is unblocked.
+- **D4 — Metadata in v1: `--meta key=value` (repeatable).** *Encoding
+  requirement:* both key and value are **percent-encoded (RFC 3986)** so
+  arbitrary strings (including `=`, spaces, newlines, non-ASCII) can be
+  carried while simple values stay human-readable. Split on the first raw
+  `=` (a literal `=` inside key/value is `%3D`), then percent-decode each
+  side. Store decoded strings in `CommonHeader.Meta map[string]string`;
+  `play`/`summary` surface them. gob field addition is forward/backward
+  compatible, so no format version bump. (`--meta-fd` for very large
+  values such as full SQL text stays v2.)
+- **D5 — Stop-requested exit is 0.** Caller-driven stop is the normal
+  path; do not use exit 3.
+- **D6 — `--ready-fd`/`--stop-fd` are incompatible with `--background`**
+  (daemonization detaches fds); using them together exits 1.
+- **D7 — v1 ships exit codes 0/1/2 only.** stderr stays human-readable;
+  `--json-errors` is v2.
+- **D8 — Measure startup latency first.** Bundle a latency benchmark in
+  the pytest suite and record the result in this ticket before
+  considering a server mode.
+- **D9 — Add a minimal C test harness** (fork/exec/dup2 path) in addition
+  to the pytest pipe fixtures; skip when no C compiler is available.
 
-Skeleton: add flags in record.go (--ready-fd/--stop-when-fd-closes/--session-id); extend RecorderOption with ReadyFd/StopWhenFdCloses/SessionId; in RunDirect write the ready JSON before the loop and spawn a goroutine watching the stop fd; refactor session-file logic to honor --session-id. New tests/test_embedding.py with a pipe fixture.
+### Prerequisite refactor (blocks the exit-code contract)
 
-Questions for the user: is ready-signal + stop-on-fd-close enough for v1, or are metadata/concurrent-session must-haves; auto-detect pipe vs require explicit flags; defer metadata or include --meta now; can tests rely on pytest + mock-pipe fixtures or is a C integration test required.
+`RunDirect` currently returns no error and `panic`s on failures (e.g.
+`os.Create`). Before the exit-code contract is possible it must be
+refactored to return `error`, and `file.Sync()` must be added before
+`Close`. This is the bulk of the v1 cost and was under-scoped in the
+original skeleton.
+
+### Exit codes
+
+- `0` — normal (timeout, stop-fd close, SIGINT/SIGTERM all included)
+- `1` — setup error (bad flag, output not creatable, invalid ready/stop
+  fd); no sample written
+- `2` — collection/write error (e.g. ENOSPC); output may be incomplete
+
+### CLI contract (what a C caller codes against)
+
+    perfmonger record --ready-fd 3 --stop-fd 4 \
+        -l /var/tmp/q42.pgr.gz -i 0.1 \
+        --meta query_id=42 --meta db=tpch
+
+- ready-fd: after the first sample is flushed, write one newline-terminated
+  JSON object to fd 3 and close it:
+  `{"event":"ready","version":1,"pid":1234,"output":"...","start_time":"...Z"}`
+- stop-fd: when fd 4 reaches EOF, take one final sample, then
+  Flush → gzip Close → `file.Sync()` → Close → exit. SIGTERM/SIGINT and
+  `--timeout` share this exit path.
+- `--ready-fd` suppresses the `[recording to ...]` stdout banner.
+- C-side: `pipe(rp); pipe(sp); fork()` → child `dup2(rp[1],3);
+  dup2(sp[0],4); execvp()` → parent `read(rp[0])` to await armed, run the
+  query, `close(sp[1])` to stop, `waitpid` for status.
+
+### v1 scope / deferred
+
+v1: RunDirect error refactor + exit codes; `--ready-fd`; `--stop-fd`;
+`--meta` (percent-encoded); flush/fsync contract + docs (including the
+foreground-concurrency note); `tests/test_embedding.py` (pipe fixtures +
+latency benchmark) and a minimal C harness.
+
+Deferred: `--meta-fd`, `--json-errors`, `--session-id` background
+namespacing, finished event, output flock; server mode only if the D8
+benchmark shows a problem; cgo library declined.
+
+### Follow-up implementation tickets to file
+
+1. Refactor `RunDirect` to return `error` and add `file.Sync()`
+   (prerequisite; also lets other subcommands drop panic-based exits).
+2. `--ready-fd` + `--stop-fd` with the exit-code contract; replace the
+   `stat` 100 ms start sleep with the ready signal.
+3. `--meta key=value` (percent-encoded) + `CommonHeader.Meta` +
+   `play`/`summary` display.
+4. Docs + `tests/test_embedding.py` + C harness + startup-latency
+   benchmark.
+
+### Implementation status (2026-08-08)
+
+All four follow-up tickets are implemented:
+
+- #0062 (RunDirect error return + fsync) — landed on `master`.
+- #0063 (`--ready-fd` / `--stop-fd`) — landed on `master`.
+- #0064 (`--meta key=value`, percent-encoded) — landed on `master`.
+- #0065 (docs + pytest + C harness + latency benchmark) — reviewed
+  (PASS, low-risk), ready to apply.
+
+**D8 resolved — startup latency measured** (`record --ready-fd`, `-i 0.1`,
+cc present, C harness exercised): time-to-ready min ~13.8 ms / median
+~17.5 ms; total wall for a ~0.1 s recording min ~17.3 ms / median
+~22.0 ms. Comfortably under the ~50 ms threshold, so the long-running
+`record --ctl-socket` server mode is **not** warranted and stays
+deferred. See `doc/embedding.md` for the finalized C-embedding contract.
+
+## Resolution
+
+Design delivered and implemented. This ticket was design-only; the agreed
+CLI contract (see the "Confirmed design decisions" and "CLI contract"
+sections above) was implemented across four follow-up tickets, all landed
+on `master`:
+
+- #0062 — `RunDirect`/`RunWithOption` return `error`; `SetupError`/
+  `CollectionError`; exit codes 0/1/2; fsync before close.
+- #0063 — `record --ready-fd` / `--stop-fd` (ready after first flush,
+  stop on fd EOF); incompatible with `--background`; `stat` sleep replaced
+  by the ready signal.
+- #0064 — `record --meta key=value` (RFC 3986 percent-encoded) →
+  `CommonHeader.Meta`; surfaced by `play`/`summary`; gob-compatible.
+- #0065 — `doc/embedding.md` contract docs, pytest coverage + C harness,
+  and the startup-latency benchmark.
+
+D8 resolved: measured time-to-ready median ~17.5 ms / total ~22.0 ms
+(< 50 ms), so the server mode stays deferred. Deferred to future tickets
+as agreed: `--meta-fd`, `--json-errors`, `--session-id` background
+namespacing, finished event, output flock, and the cgo library (declined).
+A follow-up nicety noted in #0065: caveat/guard the `--stop-fd` write-end
+misuse.
