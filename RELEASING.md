@@ -86,7 +86,7 @@ On a `v*.*.*` tag push, `release.yml`:
 
 1. Checks out the repository with full history (`fetch-depth: 0`, required by
    GoReleaser to compute the version).
-2. Sets up Go 1.24 and `uv`.
+2. Sets up Go 1.25 and `uv`.
 3. Runs the test gate: `make build && make vet && make test`. If this fails the
    release is aborted.
 4. Extracts the top section of `NEWS.md` into `/tmp/relnotes.md`:

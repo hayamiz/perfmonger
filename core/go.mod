@@ -1,6 +1,6 @@
 module github.com/hayamiz/perfmonger/core
 
-go 1.25.0
+go 1.25.12
 
 require (
 	github.com/hayamiz/go-projson v0.0.0-20210510072849-3503bd24ae61
