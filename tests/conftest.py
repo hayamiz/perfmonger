@@ -60,3 +60,7 @@ requires_gnuplot = pytest.mark.skipif(
     shutil.which("gnuplot") is None,
     reason="gnuplot not available",
 )
+requires_cc = pytest.mark.skipif(
+    shutil.which("cc") is None,
+    reason="no C compiler (cc) available",
+)
