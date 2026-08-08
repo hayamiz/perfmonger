@@ -388,6 +388,10 @@ func (cmd *recordCommand) launchDaemonChild() error {
 	for _, d := range cmd.RecorderOpt.DevsParts {
 		args = append(args, "-d", d)
 	}
+	// Forward metadata verbatim so background recordings keep their --meta values.
+	for _, m := range cmd.RecorderOpt.MetaArgs {
+		args = append(args, "--meta", m)
+	}
 
 	selfBin, err := os.Executable()
 	if err != nil {
@@ -473,8 +477,14 @@ func newRecordCommand() *cobra.Command {
 	cmd.Flags().IntVar(&recCmd.RecorderOpt.StopFd, "stop-fd", recCmd.RecorderOpt.StopFd,
 		"Stop recording gracefully when this fd reaches EOF (e.g. --stop-fd=0 for stdin)")
 
+	// Metadata injection. StringArray (not StringSlice) is used so that a value
+	// containing commas or other special characters is preserved verbatim as a
+	// single key=value argument instead of being split on commas.
+	cmd.Flags().StringArrayVar(&recCmd.RecorderOpt.MetaArgs, "meta", recCmd.RecorderOpt.MetaArgs,
+		"Attach key=value metadata to the recording (repeatable; key and value are percent-encoded per RFC 3986)")
+
 	// Debug flags
-	cmd.Flags().BoolVarP(&recCmd.Verbose, "verbose", "v", recCmd.Verbose, 
+	cmd.Flags().BoolVarP(&recCmd.Verbose, "verbose", "v", recCmd.Verbose,
 		"Verbose output")
 	
 	cmd.SetUsageTemplate(subCommandUsageTemplate)

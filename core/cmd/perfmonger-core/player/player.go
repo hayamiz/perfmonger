@@ -249,6 +249,11 @@ func RunDirect(option *PlayerOption) {
 	if err != nil {
 		panic(err)
 	}
+	// Surface any recording metadata on stderr so it does not corrupt the
+	// newline-delimited JSON record stream on stdout. Printed only when present.
+	for _, k := range cheader.SortedMetaKeys() {
+		fmt.Fprintf(os.Stderr, "# meta: %s = %s\n", k, cheader.Meta[k])
+	}
 	err = dec.Decode(&pheader)
 	if err == io.EOF {
 		return

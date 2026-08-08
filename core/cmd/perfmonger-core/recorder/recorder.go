@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -49,6 +50,7 @@ type RecorderOption struct {
 	Gzip               bool
 	Color              bool
 	Pretty             bool
+	MetaArgs           []string      // Raw "key=value" metadata args from --meta (percent-encoded)
 	StopCh             chan struct{} // External stop signal (closed to stop recording)
 	// ReadyFd, when >= 0, is a writable file descriptor to which the recorder
 	// writes a single newline-terminated "ready" JSON event after the first
@@ -161,6 +163,49 @@ func BuildTargetDisks(disks string) *map[string]bool {
 		(*targets)[dev] = true
 	}
 	return targets
+}
+
+// ParseMetaArgs parses the raw "key=value" strings supplied via --meta into a
+// decoded metadata map. Each argument is split on the FIRST raw '=' so that a
+// literal '=' inside a key or value can be carried as the percent escape %3D.
+// Both the key and the value are percent-decoded per RFC 3986 using
+// url.PathUnescape (not url.QueryUnescape, so a literal '+' is preserved rather
+// than turned into a space).
+//
+// An argument with no '=' is malformed and produces an error, as does an
+// argument whose key or value contains an invalid percent-escape sequence.
+// Callers in the recorder wrap the returned error in *SetupError so the record
+// subcommand maps it onto exit code 1 (nothing was written yet).
+//
+// It returns nil when args is empty, so a header written without --meta leaves
+// CommonHeader.Meta nil.
+func ParseMetaArgs(args []string) (map[string]string, error) {
+	if len(args) == 0 {
+		return nil, nil
+	}
+
+	meta := make(map[string]string, len(args))
+	for _, arg := range args {
+		idx := strings.IndexByte(arg, '=')
+		if idx < 0 {
+			return nil, fmt.Errorf("invalid --meta argument %q: expected key=value", arg)
+		}
+		rawKey := arg[:idx]
+		rawValue := arg[idx+1:]
+
+		key, err := url.PathUnescape(rawKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --meta key %q: %w", rawKey, err)
+		}
+		value, err := url.PathUnescape(rawValue)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --meta value %q: %w", rawValue, err)
+		}
+
+		meta[key] = value
+	}
+
+	return meta, nil
 }
 
 // NewRecorderOption creates a RecorderOption with default values
@@ -522,8 +567,15 @@ func RunDirect(option *RecorderOption) error {
 		showRecorderOption(option)
 	}
 
+	// Parse --meta arguments before creating any output so a malformed value
+	// fails as a setup error (exit 1) with nothing written to disk.
+	meta, metaErr := ParseMetaArgs(option.MetaArgs)
+	if metaErr != nil {
+		return &SetupError{Err: metaErr}
+	}
+
 	hostname, _ := os.Hostname()
-	cheader := &ss.CommonHeader{Platform: ss.Linux, Hostname: hostname, StartTime: time.Now()}
+	cheader := &ss.CommonHeader{Platform: ss.Linux, Hostname: hostname, StartTime: time.Now(), Meta: meta}
 
 	platform_header := ss.NewPlatformHeader()
 
