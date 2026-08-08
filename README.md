@@ -126,6 +126,11 @@ perfmonger record --status
 perfmonger record --kill
 ```
 
+To drive `record` from another program (for example a C process bracketing a
+unit of work), `record` also offers a machine-readable start/stop contract via
+`--ready-fd`, `--stop-fd`, and `--meta`. See
+[doc/embedding.md](doc/embedding.md) for the full contract and a C recipe.
+
 ### 2. `play` — replay a log file as JSON
 
 ```
