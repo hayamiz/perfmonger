@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -132,6 +134,31 @@ func (cmd *statCommand) run() error {
 	stopCh := make(chan struct{})
 	cmd.RecorderOpt.StopCh = stopCh
 
+	// Drive the recorder with an internal ready fd instead of a fixed sleep.
+	// We hand the recorder a duplicated write end of an os.Pipe() so it owns and
+	// closes its own descriptor, while stat owns the read end. The recorder
+	// emits the ready event after its first sample is flushed; blocking on the
+	// read end below replaces the old time.Sleep(100ms) guess with an exact
+	// happens-after-first-sample wait. If the pipe cannot be created we fall back
+	// to the previous fixed delay.
+	var readyReadEnd *os.File
+	if r, w, perr := os.Pipe(); perr == nil {
+		// Dup the write end so the recorder closing its fd does not race with
+		// stat closing readyReadEnd/w, and so the two descriptors are managed
+		// independently.
+		dupFd, derr := syscall.Dup(int(w.Fd()))
+		// stat never writes to the pipe; the recorder holds the (duplicated)
+		// write end, so close stat's own write end now. Otherwise the read end
+		// would never see EOF if the recorder failed before arming.
+		w.Close()
+		if derr == nil {
+			cmd.RecorderOpt.ReadyFd = dupFd
+			readyReadEnd = r
+		} else {
+			r.Close()
+		}
+	}
+
 	// Create a temporary goroutine to run the recorder in background
 	recorderDone := make(chan bool, 1)
 
@@ -145,8 +172,17 @@ func (cmd *statCommand) run() error {
 		recErr = recorder.RunWithOption(cmd.RecorderOpt)
 	}()
 
-	// Give recorder a moment to start
-	time.Sleep(100 * time.Millisecond)
+	if readyReadEnd != nil {
+		// Block until the recorder writes its ready line (after the first sample
+		// is flushed) or closes the fd on early failure (EOF). Either way the
+		// baseline has been established or recording has aborted, so it is safe
+		// to launch the user command.
+		_, _ = bufio.NewReader(readyReadEnd).ReadString('\n')
+		readyReadEnd.Close()
+	} else {
+		// Fallback when the ready pipe could not be set up.
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	// Run the user's command
 	userCmd := exec.Command(cmd.Command[0], cmd.Command[1:]...)
