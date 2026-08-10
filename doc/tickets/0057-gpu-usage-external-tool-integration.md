@@ -4,7 +4,7 @@ type: feature
 priority: medium
 status: open
 created: 2026-06-27
-updated: 2026-06-27
+updated: 2026-08-05
 ---
 
 
@@ -163,3 +163,138 @@ Format: add Gpu []*GpuReading to StatRecord (gob zero-value both directions for 
 Enablement: auto-detect nvidia-smi on PATH + --no-gpu opt-out (recommended); optional --gpu-tool for AMD/Intel deferred to v2.
 
 Questions for the user: confirm A.2; confirm metric list; auto-detect vs explicit --gpu; hardcode nvidia-smi vs --gpu-tool now; stale handling (is_stale flag vs interpolate vs exclude); GPU support for live/plot in scope; pytest mock-subprocess vs C integration test.
+
+### Final Decisions (2026-08-05)
+
+Captured from the completed decision form. These **supersede** the tentative
+recommendations earlier in this section where they differ (changes flagged
+inline).
+
+1. **Integration mechanism — A.2 (long-lived streaming child). CONFIRMED.**
+   Single `nvidia-smi --query-gpu=... --format=csv,noheader,nounits -l <interval>`
+   child at recording start, reader goroutine, per-sample snapshot. A.1/A.3 out
+   of scope for v1.
+   - **Interval alignment:** determine nvidia-smi's minimum supported `-l`
+     interval. If the requested `perfmonger record -i <interval>` cannot be
+     honored by nvidia-smi (e.g. finer than its minimum), **fail record startup
+     with a clear error** rather than silently degrading.
+
+2. **Metrics — Tier 1 as proposed. CONFIRMED.** Per sample: utilization.gpu,
+   utilization.memory, memory.used, memory.total, power.draw, power.limit,
+   temperature.gpu; header-time: index/name/uuid. clocks + per-process (pmon)
+   deferred to Tier 2.
+
+3. **Enablement — explicit opt-in flag, NOT auto-detect. (CHANGES earlier
+   Axis-C note.)** GPU collection is off by default and enabled only by an
+   explicit flag. When the flag is set but nvidia-smi cannot be detected or
+   launched, `perfmonger record` **fails to start (non-zero exit)** — it does
+   NOT silently degrade. Without the flag, no GPU child is spawned and no GPU
+   section is emitted. (The earlier "non-fatal, continue without GPU" language
+   applies only to the no-flag default path.)
+
+4. **Tool path — hardcode nvidia-smi behind a vendor-specific flag
+   `--nvidia-gpu`.** Reconciliation: the "explicit --gpu" of #3 and the
+   "--nvidia-gpu" here are the **same v1 flag** — settle on **`--nvidia-gpu`**.
+   Other vendors (AMD `rocm-smi`, Intel) get their own flags later; not
+   supported in this version. (Confirm the exact flag name during coding.)
+
+5. **Stale readings — is_stale flag. CONFIRMED.** Mark a reading stale (older
+   than ~2x interval) and emit it flagged; the reader decides. No interpolation,
+   no exclusion.
+
+6. **live / plot — IN SCOPE for v1. (CHANGES earlier "defer live/plot" note
+   under Axis D.)** `plot` must chart utilization.gpu, utilization.memory,
+   memory.used, memory.total, power.draw, power.limit, temperature.gpu with time
+   on the x-axis. plotformatter/viewer GPU support is therefore part of this
+   work, not a follow-up.
+
+7. **Testing — pytest + mock nvidia-smi stub. CONFIRMED.** The stub's canned CSV
+   is derived from data captured on real hardware; the capture procedure is
+   tracked in its own ticket — see
+   [#0066](0066-nvidia-smi-stub-data-capture.md). pytest cases: (a) no flag →
+   no GPU section, exit 0; (b) `--nvidia-gpu` + stub on PATH → populated `gpu`
+   array; (c) `--nvidia-gpu` + nvidia-smi absent → non-zero exit with error.
+
+8. **Tier 2 GPU provisioning — ephemeral cloud GPU instance. CONFIRMED** (matches
+   the Environment-section recommendation (a)): spin up on demand, smoke, tear
+   down.
+
+9. **Smoke helper — commit `tools/gpu-smoke.sh` + runbook. CONFIRMED.**
+   One-command manual smoke test lands in-repo.
+
+**Remaining details to settle during coding:** exact `--nvidia-gpu` flag name;
+nvidia-smi's minimum `-l` interval value (feeds the #1 alignment check —
+investigate on real HW via [#0066](0066-nvidia-smi-stub-data-capture.md));
+behavior if the nvidia-smi child dies mid-run (readings go stale via #5 — decide
+whether that suffices or record should also abort).
+
+## Environment for Implementation & Verification
+
+The CI/dev host (and the devcontainer, a plain `ubuntu:24.04` image — see
+`.devcontainer/Dockerfile`) has **no NVIDIA GPU and no `nvidia-smi`**. This is
+a core constraint: the bulk of the logic must be verifiable without a GPU, and
+real-hardware checks must be an explicit, separate step. Proposed tiered
+strategy:
+
+### Tier 1 — GPU-less automated verification (mandatory gate, runs everywhere)
+
+Covers the parsing/pairing/lifecycle logic that does not need a real driver.
+This is where ~90% of the code is exercised, and it runs in the existing
+pytest + Go CI on the GPU-less host.
+
+1. **Mock `nvidia-smi` stub on `PATH`.** A small executable script (committed
+   under e.g. `tests/stubs/nvidia-smi`) that emits canned CSV matching the
+   real `--query-gpu` output, honoring `-l <interval>` by looping with a sleep.
+   The recorder is pointed at it via `PATH` ordering or an internal
+   test-only tool-path override. Validates: CSV field parsing, latest-value
+   pairing with each `StatRecord`, and the stale-flag policy (advance the mock's
+   emit cadence slower than the sample interval to force staleness).
+2. **Golden CSV fixtures from real hardware.** Capture real
+   `nvidia-smi --query-gpu=... --format=csv` output once on an actual GPU box
+   (ideally across two driver versions), commit under `spec/data/` /
+   `tests/stubs/`, and replay them through the mock. This buys real-world CSV
+   variance (`[N/A]` values, column widths, units, multi-GPU / MIG rows)
+   without needing a GPU in CI. These fixtures are the contract the parser
+   must satisfy.
+3. **Graceful-absence tests (no GPU required — that is the point).** With no
+   stub on `PATH`, or a stub that exits mid-run / prints garbage, recording
+   must continue and simply omit the GPU section. This is directly testable on
+   the current host and guards the non-fatal requirement in Axis C.
+
+### Tier 2 — Real-GPU smoke test (manual / occasional, gates the impl ticket)
+
+A short documented smoke script (`record -i 0.1` with GPU enabled → `play` →
+assert the `gpu` JSON array is populated and `power.draw` / `utilization.gpu`
+are plausible non-zero values under a synthetic GPU load). Options for
+obtaining the GPU, in recommended order:
+
+- **(a) Ephemeral cloud GPU instance — RECOMMENDED.** e.g. AWS `g4dn.xlarge`
+  (T4), GCP, or Lambda Labs. Spin up on demand, run the smoke script, tear
+  down. No standing hardware, low cost, reproducible. Run before merging the
+  implementation ticket and when bumping the supported driver/CSV baseline.
+- **(b) Maintainer's local NVIDIA machine.** Zero cost if a maintainer has one;
+  not universally available, so it cannot be the sole gate.
+- **(c) Self-hosted GPU CI runner.** A GitHub Actions self-hosted runner on a
+  GPU box, gated to the release/tag workflow. Highest automation but requires
+  maintaining GPU hardware and a runner — **deferred** unless GPU support
+  becomes a first-class, frequently-changed feature.
+
+### Devcontainer note
+
+The default devcontainer stays GPU-less and relies on Tier 1. Optionally
+document how a developer *with* a host GPU can enable passthrough
+(`--gpus all` + `nvidia-container-toolkit`) so the same container can run the
+Tier 2 smoke test locally — as an opt-in, not a default (avoids adding a hard
+NVIDIA dependency to the standard dev image).
+
+### Recommendation
+
+Make **Tier 1 (mock + golden fixtures + graceful-absence)** the mandatory
+automated gate that every change must pass on the GPU-less host. Use **Tier 2
+(a) ephemeral cloud GPU** for a documented manual smoke test at
+implementation-ticket merge time and on driver-baseline bumps. Defer the
+self-hosted GPU runner (2c).
+
+**Open point for the user:** who provisions/pays for the Tier 2 cloud GPU runs,
+and do we want a committed helper script (e.g. `tools/gpu-smoke.sh` +
+brief runbook) to make the manual smoke test one command?
