@@ -1,4 +1,30 @@
-## 2026-06-28: PerfMonger 1.0.1
+## 2026-11-21: PerfMonger 1.1.0
+  * New features
+    * [record] subcommand:
+      * Record the operating frequency of each CPU core from cpufreq sysfs
+        (scaling_cur_freq) when it is available. [play] shows it as a
+        "cpufreq" object (MHz per core) and [summary] reports per-core and
+        overall averages. Recording is disabled automatically when cpufreq
+        is not readable (e.g. most VMs and containers) and on x86 kernels
+        older than 5.19, where every read sends an IPI to each core.
+        --no-cpufreq disables it explicitly (#0067).
+      * Added repeatable --meta key=value to embed user metadata in the
+        .pgr header; [play] prints it to stderr and [summary] shows it
+        (#0064).
+      * Added --ready-fd / --stop-fd so that a parent process (e.g. a C
+        benchmark harness) can wait until recording has started and stop it
+        by closing a pipe. See doc/embedding.md (#0063, #0065).
+  * Changes
+    * [record] subcommand:
+      * Exit with status 1 on setup errors and 2 on errors during
+        collection instead of panicking, and fsync the output file before
+        closing it (#0062).
+    * Release archives are now named without the version
+      (perfmonger_linux_amd64.tar.gz / perfmonger_linux_arm64.tar.gz) so
+      that the releases/latest/download/ URLs in README.md stay valid, and
+      bundle COPYING, README.md and NEWS.md (#0060).
+    * Building from source requires Go 1.25 or later; the toolchain floor
+      is 1.25.12 to pick up standard library security fixes (#0061).
   * Bugfix
     * [record] subcommand:
       * Honor the -d/--disk filter in the direct-API path (#0026).
