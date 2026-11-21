@@ -21,6 +21,7 @@ perfmonger/
 │   │   │   ├── main.go              # Root cobra command, VERSION
 │   │   │   ├── record.go / live.go / play.go / stat.go / plot.go
 │   │   │   ├── summary.go / fingerprint.go / initshell.go
+│   │   │   ├── systemupdate.go      # Self-update from GitHub Releases
 │   │   │   └── godevenv/            # Isolated Go toolchain (optional)
 │   │   └── perfmonger-core/         # Reusable component packages
 │   │       ├── recorder/            # RecorderOption + RunDirect
@@ -72,6 +73,7 @@ sits at `0.14.4`. Subcommands:
 | `summary` (alias `summarize`)    | `summary.go`    | Human/JSON aggregate over a whole recording              |
 | `fingerprint` (alias `bukko`,`fp`)| `fingerprint.go`| Collect system config into a `.tar.gz`                   |
 | `init-shell`                     | `initshell.go`  | Emit bash/zsh completion scriptlet                       |
+| `system-update`                  | `systemupdate.go`| Replace the running binary with the latest GitHub release |
 
 `cobra` is configured with Ruby-compatible usage templates so `--help` output
 mirrors the old Ruby CLI layout.
@@ -538,6 +540,60 @@ Emits a bash/zsh completion scriptlet. Called as `perfmonger init-shell -` to
 write the completion script directly, or without `-` to print setup
 instructions (e.g., how to `eval` it from `~/.bashrc`).
 
+### 5.9 `system-update`
+
+Flags: `--check` (report the current and latest versions, exit 0) and
+`--yes`/`-y` (skip the confirmation prompt). Implemented in
+[systemupdate.go](../core/cmd/perfmonger/systemupdate.go) without a
+third-party self-update library, following catscope's `updater.go`
+(temp file next to the binary → restore permission bits → `os.Rename`) plus
+version comparison, checksum verification, release notes, a prompt, and a
+smoke test. The logic lives in the `systemUpdater` struct, whose base URL,
+HTTP client, executable path, current version, GOOS/GOARCH, stdin/stdout/stderr
+and TTY check are injectable; `newSystemUpdateCommand()` wires the production
+values and `systemupdate_test.go` drives it against an `httptest` server.
+
+Flow:
+
+1. Map `GOOS`/`GOARCH` to the GoReleaser asset `perfmonger_linux_<arch>.tar.gz`
+   (linux amd64/arm64 only), and refuse `VERSION == "dev"` or anything that is
+   not `X.Y.Z` (exit 1, pointing at the README Installation section). Both
+   checks happen before any network access.
+2. Resolve the latest tag by requesting
+   `https://github.com/hayamiz/perfmonger/releases/latest` **without following
+   the redirect** and taking the tag from the `Location`
+   (`.../releases/tag/vX.Y.Z`). The tag must match `^v\d+\.\d+\.\d+$` because
+   it is embedded into the download URLs. No GitHub API calls are made (no rate
+   limit, no JSON).
+3. Compare numerically. `--check` prints both versions and exits; if the latest
+   release is not newer (no downgrades), print "up to date" and exit 0 without
+   downloading.
+4. Resolve the real binary path (`os.Executable` + `filepath.EvalSymlinks`) and
+   create the temp file `.perfmonger-update-*` in its directory. Failure means
+   the directory is not writable: the error suggests `sudo`. Then, unless
+   `--yes` is given, require stdin to be a TTY.
+5. Download `releases/download/<tag>/checksums.txt` (≤ 1 MiB) and
+   `releases/download/<tag>/<asset>` (≤ 64 MiB), both pinned to the resolved
+   tag and following GitHub's redirect to its asset host. Verify the tarball's
+   SHA256 against `checksums.txt` before opening it; a missing entry, a
+   malformed line or a mismatch aborts.
+6. Extract only the regular file `perfmonger` (or `./perfmonger`, ≤ 128 MiB)
+   into the temp file, and `NEWS.md` into memory. Every other entry is
+   skipped; a `perfmonger` entry that is a symlink, hard link or directory is
+   an error.
+7. Print the `NEWS.md` sections (`## YYYY-MM-DD: PerfMonger X.Y.Z`) with
+   current < version ≤ latest (warn and continue if `NEWS.md` is missing), then
+   prompt `[y/N]` (default No).
+8. `fsync` and close the temp file, `chmod` it to the original permission bits,
+   run `<tmp> --version` and require `PerfMonger version <latest>`, then
+   `os.Rename` it over the real path. Ownership is not preserved.
+
+Every failure path removes the temp file. SIGINT/SIGTERM cancel the context
+(`signal.NotifyContext`), which aborts downloads and the prompt. The HTTP
+client has timeouts, refuses https→http redirects, and sends
+`User-Agent: perfmonger/<VERSION>`; any non-200 download is an error that
+includes the status.
+
 ---
 
 ## 6. Background Recording
@@ -647,7 +703,9 @@ Skip markers (also in `conftest.py`):
 
 Test modules are organised per subcommand (`test_record.py`, `test_play.py`,
 `test_summary.py`, `test_stat.py`, `test_live.py`, `test_background.py`,
-`test_plot.py`, `test_fingerprint.py`, `test_cli.py`). Known-failing
+`test_plot.py`, `test_fingerprint.py`, `test_system_update.py`, `test_cli.py`).
+`test_system_update.py` stays network-free (help output and the refusal of a
+`dev` build). Known-failing
 behaviors are marked `@pytest.mark.xfail(reason=…)` so the suite stays green
 while bugs are tracked in `doc/tickets/`.
 

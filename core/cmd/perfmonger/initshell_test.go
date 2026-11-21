@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -58,5 +59,36 @@ func TestErrorForShellUnsupported(t *testing.T) {
 	want := "unsupported shell: fish. Only bash and zsh are supported"
 	if got := err.Error(); got != want {
 		t.Errorf("errorForShell(\"fish\") = %q, want %q", got, want)
+	}
+}
+
+// TestCompletionScriptsListAllSubcommands verifies that the bash and zsh
+// completion scripts offer every subcommand registered on the root command,
+// so that adding a subcommand without updating the completions is caught.
+func TestCompletionScriptsListAllSubcommands(t *testing.T) {
+	bashSubcommands := map[string]bool{}
+	for _, line := range strings.Split(bashCompletion, "\n") {
+		line = strings.TrimSpace(line)
+		if list, ok := strings.CutPrefix(line, `subcmds="`); ok {
+			for _, name := range strings.Fields(strings.TrimSuffix(list, `"`)) {
+				bashSubcommands[name] = true
+			}
+		}
+	}
+	if len(bashSubcommands) == 0 {
+		t.Fatal("bash completion has no subcmds list")
+	}
+
+	for _, sub := range newRootCommand().Commands() {
+		name := sub.Name()
+		if name == "help" || name == "completion" {
+			continue
+		}
+		if !bashSubcommands[name] {
+			t.Errorf("bash completion does not list subcommand %q", name)
+		}
+		if !strings.Contains(zshCompletion, "'"+name+":") {
+			t.Errorf("zsh completion does not list subcommand %q", name)
+		}
 	}
 }

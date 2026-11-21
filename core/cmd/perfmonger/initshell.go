@@ -18,7 +18,7 @@ _perfmonger() {
     cur=$2
     prev=$3
 
-    subcmds="live record play stat plot summary fingerprint init-shell"
+    subcmds="live record play stat plot summary fingerprint init-shell system-update"
 
     # contextual completion
     case $prev in
@@ -74,6 +74,7 @@ _perfmonger() {
         'summary:Summarize system performance data'
         'fingerprint:Gather device information'
         'init-shell:Initialize shell integration'
+        'system-update:Update perfmonger to the latest release'
     )
 
     if (( CURRENT == 2 )); then
@@ -100,6 +101,12 @@ _perfmonger() {
                     '--no-net[Do not record network]' \
                     '--no-mem[Do not record memory]' \
                     '--no-cpufreq[Do not record per-core CPU frequency]'
+                ;;
+            system-update)
+                _arguments \
+                    '--check[Only report the current and latest versions]' \
+                    '-y[Update without asking for confirmation]' \
+                    '--yes[Update without asking for confirmation]'
                 ;;
             *)
                 _files
@@ -178,14 +185,14 @@ func (opts *initShellOptions) parseArgs(args []string, cmd *cobra.Command) error
 	if len(args) > 0 && args[0] == "-" {
 		opts.GenerateScript = true
 	}
-	
+
 	return nil
 }
 
 // run executes the init-shell command logic
 func (opts *initShellOptions) run() error {
 	shell := getParentShell()
-	
+
 	switch shell {
 	case "bash":
 		if opts.GenerateScript {
@@ -195,7 +202,7 @@ func (opts *initShellOptions) run() error {
 			fmt.Println()
 			fmt.Println("eval \"$(perfmonger init-shell -)\"")
 		}
-		
+
 	case "zsh":
 		if opts.GenerateScript {
 			fmt.Print(zshCompletion)
@@ -204,7 +211,7 @@ func (opts *initShellOptions) run() error {
 			fmt.Println()
 			fmt.Println("eval \"$(perfmonger init-shell -)\"")
 		}
-		
+
 	default:
 		return errorForShell(shell)
 	}
@@ -215,7 +222,7 @@ func (opts *initShellOptions) run() error {
 // newInitShellCommand creates the init-shell subcommand
 func newInitShellCommand() *cobra.Command {
 	opts := newInitShellOptions()
-	
+
 	cmd := &cobra.Command{
 		Use:   "init-shell",
 		Short: "Initialize shell integration",
@@ -229,8 +236,8 @@ func newInitShellCommand() *cobra.Command {
 			return opts.run()
 		},
 	}
-	
+
 	cmd.SetUsageTemplate(subCommandUsageTemplate)
-	
+
 	return cmd
 }
