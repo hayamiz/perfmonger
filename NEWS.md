@@ -1,3 +1,20 @@
+## 2026-11-21: PerfMonger 1.2.0
+  * New features
+    * [system-update] subcommand (new):
+      * Update the running perfmonger binary in place from the latest GitHub
+        Release. The downloaded archive is verified against the release's
+        checksums.txt (SHA256) before extraction, the new binary is
+        smoke-tested before it replaces the old one, and the release notes of
+        the newer versions are shown before asking for confirmation.
+        --check only reports whether an update is available, and --yes skips
+        the prompt. Development builds refuse to update. Binaries older than
+        1.2.0 do not have this subcommand, so update to 1.2.0 manually once
+        (#0059).
+  * Bugfix
+    * The GitHub Release bodies of 1.0.0 and 1.1.0 were empty because the
+      GoReleaser configuration skipped loading the release notes taken from
+      NEWS.md (#0068).
+
 ## 2026-11-21: PerfMonger 1.1.0
   * New features
     * [record] subcommand:
