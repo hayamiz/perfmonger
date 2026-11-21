@@ -46,7 +46,8 @@ checksum:
 source:
   enabled: true
 
-# Release notes are sourced from NEWS.md and passed via --release-notes,
-# so disable goreleaser's git-log based changelog (D3).
-changelog:
-  disable: true
+# Release notes come from NEWS.md via --release-notes (D3). When that flag is
+# given, goreleaser uses the file and does not generate a git-log changelog.
+# Do NOT set `changelog.disable: true`: it skips the whole changelog pipe,
+# including loading the --release-notes file, which leaves the GitHub Release
+# body empty (#0068).

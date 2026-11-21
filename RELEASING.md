@@ -103,8 +103,9 @@ On a `v*.*.*` tag push, `release.yml`:
      `NEWS.md`;
    - generates a source code `tar.gz`;
    - generates a `checksums.txt` (SHA256) file;
-   - creates the GitHub Release using the extracted `NEWS.md` notes (GoReleaser's
-     own git-log changelog is disabled).
+   - creates the GitHub Release using the extracted `NEWS.md` notes passed via
+     `--release-notes` (GoReleaser generates no git-log changelog when the notes
+     file is given).
 
 Note: GoReleaser's build output (`dist/`) is independent of `make build`'s output
 (`lib/exec/`); they coexist.
