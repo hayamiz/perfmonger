@@ -116,6 +116,9 @@ $ perfmonger record -i 0.5 --timeout 3 -d nvme0n1 -l /tmp/sample.pgr.gz
   multiple disks. Without it, PerfMonger records every block device it sees.
 * `-l <path>` sets the output path; output is gzipped by default
   (`--no-gzip` disables that).
+* Per-core CPU frequencies are recorded automatically when the host exposes
+  them cheaply (see [Per-core CPU frequency](#per-core-cpu-frequency));
+  `--no-cpufreq` turns that off.
 
 `record` also supports background sessions via `--background`, `--status`,
 and `--kill` (these flags are specific to `record`):
@@ -216,6 +219,14 @@ Duration: 3.000 sec
 `--json` is available here too, and `--pager <cmd>` pipes the report through
 a pager of your choice.
 
+When the log contains per-core CPU frequencies, both `summary` and `stat` add
+their time average:
+
+```
+* Average CPU frequency: 1843.2 MHz
+  * Per-core average: min 1201.5 MHz, max 2650.0 MHz (24 cores)
+```
+
 ### 5. `plot` — render graphs from a log file
 
 `plot` turns a recorded log file into CPU and disk I/O graphs via
@@ -249,10 +260,43 @@ abbreviated):
     "nvme0n1": { "riops": ..., "wiops": ..., "rkbyteps": ..., "wkbyteps": ..., ... },
     "total":   { "riops": ..., "wiops": ..., ... }
   },
-  "mem": { "mem_total": ..., "mem_used": ..., "mem_free": ..., ... }
+  "mem": { "mem_total": ..., "mem_used": ..., "mem_free": ..., ... },
+  "cpufreq": {                    // only when frequencies were recorded
+    "num_core": 24,
+    "cores": [ 2650.0, 1200.0, ... ]  // MHz per core; 0.0 = unavailable
+  }
 }
 ```
 
 CPU percentages under `all` are scaled to `num_core * 100` (so a fully loaded
 24-core box can reach `%usr` of up to 2400). Per-core values are on the
 usual 0–100 scale.
+
+### Per-core CPU frequency
+
+At start-up, `record` (and `stat` / `live`) checks whether the operating
+frequency of each core can be read from
+`/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq`. If it can, every
+sample also records the per-core frequency (`cpufreq` above). Otherwise
+recording proceeds with the other metrics only:
+
+* No cpufreq support (typical for VMs and containers): disabled silently. Set
+  `PERFMONGER_DEBUG=1` to see the reason.
+* x86 kernel older than 5.19: disabled with a notice on stderr. On these
+  kernels each read of `scaling_cur_freq` sends an IPI to the target core,
+  waking idle cores, which would perturb DVFS / C-state measurements.
+
+The files are opened once and re-read with one `pread` per core per sample, so
+the cost is small. On a 16-core test machine one sample cost 25–160 µs of CPU
+time, depending on whether caches were warm, and kernels 5.19 and later send no
+IPIs.
+
+How to read the values:
+
+* On x86 the value is derived from APERF/MPERF over the last scheduler tick
+  before the sample (a few milliseconds). It is not an average over the
+  sampling interval.
+* For a core that has been idle for more than about 20 ms, the kernel reports
+  the last requested cpufreq frequency instead of a measured one.
+* Cores that share a cpufreq policy (a common clock domain) report the same
+  value.

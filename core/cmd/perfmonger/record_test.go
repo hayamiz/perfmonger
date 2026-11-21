@@ -122,7 +122,7 @@ func TestNewRecordCommand(t *testing.T) {
 	expectedFlags := []string{
 		"disk", "logfile", "interval", "start-delay", "timeout",
 		"kill", "status", "background", "record-intr",
-		"no-cpu", "no-net", "no-mem", "no-gzip", "no-interval-backoff",
+		"no-cpu", "no-net", "no-mem", "no-cpufreq", "no-gzip", "no-interval-backoff",
 		"verbose",
 	}
 	for _, name := range expectedFlags {

@@ -146,6 +146,8 @@ func newLiveCommand() *cobra.Command {
 		"Suppress recording network usage")
 	cmd.Flags().BoolVar(&liveCmd.RecorderOpt.NoMem, "no-mem", liveCmd.RecorderOpt.NoMem, 
 		"Suppress recording memory usage")
+	cmd.Flags().BoolVar(&liveCmd.RecorderOpt.NoCpuFreq, "no-cpufreq", liveCmd.RecorderOpt.NoCpuFreq,
+		"Suppress recording per-core CPU frequency (recorded by default when cpufreq is available)")
 	cmd.Flags().BoolVar(&liveCmd.NoGzip, "no-gzip", liveCmd.NoGzip, 
 		"Do not save a logfile in gzipped format")
 		

@@ -98,7 +98,8 @@ _perfmonger() {
                     '--no-cpu[Do not record CPU]' \
                     '--no-disk[Do not record disk]' \
                     '--no-net[Do not record network]' \
-                    '--no-mem[Do not record memory]'
+                    '--no-mem[Do not record memory]' \
+                    '--no-cpufreq[Do not record per-core CPU frequency]'
                 ;;
             *)
                 _files

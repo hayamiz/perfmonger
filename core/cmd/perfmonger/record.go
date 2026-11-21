@@ -294,6 +294,9 @@ func (cmd *recordCommand) executeRecord() error {
 	// skips daemonization, and runs the recorder directly.
 	if cmd.RecorderOpt.Background {
 		if os.Getenv(daemonEnvKey) == "" {
+			// The detached child's stderr is /dev/null, so surface the
+			// cpufreq probe notice (if any) here, where the user sees it.
+			recorder.ReportCpuFreqSupport(cmd.RecorderOpt, os.Stderr)
 			// Parent: launch child and exit
 			return cmd.launchDaemonChild()
 		}
@@ -375,6 +378,9 @@ func (cmd *recordCommand) launchDaemonChild() error {
 	}
 	if cmd.RecorderOpt.NoMem {
 		args = append(args, "--no-mem")
+	}
+	if cmd.RecorderOpt.NoCpuFreq {
+		args = append(args, "--no-cpufreq")
 	}
 	if cmd.RecorderOpt.NoIntr || !cmd.RecordIntr {
 		args = append(args, "--record-intr=false")
@@ -466,6 +472,8 @@ func newRecordCommand() *cobra.Command {
 		"Suppress recording network usage")
 	cmd.Flags().BoolVar(&recCmd.RecorderOpt.NoMem, "no-mem", recCmd.RecorderOpt.NoMem, 
 		"Suppress recording memory usage")
+	cmd.Flags().BoolVar(&recCmd.RecorderOpt.NoCpuFreq, "no-cpufreq", recCmd.RecorderOpt.NoCpuFreq,
+		"Suppress recording per-core CPU frequency (recorded by default when cpufreq is available)")
 	cmd.Flags().BoolVar(&recCmd.NoGzip, "no-gzip", recCmd.NoGzip, 
 		"Do not save a logfile in gzipped format")
 	cmd.Flags().BoolVar(&recCmd.RecorderOpt.NoIntervalBackoff, "no-interval-backoff", recCmd.RecorderOpt.NoIntervalBackoff,

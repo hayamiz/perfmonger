@@ -96,6 +96,28 @@ func getPartitionsFromDir(blockDir string, name string) []string {
 	return parts
 }
 
+// NumCpuCores returns the number of configured CPU cores (`nproc --all`),
+// falling back to runtime.NumCPU() when nproc is unavailable.
+func NumCpuCores() int {
+	num_core := 0
+	out, err := exec.Command("nproc", "--all").Output()
+	out_str := strings.TrimSpace(string(out))
+
+	if err == nil {
+		num_core, err = strconv.Atoi(out_str)
+
+		if err != nil {
+			num_core = 0
+		}
+	}
+
+	if num_core == 0 {
+		num_core = runtime.NumCPU()
+	}
+
+	return num_core
+}
+
 func ReadCpuStat(record *StatRecord) error {
 	f, ferr := os.Open("/proc/stat")
 	if ferr != nil {
@@ -104,23 +126,7 @@ func ReadCpuStat(record *StatRecord) error {
 	defer f.Close()
 
 	if record.Cpu == nil {
-		num_core := 0
-		out, err := exec.Command("nproc", "--all").Output()
-		out_str := strings.TrimSpace(string(out))
-
-		if err == nil {
-			num_core, err = strconv.Atoi(out_str)
-
-			if err != nil {
-				num_core = 0
-			}
-		}
-
-		if num_core == 0 {
-			num_core = runtime.NumCPU()
-		}
-
-		record.Cpu = NewCpuStat(num_core)
+		record.Cpu = NewCpuStat(NumCpuCores())
 	} else {
 		record.Cpu.Clear()
 	}

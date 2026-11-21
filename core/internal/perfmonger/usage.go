@@ -676,3 +676,126 @@ func (entry *NetUsageEntry) WriteJsonTo(printer *projson.JsonPrinter) {
 
 	printer.FinishObject()
 }
+
+// WriteJsonTo writes the per-core frequencies of a single sample in MHz. A
+// value of 0.0 means the frequency of that core was unavailable.
+func (freq *CpuFreqStat) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("num_core")
+	printer.PutInt(freq.NumCore)
+	printer.PutKey("cores")
+	printer.BeginArray()
+	for _, khz := range freq.CoreFreqs {
+		printer.PutFloatFmt(float64(khz)/1000.0, "%.1f")
+	}
+	printer.FinishArray()
+	printer.FinishObject()
+}
+
+// CpuFreqSummary accumulates per-core frequency samples to report the
+// time-averaged frequency of each core over a recording. Samples with value 0
+// (frequency unavailable) are ignored.
+type CpuFreqSummary struct {
+	sums   []float64 // kHz
+	counts []int64
+}
+
+func NewCpuFreqSummary() *CpuFreqSummary {
+	return &CpuFreqSummary{}
+}
+
+// Add accumulates one sample. A nil sample is ignored.
+func (summary *CpuFreqSummary) Add(freq *CpuFreqStat) {
+	if freq == nil {
+		return
+	}
+	for len(summary.sums) < len(freq.CoreFreqs) {
+		summary.sums = append(summary.sums, 0)
+		summary.counts = append(summary.counts, 0)
+	}
+	for i, khz := range freq.CoreFreqs {
+		if khz > 0 {
+			summary.sums[i] += float64(khz)
+			summary.counts[i]++
+		}
+	}
+}
+
+// NumCore returns the number of cores seen so far.
+func (summary *CpuFreqSummary) NumCore() int {
+	return len(summary.sums)
+}
+
+// HasData reports whether at least one valid sample has been accumulated.
+func (summary *CpuFreqSummary) HasData() bool {
+	for _, c := range summary.counts {
+		if c > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// CoreAvgMHz returns the time-averaged frequency of each core in MHz, or 0 for
+// a core without any valid sample.
+func (summary *CpuFreqSummary) CoreAvgMHz() []float64 {
+	avgs := make([]float64, len(summary.sums))
+	for i := range summary.sums {
+		if summary.counts[i] > 0 {
+			avgs[i] = summary.sums[i] / float64(summary.counts[i]) / 1000.0
+		}
+	}
+	return avgs
+}
+
+// AvgMHz returns the mean of the per-core averages over the cores that have
+// at least one valid sample, or 0 when there is no data.
+func (summary *CpuFreqSummary) AvgMHz() float64 {
+	total := 0.0
+	n := 0
+	for i, avg := range summary.CoreAvgMHz() {
+		if summary.counts[i] > 0 {
+			total += avg
+			n++
+		}
+	}
+	if n == 0 {
+		return 0
+	}
+	return total / float64(n)
+}
+
+// MinMaxCoreAvgMHz returns the smallest and largest per-core average among the
+// cores that have at least one valid sample (0, 0 when there is no data).
+func (summary *CpuFreqSummary) MinMaxCoreAvgMHz() (float64, float64) {
+	min, max := 0.0, 0.0
+	first := true
+	for i, avg := range summary.CoreAvgMHz() {
+		if summary.counts[i] == 0 {
+			continue
+		}
+		if first || avg < min {
+			min = avg
+		}
+		if first || avg > max {
+			max = avg
+		}
+		first = false
+	}
+	return min, max
+}
+
+func (summary *CpuFreqSummary) WriteJsonTo(printer *projson.JsonPrinter) {
+	printer.BeginObject()
+	printer.PutKey("num_core")
+	printer.PutInt(summary.NumCore())
+	printer.PutKey("avg")
+	printer.PutFloatFmt(summary.AvgMHz(), "%.1f")
+	printer.PutKey("cores")
+	printer.BeginArray()
+	for _, avg := range summary.CoreAvgMHz() {
+		printer.PutFloatFmt(avg, "%.1f")
+	}
+	printer.FinishArray()
+	printer.FinishObject()
+}

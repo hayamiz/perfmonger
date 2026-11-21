@@ -105,6 +105,8 @@ It has no CLI of its own.
   `PlatformType` constants (`Linux = 1`), `LinuxHeader`, `LinuxDevice`
 - [perfmonger_linux.go](../core/internal/perfmonger/perfmonger_linux.go) —
   Linux-specific readers for `/proc/{stat,diskstats,net/dev,meminfo,interrupts}`
+- [cpufreq_linux.go](../core/internal/perfmonger/cpufreq_linux.go) —
+  per-core CPU frequency reader (`CpuFreqReader`) over cpufreq sysfs
 - [stat.go](../core/internal/perfmonger/stat.go) — per-sample record types
 - [usage.go](../core/internal/perfmonger/usage.go) — delta/usage computations
 
@@ -127,7 +129,12 @@ decodes. Its fields for the major metric groups are all pointers
 | `NetStat`         | `Entries[]` per interface: rx/tx bytes/packets/errors/drops/fifo/frame/compressed/multicast |
 | `MemStat`         | Every field exposed by `/proc/meminfo` in KB                            |
 | `ProcStat`        | Context switches and fork count; declared but **not populated** by the Linux readers |
+| `CpuFreqStat`     | `NumCore` + `CoreFreqs[]` (kHz per core, `0` = unavailable in that sample) |
 | `StatRecord`      | `Time time.Time` + pointers to each of the above                        |
+
+`StatRecord.CpuFreq` was added after the original format. As a plain gob field
+addition it needs no format version bump: older `.pgr` files decode with
+`CpuFreq == nil`, and older binaries ignore the field.
 
 ### 3.3 Collection functions
 
@@ -143,6 +150,13 @@ invoked once per sampling tick in the recorder loop:
   optional `TargetDisks` map.
 - `ReadNetStat` — parses `/proc/net/dev`, skipping the two header rows.
 - `ReadMemStat` — parses `/proc/meminfo` into `MemStat` fields by name.
+- `CpuFreqReader.Read` — re-reads
+  `/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq` for every core with
+  one `pread(fd, buf, 0)` on fds kept open since start-up. Unlike the other
+  readers it needs set-up: `OpenCpuFreqReader(numCore)` probes once and
+  returns an error (frequency recording disabled) when no core is readable
+  (`ErrCpuFreqUnavailable`), or on x86 kernels < 5.19
+  (`*CpuFreqKernelError`), where each read IPIs the target core.
 
 `NewPlatformHeader()` populates the `LinuxHeader` by walking `/proc/diskstats`
 + `/sys/block/*` to classify physical devices vs. partitions.
@@ -211,6 +225,7 @@ re-parsing arguments when invoked from Go code.
 | `DevsParts`          | `-d` disk name list (resolved to `TargetDisks`).               |
 | `Output`             | Output path, or `-` for stdout.                                |
 | `NoCPU`/`NoIntr`/`NoDisk`/`NoNet`/`NoMem` | Feature toggles.                          |
+| `NoCpuFreq`          | Skip the per-core CPU frequency probe; otherwise frequencies are recorded whenever the probe succeeds. |
 | `Debug`              | Dumps the option struct to stderr.                             |
 | `ListDevices`        | Prints device list to stderr and returns.                      |
 | `PlayerBin` + `PlayerArgs` | When set, the recorder pipes its gob stream into a child player process (used by `live`). |
@@ -228,7 +243,9 @@ re-parsing arguments when invoked from Go code.
 4. Open output: stdout → `bufio.Writer`; `-` + player → player stdin only;
    file + player → `io.MultiWriter(file, player_stdin)`; file w/o player →
    optional `gzip.Writer` wrapped in `bufio.Writer`.
-5. Gob-encode headers, sleep `StartDelay`, then enter the sample loop:
+5. Gob-encode headers, probe per-core CPU frequency support
+   (`setupCpuFreqReader`; a stderr notice only for the old-x86-kernel case),
+   sleep `StartDelay`, then enter the sample loop:
    - Fill `record.Time`, call each enabled reader.
    - `enc.Encode(record)` and `out.Flush()`.
    - Apply interval backoff: every `BACKOFF_THRESH=1000` samples, multiply
@@ -289,7 +306,8 @@ JSON shape per line (exact key names from `WriteJsonTo` methods in
             "buffers": ..., "cached": ..., "swap_cached": ..., "active": ...,
             "inactive": ..., "swap_total": ..., "swap_free": ...,
             "dirty": ..., "writeback": ..., "anon_pages": ..., "mapped": ...,
-            "shmem": ..., "slab": ..., /* and more */ }
+            "shmem": ..., "slab": ..., /* and more */ },
+  "cpufreq": { "num_core": 8, "cores": [2650.0, 1200.0, ...] }
 }
 ```
 
@@ -309,9 +327,13 @@ Notable shape details the casual reader will miss:
   interrupts; no per-IRQ breakdown reaches the JSON output.
 - **CPU keys use abbreviated names** (`usr`, `sys`, `iowait`, `guestnice`,
   …), not the camel-case Go field names.
+- **`cpufreq` values are instantaneous MHz** of the current record (not
+  deltas), formatted `%.1f`; `0.0` marks a core whose frequency was
+  unavailable in that sample.
 
 Optional keys (`cpu`, `intr`, `disk`, `net`, `mem`) are present only if both
-records have non-nil pointers for that category. Errors from individual
+records have non-nil pointers for that category (`mem` and `cpufreq` only
+look at the current record). Errors from individual
 sub-stat formatters cause that JSON object to be skipped (printed `skip by
 err` to stderr) rather than aborting the whole stream.
 
@@ -330,7 +352,11 @@ to keep in mind if you embed the package.
 `RunDirect(option, out io.Writer) error` reads the full gob stream keeping
 only the first record and a rolling last-two buffer. The summary is one
 aggregate delta between first and last record, not a per-interval average.
-`Duration` is `lst_record.Time - fst_record.Time`.
+`Duration` is `lst_record.Time - fst_record.Time`. The exception is
+`cpufreq`: frequencies are instantaneous samples, so `CpuFreqSummary`
+averages them over every record (ignoring `0` = unavailable) and reports the
+per-core averages plus their mean (`"cpufreq": {"num_core", "avg", "cores"}`
+in JSON, an "Average CPU frequency" block in text).
 
 Text output (default) includes CPU usage block, per-device disk stats,
 per-interface network stats, and memory. JSON output emits a single object
@@ -392,6 +418,7 @@ Flags (all accept Ruby-style float seconds thanks to `secondsDurationValue`):
 | `--background`          | Detach via re-exec (see §6).                               |
 | `--record-intr`         | Enable `/proc/interrupts` sampling (experimental).         |
 | `--no-cpu`/`--no-net`/`--no-mem` | Feature toggles.                                  |
+| `--no-cpufreq`          | Do not record per-core CPU frequency (recorded by default when the start-up probe succeeds; forwarded to the `--background` child). |
 | `--no-gzip`             | Write raw `.pgr` instead of gzip-wrapped.                  |
 | `--no-interval-backoff` | Disable the automatic interval doubling.                   |
 | `--kill`                | SIGINT any running background session, with exponential backoff (50ms×2 up to five tries). |
@@ -411,8 +438,8 @@ process is re-exec'd with `cwd=/`.
 
 Wraps `record` but forces `Output="-"` and sets `PlayerBin=<self>
 PlayerArgs=["play"]`. Exposed flags: `-d`, `-i`, `-s`, `-t`,
-`--record-intr`, `--no-cpu`, `--no-net`, `--no-mem`, `--no-gzip`,
-`-c`/`--color`, `--pretty`, `-v`/`--verbose`. Missing (by design): no
+`--record-intr`, `--no-cpu`, `--no-net`, `--no-mem`, `--no-cpufreq`,
+`--no-gzip`, `-c`/`--color`, `--pretty`, `-v`/`--verbose`. Missing (by design): no
 `-l`/`--logfile`, no `--background`, no `--kill`/`--status`, no
 `--no-interval-backoff`. `--color` and `--pretty` are propagated to the
 child player. Network recording is still off by default.
@@ -429,8 +456,8 @@ Panics on I/O errors from the input file (see §9). Gzip is auto-detected.
 
 Usage: `perfmonger stat [options] -- <command> [args...]`. Flags mirror
 `record` (`-d`, `-l`/`--logfile`, `-i`, `-s`, `-t`, `--record-intr`,
-`--no-cpu`/`--no-net`/`--no-mem`, `--no-gzip`, `--no-interval-backoff`,
-`-v`/`--verbose`) plus `--json` for the summary output.
+`--no-cpu`/`--no-net`/`--no-mem`/`--no-cpufreq`, `--no-gzip`,
+`--no-interval-backoff`, `-v`/`--verbose`) plus `--json` for the summary output.
 
 Defaults worth noting:
 

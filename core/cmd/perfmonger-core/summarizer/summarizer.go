@@ -128,6 +128,12 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 		return err
 	}
 
+	// Per-core frequencies are instantaneous samples rather than cumulative
+	// counters, so they are averaged over every record instead of being
+	// derived from the first and last records.
+	freq_summary := ss.NewCpuFreqSummary()
+	freq_summary.Add(fst_record.CpuFreq)
+
 	// loop until last line.
 	//
 	// lst_records is a two-element ping-pong buffer; each successful decode
@@ -150,6 +156,7 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 		}
 
 		decoded = true
+		freq_summary.Add(lst_records[idx].CpuFreq)
 		idx ^= 1
 	}
 
@@ -213,6 +220,11 @@ func RunDirect(option *SummaryOption, out io.Writer) error {
 			cpu_usage.WriteJsonTo(printer)
 		}
 
+		if freq_summary.HasData() {
+			printer.PutKey("cpufreq")
+			freq_summary.WriteJsonTo(printer)
+		}
+
 		if intr_usage != nil {
 			printer.PutKey("intr")
 			intr_usage.WriteJsonTo(printer)
@@ -273,6 +285,15 @@ Duration: %.3f sec
 				cpu_usage.All.Steal,
 				cpu_usage.All.Idle+cpu_usage.All.Iowait,
 				cpu_usage.All.Iowait, cpu_usage.All.Idle)
+		}
+
+		if freq_summary.HasData() {
+			min_mhz, max_mhz := freq_summary.MinMaxCoreAvgMHz()
+			fmt.Fprintf(out, `* Average CPU frequency: %.1f MHz
+  * Per-core average: min %.1f MHz, max %.1f MHz (%d cores)
+
+`,
+				freq_summary.AvgMHz(), min_mhz, max_mhz, freq_summary.NumCore())
 		}
 
 		if disk_usage != nil {
