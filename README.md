@@ -66,6 +66,29 @@ The resulting binary is `lib/exec/perfmonger_linux_amd64`. Copy it somewhere
 on your `PATH` (e.g. `~/bin/perfmonger`) if you want to invoke it as
 `perfmonger`.
 
+### Updating
+
+A pre-built binary can update itself in place to the latest release:
+
+```sh
+perfmonger system-update          # show the release notes, then ask before replacing
+perfmonger system-update --check  # only report the current and latest versions
+perfmonger system-update --yes    # update without asking (required when stdin is not a terminal)
+```
+
+`system-update` downloads the release archive for your architecture together
+with the release's `checksums.txt`, verifies the archive's SHA256 before
+extracting it, makes sure the new binary runs, and then atomically replaces the
+running binary (symlinks are followed and the file's permission bits are kept).
+Replacing the binary needs write permission to the directory that contains it,
+so use `sudo` for a system-wide installation (e.g.
+`sudo /usr/local/bin/perfmonger system-update`).
+
+Development builds (version `dev`, e.g. built from source as above) refuse to
+update; install a release build as described in
+[Pre-built binary](#pre-built-binary) instead. PerfMonger v1.1.0 and earlier do
+not have `system-update`, so update those once by hand.
+
 ### Optional dependencies
 
 * `gnuplot` is required only for the `perfmonger plot` subcommand (graph
@@ -86,16 +109,17 @@ Usage:
   perfmonger [flags]
 
 Commands:
-  completion  Generate the autocompletion script for the specified shell
-  fingerprint Gather all possible system config information
-  help        Help about any command
-  init-shell  Initialize shell integration
-  live        Monitor live system performance
-  play        Play a recorded perfmonger session
-  plot        Plot system performance graphs
-  record      Record system performance information
-  stat        Run a command and show performance summary
-  summary     Summarize system performance data
+  completion    Generate the autocompletion script for the specified shell
+  fingerprint   Gather all possible system config information
+  help          Help about any command
+  init-shell    Initialize shell integration
+  live          Monitor live system performance
+  play          Play a recorded perfmonger session
+  plot          Plot system performance graphs
+  record        Record system performance information
+  stat          Run a command and show performance summary
+  summary       Summarize system performance data
+  system-update Update perfmonger to the latest release
 ```
 
 Run `perfmonger <subcommand> --help` for the flags of any individual

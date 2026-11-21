@@ -52,13 +52,14 @@ level monitoring of CPU, disk I/O, and network performance with JSON output.`,
 
 	// Add subcommands
 	cmd.AddCommand(newLiveCommand())
-	cmd.AddCommand(newRecordCommand()) 
+	cmd.AddCommand(newRecordCommand())
 	cmd.AddCommand(newPlayCommand())
 	cmd.AddCommand(newStatCommand())
 	cmd.AddCommand(newPlotCommand())
 	cmd.AddCommand(newSummaryCommand())
 	cmd.AddCommand(newFingerprintCommand())
 	cmd.AddCommand(newInitShellCommand())
+	cmd.AddCommand(newSystemUpdateCommand())
 
 	return cmd
 }
@@ -79,9 +80,11 @@ level monitoring of CPU, disk I/O, and network performance with JSON output.`,
 
 // newInitShellCommand is now defined in initshell.go
 
+// newSystemUpdateCommand is now defined in systemupdate.go
+
 func main() {
 	rootCmd := newRootCommand()
-	
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

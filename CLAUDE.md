@@ -11,7 +11,7 @@ PerfMonger is a high-resolution system performance monitor written in Go. It ena
 The project is a single-binary Go implementation:
 
 1. **Go CLI** (`core/cmd/perfmonger/`): Top-level `perfmonger` binary with cobra subcommands
-   - Subcommands: record, play, summary, plot, live, stat, fingerprint, init-shell
+   - Subcommands: record, play, summary, plot, live, stat, fingerprint, init-shell, system-update
    - Built to `lib/exec/perfmonger_linux_amd64`
 
 2. **Go Core Packages** (`core/cmd/perfmonger-core/`): Reusable component packages
