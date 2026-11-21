@@ -166,7 +166,7 @@ func TestNewStatCommand(t *testing.T) {
 	// Verify expected flags exist
 	expectedFlags := []string{
 		"disk", "logfile", "interval", "start-delay", "timeout",
-		"record-intr", "no-cpu", "no-net", "no-mem", "no-gzip",
+		"record-intr", "no-cpu", "no-net", "no-mem", "no-cpufreq", "no-gzip",
 		"no-interval-backoff", "json", "verbose",
 	}
 	for _, name := range expectedFlags {

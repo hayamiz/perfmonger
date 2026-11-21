@@ -628,3 +628,100 @@ func TestGetNetUsage(t *testing.T) {
 	assertHasKey("eth0.rxdropps")
 	assertHasKey("eth0.txdropps")
 }
+
+func TestCpuFreqStatWriteJson(t *testing.T) {
+	freq := NewCpuFreqStat(3)
+	freq.CoreFreqs[0] = 1200000
+	freq.CoreFreqs[1] = 2700500
+	freq.CoreFreqs[2] = 0
+
+	printer := projson.NewPrinter()
+	freq.WriteJsonTo(printer)
+	str, err := printer.String()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !isValidJson([]byte(str)) {
+		t.Fatalf("invalid JSON: %s", str)
+	}
+
+	var parsed struct {
+		NumCore int       `json:"num_core"`
+		Cores   []float64 `json:"cores"`
+	}
+	if err := json.Unmarshal([]byte(str), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if parsed.NumCore != 3 {
+		t.Errorf("num_core = %d, want 3", parsed.NumCore)
+	}
+	want := []float64{1200.0, 2700.5, 0.0}
+	if len(parsed.Cores) != len(want) {
+		t.Fatalf("cores = %v, want %v", parsed.Cores, want)
+	}
+	for i, w := range want {
+		if parsed.Cores[i] != w {
+			t.Errorf("cores[%d] = %v, want %v", i, parsed.Cores[i], w)
+		}
+	}
+}
+
+func TestCpuFreqSummary(t *testing.T) {
+	summary := NewCpuFreqSummary()
+	if summary.HasData() {
+		t.Fatal("empty summary should have no data")
+	}
+	if summary.AvgMHz() != 0 {
+		t.Errorf("empty AvgMHz = %v, want 0", summary.AvgMHz())
+	}
+	if min, max := summary.MinMaxCoreAvgMHz(); min != 0 || max != 0 {
+		t.Errorf("empty MinMax = (%v, %v), want (0, 0)", min, max)
+	}
+
+	summary.Add(nil) // ignored
+
+	s1 := NewCpuFreqStat(3)
+	s1.CoreFreqs[0] = 1000000
+	s1.CoreFreqs[1] = 2000000
+	s1.CoreFreqs[2] = 0 // unavailable in every sample
+	s2 := NewCpuFreqStat(3)
+	s2.CoreFreqs[0] = 3000000
+	s2.CoreFreqs[1] = 0 // unavailable in this sample only
+	s2.CoreFreqs[2] = 0
+	summary.Add(s1)
+	summary.Add(s2)
+
+	if !summary.HasData() {
+		t.Fatal("summary should have data")
+	}
+	if summary.NumCore() != 3 {
+		t.Errorf("NumCore = %d, want 3", summary.NumCore())
+	}
+	avgs := summary.CoreAvgMHz()
+	want := []float64{2000.0, 2000.0, 0.0}
+	for i, w := range want {
+		if math.Abs(avgs[i]-w) > 1e-9 {
+			t.Errorf("CoreAvgMHz[%d] = %v, want %v", i, avgs[i], w)
+		}
+	}
+	// Core 2 has no valid sample and must not drag the mean down.
+	if math.Abs(summary.AvgMHz()-2000.0) > 1e-9 {
+		t.Errorf("AvgMHz = %v, want 2000", summary.AvgMHz())
+	}
+	if min, max := summary.MinMaxCoreAvgMHz(); min != 2000.0 || max != 2000.0 {
+		t.Errorf("MinMax = (%v, %v), want (2000, 2000)", min, max)
+	}
+
+	printer := projson.NewPrinter()
+	summary.WriteJsonTo(printer)
+	str, err := printer.String()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !isValidJson([]byte(str)) {
+		t.Fatalf("invalid JSON: %s", str)
+	}
+	if !strings.Contains(str, `"avg":2000.0`) {
+		t.Errorf("summary JSON lacks avg: %s", str)
+	}
+}

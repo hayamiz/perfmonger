@@ -263,6 +263,8 @@ func newStatCommand() *cobra.Command {
 		"Suppress recording network usage")
 	cmd.Flags().BoolVar(&statCmd.RecorderOpt.NoMem, "no-mem", statCmd.RecorderOpt.NoMem, 
 		"Suppress recording memory usage")
+	cmd.Flags().BoolVar(&statCmd.RecorderOpt.NoCpuFreq, "no-cpufreq", statCmd.RecorderOpt.NoCpuFreq,
+		"Suppress recording per-core CPU frequency (recorded by default when cpufreq is available)")
 	cmd.Flags().BoolVar(&statCmd.NoGzip, "no-gzip", statCmd.NoGzip, 
 		"Do not save a logfile in gzipped format")
 	cmd.Flags().BoolVar(&statCmd.RecorderOpt.NoIntervalBackoff, "no-interval-backoff", statCmd.RecorderOpt.NoIntervalBackoff, 

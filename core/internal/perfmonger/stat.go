@@ -135,6 +135,15 @@ type MemStat struct {
 	Hugepagesize    int64
 }
 
+// CpuFreqStat holds the operating frequency of each CPU core at sampling
+// time, in kHz, as reported by cpufreq sysfs (scaling_cur_freq). A value of 0
+// means the frequency of that core was unavailable in this sample (e.g. the
+// core has no cpufreq policy or is offline).
+type CpuFreqStat struct {
+	NumCore   int
+	CoreFreqs []int64
+}
+
 type StatRecord struct {
 	Time      time.Time
 	Cpu       *CpuStat
@@ -144,6 +153,10 @@ type StatRecord struct {
 	Softirq   *SoftIrqStat
 	Net       *NetStat
 	Mem       *MemStat
+	// CpuFreq is optional: it is nil when frequency recording is disabled or
+	// unavailable, and in .pgr files written before this field existed. Being
+	// a plain gob field addition, it needs no format version bump.
+	CpuFreq *CpuFreqStat
 }
 
 func (core_stat *CpuCoreStat) Clear() {
@@ -291,15 +304,17 @@ func (entry *MemStat) Clear() {
 }
 
 func NewStatRecord() *StatRecord {
-	return &StatRecord{
-		time.Now(),
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
+	return &StatRecord{Time: time.Now()}
+}
+
+func NewCpuFreqStat(num_core int) *CpuFreqStat {
+	if num_core < 1 {
+		return nil
+	}
+
+	return &CpuFreqStat{
+		NumCore:   num_core,
+		CoreFreqs: make([]int64, num_core),
 	}
 }
 

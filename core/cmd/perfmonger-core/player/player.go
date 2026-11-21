@@ -37,6 +37,11 @@ func showCpuStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec 
 	return nil
 }
 
+func showCpuFreqStat(printer *projson.JsonPrinter, cur_rec *ss.StatRecord) {
+	printer.PutKey("cpufreq")
+	cur_rec.CpuFreq.WriteJsonTo(printer)
+}
+
 func showInterruptStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss.StatRecord) error {
 	intr_usage, err := ss.GetInterruptUsage(
 		prev_rec.Time, prev_rec.Interrupt,
@@ -119,6 +124,9 @@ func showStat(printer *projson.JsonPrinter, prev_rec *ss.StatRecord, cur_rec *ss
 		if err != nil {
 			return err
 		}
+	}
+	if cur_rec.CpuFreq != nil {
+		showCpuFreqStat(printer, cur_rec)
 	}
 	if cur_rec.Interrupt != nil {
 		err := showInterruptStat(printer, prev_rec, cur_rec)

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -40,6 +41,10 @@ type RecorderOption struct {
 	NoDisk             bool
 	NoNet              bool
 	NoMem              bool
+	// NoCpuFreq disables per-core CPU frequency recording. When false, the
+	// frequencies are recorded only if a start-up probe finds them readable at
+	// low cost (see setupCpuFreqReader).
+	NoCpuFreq          bool
 	Debug              bool
 	ListDevices        bool
 	PlayerBin          string
@@ -101,6 +106,8 @@ func parseArgs(args []string, option *RecorderOption) {
 		false, "Do not record net usage")
 	fs.BoolVar(&option.NoMem, "no-mem",
 		false, "Do not record memory usage")
+	fs.BoolVar(&option.NoCpuFreq, "no-cpufreq",
+		false, "Do not record per-core CPU frequency")
 	fs.BoolVar(&option.Debug, "debug",
 		false, "Enable debug mode")
 	fs.BoolVar(&option.ListDevices, "list-devices",
@@ -222,6 +229,7 @@ func NewRecorderOption() *RecorderOption {
 		NoDisk:             false,
 		NoNet:              false,
 		NoMem:              false,
+		NoCpuFreq:          false,
 		Debug:              false,
 		ListDevices:        false,
 		PlayerBin:          "",
@@ -251,6 +259,7 @@ func showRecorderOption(option *RecorderOption) {
 	fmt.Fprintf(os.Stderr, "NoDisk: %t\n", option.NoDisk)
 	fmt.Fprintf(os.Stderr, "NoNet: %t\n", option.NoNet)
 	fmt.Fprintf(os.Stderr, "NoMem: %t\n", option.NoMem)
+	fmt.Fprintf(os.Stderr, "NoCpuFreq: %t\n", option.NoCpuFreq)
 	fmt.Fprintf(os.Stderr, "Debug: %t\n", option.Debug)
 	fmt.Fprintf(os.Stderr, "ListDevices: %t\n", option.ListDevices)
 	fmt.Fprintf(os.Stderr, "PlayerBin: %s\n", option.PlayerBin)
@@ -352,6 +361,47 @@ func fdIsWritable(fd int) bool {
 	}
 	accmode := flags & syscall.O_ACCMODE
 	return accmode == syscall.O_WRONLY || accmode == syscall.O_RDWR
+}
+
+// openCpuFreqReader is a seam so tests can stub the cpufreq probe.
+var openCpuFreqReader = func() (*ss.CpuFreqReader, error) {
+	return ss.OpenCpuFreqReader(ss.NumCpuCores())
+}
+
+// setupCpuFreqReader decides at start-up whether per-core CPU frequencies are
+// recorded, and returns the reader to use or nil when they are not. Messages
+// go to logw: a notice when cpufreq exists but is deliberately not read
+// because the kernel would IPI every core on each read, and the reason for any
+// other unavailability only in debug mode (it is the normal case in most VMs
+// and containers).
+func setupCpuFreqReader(option *RecorderOption, logw io.Writer) *ss.CpuFreqReader {
+	if option.NoCpuFreq {
+		return nil
+	}
+
+	reader, err := openCpuFreqReader()
+	if err != nil {
+		var kerr *ss.CpuFreqKernelError
+		if errors.As(err, &kerr) {
+			fmt.Fprintf(logw, "perfmonger: per-core CPU frequency recording disabled: %v\n", err)
+		} else if option.Debug {
+			fmt.Fprintf(logw, "perfmonger: per-core CPU frequency recording disabled: %v\n", err)
+		}
+		return nil
+	}
+
+	if option.Debug {
+		fmt.Fprintf(logw, "perfmonger: recording per-core CPU frequency for %d cores\n", reader.NumCore())
+	}
+	return reader
+}
+
+// ReportCpuFreqSupport runs the same start-up probe as RunDirect only to print
+// its notice (if any) to logw, then releases the reader. It is meant for
+// callers whose recorder runs where stderr is not visible, such as the
+// detached `record --background` child.
+func ReportCpuFreqSupport(option *RecorderOption, logw io.Writer) {
+	setupCpuFreqReader(option, logw).Close()
 }
 
 // RunWithOption executes the recorder with the provided options
@@ -728,6 +778,12 @@ func RunDirect(option *RecorderOption) error {
 		return &CollectionError{Err: err}
 	}
 
+	// Probe per-core CPU frequency support once, before sampling starts. When
+	// it is unavailable (or too expensive to read), recording silently falls
+	// back to the other metrics.
+	cpuFreqReader := setupCpuFreqReader(option, os.Stderr)
+	defer cpuFreqReader.Close()
+
 	// start delay
 	time.Sleep(option.StartDelay)
 
@@ -776,6 +832,9 @@ func RunDirect(option *RecorderOption) error {
 		}
 		if !option.NoMem {
 			ss.ReadMemStat(record)
+		}
+		if cpuFreqReader != nil {
+			cpuFreqReader.Read(record)
 		}
 
 		// Encode the record and flush it to durable storage. If either the
